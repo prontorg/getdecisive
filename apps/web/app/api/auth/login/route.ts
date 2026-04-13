@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
-import { loadPlatformState } from '../../../../lib/server/dev-store';
+import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
 import { deriveOnboardingStatus, loginWithPassword } from '../../../../lib/server/platform-state';
 import { buildSessionCookieOptions, sessionCookieName } from '../../../../lib/server/session';
 
@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL(`${appRoutes.login}?error=${encodeURIComponent('Invalid email or password')}`, request.url));
   }
 
+  await savePlatformState(state);
   const onboarding = deriveOnboardingStatus(state, user.id);
   const nextUrl = onboarding?.state === 'ready' ? appRoutes.dashboard : appRoutes.onboardingSync;
   const response = NextResponse.redirect(new URL(nextUrl, request.url));

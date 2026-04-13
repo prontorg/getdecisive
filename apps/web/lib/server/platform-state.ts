@@ -1,5 +1,7 @@
 import type { OnboardingState, PlatformRole } from '@decisive/types';
 
+import { hashPassword, isPasswordHash, verifyPassword } from './auth-password';
+
 export type InviteRecord = {
   id: string;
   code: string;
@@ -139,7 +141,7 @@ export function registerUserWithInvite(state: PlatformState, input: RegisterInpu
     id: makeId('user'),
     email,
     displayName: input.displayName.trim(),
-    password: input.password,
+    password: hashPassword(input.password.trim()),
     workspaceId,
   };
   const membership: MembershipRecord = {
@@ -175,7 +177,12 @@ export function registerUserWithInvite(state: PlatformState, input: RegisterInpu
 
 export function loginWithPassword(state: PlatformState, email: string, password: string): UserRecord | null {
   const normalized = normalizeEmail(email);
-  return state.users.find((user) => user.email === normalized && user.password === password) || null;
+  const user = state.users.find((entry) => entry.email === normalized) || null;
+  if (!user || !verifyPassword(password, user.password)) return null;
+  if (!isPasswordHash(user.password)) {
+    user.password = hashPassword(password.trim());
+  }
+  return user;
 }
 
 export function getUserById(state: PlatformState, userId: string): UserRecord | null {
@@ -193,9 +200,9 @@ export function isAdminUser(state: PlatformState, userId: string): boolean {
 export function changeUserPassword(state: PlatformState, userId: string, currentPassword: string, nextPassword: string): UserRecord {
   const user = getUserById(state, userId);
   if (!user) throw new Error('User not found');
-  if (user.password !== currentPassword) throw new Error('Current password is incorrect');
+  if (!verifyPassword(currentPassword, user.password)) throw new Error('Current password is incorrect');
   if (!nextPassword.trim()) throw new Error('New password is required');
-  user.password = nextPassword.trim();
+  user.password = hashPassword(nextPassword.trim());
   state.auditEvents.push({
     id: makeId('audit'),
     eventType: 'user.password_changed',

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
-import { loadPlatformState, savePlatformState } from '../../../lib/server/dev-store';
+import { loadPlatformState } from '../../../lib/server/dev-store';
 import { buildPlannerDayPayload, authorizeLiveIntervalsState, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../lib/server/planner-data';
 import { deriveOnboardingStatus, getOnboardingRun, getUserById, isAdminUser } from '../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../lib/server/session';
@@ -13,7 +13,6 @@ export default async function DashboardPage() {
 
   const state = await loadPlatformState();
   const onboarding = deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
-  await savePlatformState(state);
   const user = getUserById(state, userId);
 
   if (!user || !onboarding) redirect(appRoutes.login);

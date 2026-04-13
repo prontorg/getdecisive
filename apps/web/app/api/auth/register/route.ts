@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
 import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
-import { applyIntervalsCredentials, registerUserWithInvite } from '../../../../lib/server/platform-state';
+import { registerUserWithInvite } from '../../../../lib/server/platform-state';
 import { buildSessionCookieOptions, sessionCookieName } from '../../../../lib/server/session';
 
 export async function POST(request: Request) {
@@ -11,20 +11,13 @@ export async function POST(request: Request) {
   const email = String(formData.get('email') || '');
   const password = String(formData.get('password') || '');
   const displayName = String(formData.get('displayName') || '');
-  const athleteId = String(formData.get('athleteId') || '');
-  const credentialPayload = String(formData.get('credentialPayload') || '');
-  const connectionLabel = String(formData.get('connectionLabel') || '');
 
   const state = await loadPlatformState();
 
   try {
     const registration = registerUserWithInvite(state, { inviteCode, email, password, displayName });
-    const wantsIntervalsLink = athleteId.trim() && credentialPayload.trim();
-    if (wantsIntervalsLink) {
-      applyIntervalsCredentials(state, registration.user.id, { athleteId, credentialPayload, connectionLabel });
-    }
     await savePlatformState(state);
-    const response = NextResponse.redirect(new URL(wantsIntervalsLink ? appRoutes.onboardingSync : appRoutes.onboardingIntervals, request.url));
+    const response = NextResponse.redirect(new URL(appRoutes.onboardingIntervals, request.url));
     const cookie = buildSessionCookieOptions(request, { value: registration.user.id });
     response.cookies.set(sessionCookieName, cookie.value, cookie);
     return response;

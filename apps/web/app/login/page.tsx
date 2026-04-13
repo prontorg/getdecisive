@@ -8,7 +8,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
         <div className="hero-copy">
           <div className="kicker">Separate planner site</div>
           <h1>Access decisive planner</h1>
-          <p>Email/password and magic-link auth launch here, separate from the current dashboard deployment.</p>
+          <p>Simple private login for the planner product. Sign up with an invite first, then connect Intervals in onboarding.</p>
         </div>
       </section>
       <LoginPanel error={params.error} notice={params.notice} />

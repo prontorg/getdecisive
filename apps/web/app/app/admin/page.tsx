@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
-import { loadPlatformState, savePlatformState } from '../../../lib/server/dev-store';
+import { loadPlatformState } from '../../../lib/server/dev-store';
 import { deriveOnboardingStatus, getOnboardingRun, getUserById, isAdminUser } from '../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../lib/server/session';
 
@@ -13,7 +13,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
 
   const state = await loadPlatformState();
   const onboarding = deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
-  await savePlatformState(state);
   const user = getUserById(state, userId);
 
   if (!user || !onboarding) redirect(appRoutes.login);
