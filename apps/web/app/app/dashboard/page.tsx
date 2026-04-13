@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 
-import { PlannerTabs } from '../_components/planner-tabs';
 import { AppCard, AppHero, AppMetricCard, AppMetricStrip, AppPageShell, AppSectionColumns, AppSectionStack } from '../_components/material-shell';
 import { appRoutes } from '../../../lib/routes';
 import { buildPlannerDayPayload, getAuthorizedPlannerLiveContext } from '../../../lib/server/planner-data';
@@ -16,7 +15,7 @@ export default async function DashboardPage() {
   const planner = await getAuthorizedPlannerLiveContext(userId);
   if (!planner) redirect(appRoutes.onboardingSync);
   const day = buildPlannerDayPayload(planner.context.user, planner.live);
-  const { user, onboarding, isAdmin } = appContext;
+  const { user, onboarding } = appContext;
 
   return (
     <AppPageShell>
@@ -36,8 +35,6 @@ export default async function DashboardPage() {
           </>
         )}
       />
-
-      <PlannerTabs active="dashboard" isAdmin={isAdmin} />
 
       <AppMetricStrip>
         <AppMetricCard label="Fitness" value={day.ctl.toFixed(0)} detail="CTL" />
@@ -67,15 +64,6 @@ export default async function DashboardPage() {
             <div className="kicker">Latest workout</div>
             <h2>Last workout day</h2>
             {day.latestWorkoutSummary ? <p>{day.latestWorkoutSummary}</p> : <p>No latest workout summary loaded yet.</p>}
-          </AppCard>
-          <AppCard>
-            <div className="kicker">Controls</div>
-            <div className="button-row">
-              <a href="/" className="button-link">Coach dashboard</a>
-              <a href={appRoutes.analysis} className="button-link">Open Analysis</a>
-              {isAdmin ? <a href={appRoutes.admin} className="button-link">Open Admin</a> : null}
-              <form action="/planner/api/auth/logout" method="post"><button type="submit" className="button-secondary">Log out</button></form>
-            </div>
           </AppCard>
         </AppSectionStack>
       </AppSectionColumns>

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 
-import { PlannerTabs } from '../_components/planner-tabs';
 import { AppCard, AppHero, AppPageShell } from '../_components/material-shell';
 import { appRoutes } from '../../../lib/routes';
 import { getAuthenticatedAppContext } from '../../../lib/server/app-context';
@@ -27,8 +26,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </>
         )}
       />
-
-      <PlannerTabs active="admin" isAdmin />
 
       <section className="panel-grid">
         <AppCard>

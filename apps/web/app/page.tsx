@@ -13,7 +13,7 @@ export default function LandingPage() {
       <section className="hero">
         <div className="hero-copy">
           <div className="kicker">Invite-only training planner</div>
-          <h1>Get decisive</h1>
+          <h1>Le ciel est la limite</h1>
           <p>
             Decisive is evolving from a dashboard into a full training planner platform for athletes,
             coaches, and admin-led performance workflows.

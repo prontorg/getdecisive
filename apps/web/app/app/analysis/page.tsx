@@ -1,7 +1,5 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { PlannerTabs } from '../_components/planner-tabs';
 import { AppCard, AppHero, AppHighlightsGrid, AppMetricCard, AppMetricStrip, AppPageShell, AppSectionColumns, AppSectionStack } from '../_components/material-shell';
 import { appRoutes } from '../../../lib/routes';
 import {
@@ -12,7 +10,6 @@ import {
   getAuthorizedPlannerLiveContext,
 } from '../../../lib/server/planner-data';
 import { getUserAdaptationEntries, getUserGoalEntries } from '../../../lib/server/planner-customization';
-import { isAdminUser } from '../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../lib/server/session';
 
 export default async function AnalysisPage() {
@@ -23,7 +20,6 @@ export default async function AnalysisPage() {
   if (!planner) redirect(appRoutes.onboardingSync);
 
   const { context, live } = planner;
-  const isAdmin = isAdminUser(context.state, userId);
   const [goalEntries, adaptationEntries] = await Promise.all([
     getUserGoalEntries(userId),
     getUserAdaptationEntries(userId),
@@ -53,8 +49,6 @@ export default async function AnalysisPage() {
           </>
         )}
       />
-
-      <PlannerTabs active="analysis" isAdmin={isAdmin} />
 
       <AppMetricStrip>
         <AppMetricCard label="Fitness" value={day.ctl.toFixed(0)} detail="CTL" />
@@ -239,15 +233,6 @@ export default async function AnalysisPage() {
           </div>
         </AppCard>
       </section>
-
-      <AppCard className="mt-18">
-        <div className="kicker">Navigation</div>
-        <div className="button-row">
-          <a href="/" className="button-link">Coach dashboard</a>
-          <Link href={appRoutes.dashboard} className="button-link">Open Dashboard</Link>
-          {isAdmin ? <Link href={appRoutes.admin} className="button-link">Open Admin</Link> : null}
-        </div>
-      </AppCard>
     </AppPageShell>
   );
 }

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 
-import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
 import { getAuthenticatedAppContext } from '../../../lib/server/app-context';
 import { getSessionUserId } from '../../../lib/server/session';
@@ -25,8 +24,6 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           </div>
         </div>
       </section>
-
-      <PlannerTabs active="dashboard" />
 
       <section className="panel-grid">
         <section className="card">
