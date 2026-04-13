@@ -4,7 +4,15 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { applyIntervalsCredentialsRecord, loginWithPasswordRecord, registerUserWithInviteRecord, validateInviteCodeRecord } from '../lib/server/auth-store';
+import {
+  applyIntervalsCredentialsRecord,
+  createInviteRecord,
+  listInviteRecords,
+  loginWithPasswordRecord,
+  registerUserWithInviteRecord,
+  revokeInviteRecord,
+  validateInviteCodeRecord,
+} from '../lib/server/auth-store';
 import { loadPlatformState } from '../lib/server/dev-store';
 
 test('validateInviteCodeRecord uses file fallback when DATABASE_URL is absent', async () => {
@@ -54,6 +62,39 @@ test('applyIntervalsCredentialsRecord creates a queued sync job in file fallback
     const state = await loadPlatformState();
     assert.equal(state.syncJobs.length, 1);
     assert.equal(state.syncJobs[0]?.jobType, 'intervals_initial_sync');
+  } finally {
+    if (previousDb === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDb;
+    if (previousStore === undefined) delete process.env.DECISIVE_PLATFORM_STORE_PATH; else process.env.DECISIVE_PLATFORM_STORE_PATH = previousStore;
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('createInviteRecord, listInviteRecords, and revokeInviteRecord work in file fallback mode', async () => {
+  const previousDb = process.env.DATABASE_URL;
+  const previousStore = process.env.DECISIVE_PLATFORM_STORE_PATH;
+  const dir = await mkdtemp(join(tmpdir(), 'auth-store-'));
+  process.env.DECISIVE_PLATFORM_STORE_PATH = join(dir, 'store.json');
+  delete process.env.DATABASE_URL;
+  try {
+    const registration = await registerUserWithInviteRecord({
+      inviteCode: 'DECISIVE-INVITE',
+      email: `admin-${Date.now()}@example.com`,
+      password: 'secret123',
+      displayName: 'Admin',
+    });
+    const state = await loadPlatformState();
+    state.memberships[0].roles = ['admin'];
+    await import('../lib/server/dev-store').then(({ savePlatformState }) => savePlatformState(state));
+
+    const invite = await createInviteRecord(registration.user.id, { code: 'BETA-2026', maxUses: 3 });
+    assert.equal(invite.code, 'BETA-2026');
+    const invites = await listInviteRecords();
+    assert.equal(invites.some((item) => item.code === 'BETA-2026'), true);
+
+    const revoked = await revokeInviteRecord(registration.user.id, invite.id);
+    assert.equal(revoked.status, 'revoked');
+    const updated = await listInviteRecords();
+    assert.equal(updated.find((item) => item.id === invite.id)?.status, 'revoked');
   } finally {
     if (previousDb === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDb;
     if (previousStore === undefined) delete process.env.DECISIVE_PLATFORM_STORE_PATH; else process.env.DECISIVE_PLATFORM_STORE_PATH = previousStore;

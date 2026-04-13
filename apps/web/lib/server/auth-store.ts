@@ -7,6 +7,7 @@ import { hashPassword, isPasswordHash, verifyPassword } from './auth-password';
 import type {
   AuditEventRecord,
   IntervalsConnectionRecord,
+  InviteRecord,
   MembershipRecord,
   OnboardingRunRecord,
   PlatformState,
@@ -212,6 +213,93 @@ export async function validateInviteCodeRecord(code: string): Promise<{ valid: b
   if (invite.status !== 'active') return { valid: false, reason: 'Invite code is not active' };
   if (invite.used_count >= invite.max_uses) return { valid: false, reason: 'Invite code already used' };
   return { valid: true };
+}
+
+export async function listInviteRecords(): Promise<InviteRecord[]> {
+  const state = await getPlatformState();
+  return [...state.invites].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export async function createInviteRecord(actorUserId: string, input: { code?: string; maxUses?: number }): Promise<InviteRecord> {
+  const normalizedCode = (input.code || `DECISIVE-${randomUUID().slice(0, 8).toUpperCase()}`).trim().toUpperCase();
+  const maxUses = Math.max(1, Number(input.maxUses || 1));
+  if (!normalizedCode) throw new Error('Invite code is required');
+
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    if (state.invites.some((invite) => invite.code === normalizedCode)) throw new Error('Invite code already exists');
+    const invite: InviteRecord = {
+      id: makeId('invite'),
+      code: normalizedCode,
+      status: 'active',
+      maxUses,
+      usedCount: 0,
+    };
+    state.invites.push(invite);
+    state.auditEvents.push({ id: makeId('audit'), eventType: 'invite.created', entityType: 'invite', entityId: invite.id, createdAt: nowIso() });
+    await savePlatformState(state);
+    return invite;
+  }
+
+  const membershipResult = await getPgPool().query(
+    `select id from workspace_memberships where user_id = $1 order by created_at asc limit 1`,
+    [actorUserId],
+  );
+  const membershipId = membershipResult.rows[0]?.id;
+  if (!membershipId) throw new Error('Admin membership not found');
+
+  const invite: InviteRecord = {
+    id: randomUUID(),
+    code: normalizedCode,
+    status: 'active',
+    maxUses,
+    usedCount: 0,
+  };
+  await getPgPool().query(
+    `insert into invite_codes (id, code_hash, created_by_membership_id, max_uses, used_count, status)
+     values ($1,$2,$3,$4,$5,$6)`,
+    [invite.id, invite.code, membershipId, invite.maxUses, invite.usedCount, invite.status],
+  );
+  await getPgPool().query(
+    `insert into audit_events (id, actor_user_id, actor_membership_id, event_type, entity_type, entity_id, payload_json)
+     values ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+    [randomUUID(), actorUserId, membershipId, 'invite.created', 'invite', invite.id, JSON.stringify({ code: invite.code, maxUses })],
+  );
+  return invite;
+}
+
+export async function revokeInviteRecord(actorUserId: string, inviteId: string): Promise<InviteRecord> {
+  if (!inviteId.trim()) throw new Error('Invite id is required');
+
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    const invite = state.invites.find((item) => item.id === inviteId) || null;
+    if (!invite) throw new Error('Invite not found');
+    invite.status = 'revoked';
+    state.auditEvents.push({ id: makeId('audit'), eventType: 'invite.revoked', entityType: 'invite', entityId: invite.id, createdAt: nowIso() });
+    await savePlatformState(state);
+    return invite;
+  }
+
+  const membershipResult = await getPgPool().query(
+    `select id from workspace_memberships where user_id = $1 order by created_at asc limit 1`,
+    [actorUserId],
+  );
+  const membershipId = membershipResult.rows[0]?.id;
+  if (!membershipId) throw new Error('Admin membership not found');
+
+  const result = await getPgPool().query(
+    `update invite_codes set status = 'revoked' where id = $1 returning id, code_hash, status, max_uses, used_count`,
+    [inviteId],
+  );
+  const row = result.rows[0];
+  if (!row) throw new Error('Invite not found');
+  await getPgPool().query(
+    `insert into audit_events (id, actor_user_id, actor_membership_id, event_type, entity_type, entity_id, payload_json)
+     values ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+    [randomUUID(), actorUserId, membershipId, 'invite.revoked', 'invite', row.id, JSON.stringify({ code: row.code_hash })],
+  );
+  return { id: row.id, code: row.code_hash, status: row.status, maxUses: row.max_uses, usedCount: row.used_count };
 }
 
 export async function registerUserWithInviteRecord(input: RegisterInput): Promise<{

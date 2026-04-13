@@ -64,6 +64,33 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <div className="status-item"><strong>Used invites</strong><p>{state.invites.reduce((sum, invite) => sum + invite.usedCount, 0)}</p></div>
             <div className="status-item"><strong>Registered users</strong><p>{state.users.length}</p></div>
           </div>
+          <form className="form-grid" action="/planner/api/invites/create" method="post" style={{ marginTop: 16 }}>
+            <label>
+              <span>Invite code</span>
+              <input name="code" type="text" placeholder="DECISIVE-BETA" />
+            </label>
+            <label>
+              <span>Max uses</span>
+              <input name="maxUses" type="number" min="1" defaultValue="1" required />
+            </label>
+            <div className="button-row">
+              <button type="submit">Create invite</button>
+            </div>
+          </form>
+          <div className="status-list" style={{ marginTop: 16 }}>
+            {state.invites.map((invite) => (
+              <div className="status-item" key={invite.id}>
+                <strong>{invite.code}</strong>
+                <p>Status: {invite.status} • Used {invite.usedCount}/{invite.maxUses}</p>
+                {invite.status === 'active' ? (
+                  <form action="/planner/api/invites/revoke" method="post">
+                    <input type="hidden" name="inviteId" value={invite.id} />
+                    <button type="submit" className="button-secondary">Revoke</button>
+                  </form>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </section>
       </section>
     </main>
