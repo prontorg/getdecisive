@@ -5,7 +5,9 @@ import {
   authorizeLiveIntervalsState,
   buildAdaptationPayload,
   buildGoalPayload,
+  buildPlannerBlockPayload,
   buildPlannerDayPayload,
+  buildPlannerWeekPayload,
   buildPowerProfilePayload,
   hydrateUserSnapshotFromSharedLive,
   resolveAuthorizedLiveState,
@@ -166,4 +168,35 @@ test('goal and adaptation payloads explain safe read-only behavior', () => {
   assert.equal(goals.activeGoals.length > 0, true);
   assert.equal(adaptation.manualReviewRecommended, true);
   assert.match(adaptation.userFacingExplanation, /read-only toward Intervals/i);
+});
+
+test('week and block payloads reflect live track-endurance structure instead of scaffold text', () => {
+  const live = {
+    today: '2026-04-13',
+    today_plan: 'Z2 endurance',
+    tomorrow_plan: '6x4 min @ 410-420 W',
+    season_phase: 'specific-prep',
+    wellness: { ctl: 107, atl: 128 },
+    next_three: [
+      { day: 'Wed', date: '2026-04-15', plan: 'Endurance / support' },
+      { day: 'Thu', date: '2026-04-16', plan: 'Threshold support' },
+    ],
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-12T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 130, duration_s: 5400, summary: { short_label: '30/15 set' } },
+      { activity_id: '2', start_date_local: '2026-04-11T09:00:00', session_type: 'threshold / race-support ride', training_load: 145, duration_s: 7200, summary: { short_label: '2x15 threshold' } },
+      { activity_id: '3', start_date_local: '2026-04-10T09:00:00', session_type: 'endurance / Z2 ride', training_load: 210, duration_s: 14400, summary: { short_label: 'Long endurance' } },
+    ],
+  };
+
+  const week = buildPlannerWeekPayload(live);
+  const block = buildPlannerBlockPayload(live);
+
+  assert.match(week.weekIntent, /track-endurance quality/i);
+  assert.equal(week.keySessionsCompleted.length > 0, true);
+  assert.match(week.fatigueTrend, /CTL 107, ATL 128, Form -21/i);
+  assert.equal(week.riskFlags.some((item) => /read-only/i.test(item)), true);
+
+  assert.equal(block.activeBlock, 'specific-prep');
+  assert.match(block.sessionsCompletedAgainstIntendedPattern, /1 repeatability/i);
+  assert.equal(block.intervalsPlanWriteState, 'disabled_read_only');
 });

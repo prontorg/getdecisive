@@ -74,6 +74,24 @@ export type AdaptationPayload = {
   recentCheckins: Array<{ date: string; status: string; action: string; illness: boolean; note?: string }>;
 };
 
+export type PlannerWeekPayload = {
+  weekIntent: string;
+  keySessionsPlanned: string[];
+  keySessionsCompleted: string[];
+  missingSystems: string[];
+  fatigueTrend: string;
+  riskFlags: string[];
+};
+
+export type PlannerBlockPayload = {
+  activeBlock: string;
+  currentWeekWithinBlock: number;
+  mainEmphasis: string;
+  sessionsCompletedAgainstIntendedPattern: string;
+  blockState: string;
+  intervalsPlanWriteState: 'disabled_read_only';
+};
+
 export async function getAuthenticatedPlannerContext(userId: string): Promise<AuthenticatedPlannerContext | null> {
   const state = await getPlatformState();
   const onboarding = await getDerivedOnboardingStatusRecord(userId) || deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
@@ -435,5 +453,79 @@ export function buildAdaptationPayload(
     confidence: 'medium',
     manualReviewRecommended: true,
     recentCheckins: adaptationEntries,
+  };
+}
+
+export function buildPlannerWeekPayload(live?: LiveState | null): PlannerWeekPayload {
+  const rows = live?.recent_rows || [];
+  const completed = rows
+    .slice(0, 7)
+    .map((row) => latestWorkoutLine(row))
+    .filter(Boolean)
+    .slice(0, 4);
+  const planned = [planLabel(live?.today_plan), planLabel(live?.tomorrow_plan), ...(live?.next_three || []).map((item) => planLabel(item.plan))]
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .slice(0, 4);
+  const ctl = Number(live?.wellness?.ctl || 0);
+  const atl = Number(live?.wellness?.atl || 0);
+  const form = ctl - atl;
+  const repeatabilityHits = rows.filter((row) => row.session_type === 'broken VO2 / repeatability session').length;
+  const thresholdHits = rows.filter((row) => row.session_type === 'threshold / race-support ride').length;
+  const longHits = rows.filter((row) => Number(row.duration_s || 0) >= 3 * 3600).length;
+
+  const missingSystems: string[] = [];
+  if (!repeatabilityHits) missingSystems.push('No recent repeatability hit logged in the live window.');
+  if (!thresholdHits) missingSystems.push('No recent threshold/race-support anchor logged in the live window.');
+  if (!longHits) missingSystems.push('No long endurance durability support ride logged in the live window.');
+  if (!missingSystems.length) missingSystems.push('No major system is missing in the recent live window; protect freshness and repeatability instead.');
+
+  const riskFlags = [
+    form <= -20 ? `Freshness risk is high right now (Form ${form >= 0 ? '+' : ''}${form.toFixed(0)}).` : `Freshness is manageable right now (Form ${form >= 0 ? '+' : ''}${form.toFixed(0)}).`,
+    'Planner remains read-only toward Intervals.',
+  ];
+  if (!live) riskFlags.unshift('No authorized live athlete data is available for this account yet.');
+
+  return {
+    weekIntent: !live
+      ? 'Connect the correct Intervals athlete first, then keep the week centered on one repeatability anchor, one threshold/race-support anchor, and enough support endurance.'
+      : `Keep the week centered on repeatable track-endurance quality while protecting the next decisive session after ${planLabel(live.today_plan)} today and ${planLabel(live.tomorrow_plan)} tomorrow.`,
+    keySessionsPlanned: planned.length ? planned : ['Support endurance', 'Repeatability anchor', 'Threshold / race-support anchor'],
+    keySessionsCompleted: completed,
+    missingSystems,
+    fatigueTrend: !live
+      ? 'No live CTL/ATL/Form loaded yet for this user.'
+      : form <= -20
+        ? `Fatigue is carrying high into the week: CTL ${ctl.toFixed(0)}, ATL ${atl.toFixed(0)}, Form ${form >= 0 ? '+' : ''}${form.toFixed(0)}.`
+        : `Fatigue is not blocking the week yet: CTL ${ctl.toFixed(0)}, ATL ${atl.toFixed(0)}, Form ${form >= 0 ? '+' : ''}${form.toFixed(0)}.`,
+    riskFlags,
+  };
+}
+
+export function buildPlannerBlockPayload(live?: LiveState | null): PlannerBlockPayload {
+  const rows = live?.recent_rows || [];
+  const repeatabilityHits = rows.filter((row) => row.session_type === 'broken VO2 / repeatability session').length;
+  const thresholdHits = rows.filter((row) => row.session_type === 'threshold / race-support ride').length;
+  const raceLikeHits = rows.filter((row) => row.session_type === 'race or race-like stochastic session').length;
+  const longHits = rows.filter((row) => Number(row.duration_s || 0) >= 3 * 3600).length;
+  const completedPattern = `${repeatabilityHits} repeatability • ${thresholdHits} threshold/race-support • ${raceLikeHits} race-like • ${longHits} long support`;
+  const ctl = Number(live?.wellness?.ctl || 0);
+  const atl = Number(live?.wellness?.atl || 0);
+  const form = ctl - atl;
+
+  return {
+    activeBlock: live?.season_phase || 'Current track-endurance block',
+    currentWeekWithinBlock: 1,
+    mainEmphasis: !live
+      ? 'Load the athlete-specific live block first, then bias the block toward repeatability, threshold support, and durability.'
+      : `Bias the block toward ${repeatabilityHits ? 'repeatability and race-specificity' : 'restoring repeatability density'} while keeping threshold support repeatable and not stale.`,
+    sessionsCompletedAgainstIntendedPattern: completedPattern,
+    blockState: !live
+      ? 'awaiting_authorized_live_data'
+      : form <= -20
+        ? 'freshness_constrained_but_salvageable'
+        : repeatabilityHits && thresholdHits
+          ? 'specific_work_present'
+          : 'support_present_but_specific_density_low',
+    intervalsPlanWriteState: 'disabled_read_only',
   };
 }
