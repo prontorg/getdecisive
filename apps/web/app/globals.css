@@ -188,6 +188,22 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .md-section-columns-analysis { grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr); }
 .md-section-stack { display: grid; gap: 18px; }
 .md-highlights-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.dashboard-embed-card { padding: 20px; }
+.dashboard-embed-frame-shell {
+  margin-top: 16px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(122,167,255,0.14);
+  background: linear-gradient(180deg, rgba(12,16,24,0.96), rgba(8,10,14,0.98));
+  min-height: 1480px;
+}
+.dashboard-embed-frame {
+  display: block;
+  width: 100%;
+  min-height: 1480px;
+  border: 0;
+  background: transparent;
+}
 .form-grid { display: grid; gap: 14px; }
 .form-split { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .form-split-quad { grid-template-columns: repeat(4, minmax(0, 1fr)); }
