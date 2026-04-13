@@ -189,6 +189,9 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .md-section-stack { display: grid; gap: 18px; }
 .md-highlights-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 .compact-status-list { gap: 10px; }
+.dashboard-fragment-shell { max-width: 1288px; }
+.dashboard-fragment-host .wrap.wrap-embedded { padding: 0; }
+.dashboard-fragment-host .timeline-overlay { z-index: 90; }
 .weather-grid-app { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; }
 .weather-card-app { border-radius:16px; padding:14px; border:1px solid rgba(122,167,255,0.12); background:linear-gradient(180deg, rgba(14,22,36,0.94), rgba(11,17,27,0.98)); }
 .weather-topline-app { display:flex; justify-content:space-between; gap:10px; color:#9ec5ff; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
