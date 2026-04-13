@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
+import { loadPlatformState } from '../../../../lib/server/dev-store';
 import { deriveOnboardingStatus } from '../../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../../lib/server/session';
-import { hydrateUserSnapshotFromSharedLive } from '../../../../lib/server/planner-data';
 
 export async function GET() {
   const userId = await getSessionUserId();
@@ -12,9 +11,7 @@ export async function GET() {
   }
 
   const state = await loadPlatformState();
-  await hydrateUserSnapshotFromSharedLive(state, userId);
   const onboarding = deriveOnboardingStatus(state, userId);
-  await savePlatformState(state);
   if (!onboarding) {
     return NextResponse.json({ state: 'invite_pending', progressPct: 0, statusMessage: 'No onboarding found' }, { status: 404 });
   }

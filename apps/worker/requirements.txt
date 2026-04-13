@@ -1,1 +1,1 @@
-# Add worker runtime dependencies here.
+requests>=2.32.0

@@ -4,6 +4,7 @@ import { appRoutes } from '../../../../lib/routes';
 import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
 import { applyIntervalsCredentials, getLatestSyncJob } from '../../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../../lib/server/session';
+import { triggerSyncWorker } from '../../../../lib/server/sync-worker';
 
 export async function POST(request: Request) {
   const userId = await getSessionUserId();
@@ -21,6 +22,12 @@ export async function POST(request: Request) {
     const onboarding = applyIntervalsCredentials(state, userId, { athleteId, credentialPayload, connectionLabel });
     const syncJob = getLatestSyncJob(state, userId);
     await savePlatformState(state);
+    try {
+      triggerSyncWorker(process.env.DECISIVE_PLATFORM_STORE_PATH);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not launch sync worker';
+      return NextResponse.redirect(new URL(`${appRoutes.onboardingIntervals}?error=${encodeURIComponent(message)}`, request.url));
+    }
     const destination = syncJob?.status === 'completed' || onboarding.state === 'ready'
       ? appRoutes.dashboard
       : appRoutes.onboardingSync;
