@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
-import { applyIntervalsCredentialsRecord } from '../../../../lib/server/auth-store';
-import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
-import { getLatestSyncJob } from '../../../../lib/server/platform-state';
+import { applyIntervalsCredentialsRecord, getDerivedOnboardingStatusRecord } from '../../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../../lib/server/session';
 import { triggerSyncWorker } from '../../../../lib/server/sync-worker';
 
@@ -18,20 +16,16 @@ export async function POST(request: Request) {
   const credentialPayload = String(formData.get('credentialPayload') || '');
   const connectionLabel = String(formData.get('connectionLabel') || '');
 
-  const state = await loadPlatformState();
   try {
-    const { onboarding } = await applyIntervalsCredentialsRecord(userId, { athleteId, credentialPayload, connectionLabel });
-    const syncJob = getLatestSyncJob(state, userId);
-    if (syncJob) {
-      await savePlatformState(state);
-    }
+    await applyIntervalsCredentialsRecord(userId, { athleteId, credentialPayload, connectionLabel });
     try {
       triggerSyncWorker(process.env.DECISIVE_PLATFORM_STORE_PATH);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not launch sync worker';
       return NextResponse.redirect(new URL(`${appRoutes.onboardingIntervals}?error=${encodeURIComponent(message)}`, request.url));
     }
-    const destination = syncJob?.status === 'completed' || onboarding.state === 'ready'
+    const onboarding = await getDerivedOnboardingStatusRecord(userId);
+    const destination = onboarding?.state === 'ready'
       ? appRoutes.dashboard
       : appRoutes.onboardingSync;
     return NextResponse.redirect(new URL(destination, request.url));

@@ -2,10 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { appRoutes } from '../../../lib/routes';
-import { loadPlatformState } from '../../../lib/server/dev-store';
-import { deriveOnboardingStatus, getUserById } from '../../../lib/server/platform-state';
+import { getDerivedOnboardingStatusRecord, getUserByIdRecord } from '../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../lib/server/session';
-import { getLatestSnapshotForUser, getLatestSyncJobForUser } from '../../../lib/server/sync-store';
 
 const steps = [
   { label: 'Invite accepted', state: 'account_created' },
@@ -23,18 +21,10 @@ export default async function SyncStatusPage() {
   const userId = await getSessionUserId();
   if (!userId) redirect(appRoutes.login);
 
-  const state = await loadPlatformState();
-  const onboarding = deriveOnboardingStatus(state, userId);
-  const syncJob = await getLatestSyncJobForUser(userId, state.syncJobs);
-  const connection = syncJob ? state.intervalsConnections.find((item) => item.id === syncJob.connectionId && item.userId === userId) || null : null;
-  const snapshot = connection ? await getLatestSnapshotForUser(userId, connection.id, state.intervalsSnapshots) : null;
-  const user = getUserById(state, userId);
-
-  if (syncJob?.status === 'completed' && snapshot && onboarding) {
-    onboarding.state = 'ready';
-    onboarding.progressPct = 100;
-    onboarding.statusMessage = 'Dashboard ready';
-  }
+  const [onboarding, user] = await Promise.all([
+    getDerivedOnboardingStatusRecord(userId),
+    getUserByIdRecord(userId),
+  ]);
 
   if (!onboarding || !user) redirect(appRoutes.login);
 

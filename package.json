@@ -11,7 +11,8 @@
     "dev:web": "npm run dev -w apps/web",
     "build:web": "npm run build -w apps/web",
     "lint:web": "npm run lint -w apps/web",
-    "typecheck:web": "npm run typecheck -w apps/web"
+    "typecheck:web": "npm run typecheck -w apps/web",
+    "migrate:auth-postgres": "npx tsx scripts/migrate-auth-state-to-postgres.ts"
   },
   "dependencies": {
     "pg": "^8.13.1"

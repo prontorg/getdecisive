@@ -2,7 +2,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 
 import { appRoutes } from '../routes';
-import { loadPlatformState } from './dev-store';
+import { getDerivedOnboardingStatusRecord, getLatestIntervalsConnectionRecord, getPlatformState } from './auth-store';
 import type { LiveRow, LiveState } from './live-state';
 import {
   completeIntervalsSyncJob,
@@ -75,8 +75,8 @@ export type AdaptationPayload = {
 };
 
 export async function getAuthenticatedPlannerContext(userId: string): Promise<AuthenticatedPlannerContext | null> {
-  const state = await loadPlatformState();
-  const onboarding = deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
+  const state = await getPlatformState();
+  const onboarding = await getDerivedOnboardingStatusRecord(userId) || deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
   const user = getUserById(state, userId);
 
   if (!user || !onboarding || onboarding.state !== 'ready') {
@@ -166,7 +166,7 @@ export function authorizeLiveIntervalsState(context: AuthenticatedPlannerContext
 }
 
 async function getStoredLiveState(context: AuthenticatedPlannerContext): Promise<LiveState | null> {
-  const connection = getLatestIntervalsConnection(context.state, context.user.id);
+  const connection = await getLatestIntervalsConnectionRecord(context.user.id) || getLatestIntervalsConnection(context.state, context.user.id);
   if (!connection) return null;
   const snapshot = await getLatestSnapshotForUser(context.user.id, connection.id, context.state.intervalsSnapshots);
   if (!snapshot) return null;
