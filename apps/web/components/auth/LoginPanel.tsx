@@ -17,7 +17,6 @@ export function LoginPanel({ error, notice }: { error?: string; notice?: string 
         </label>
         <div className="button-row">
           <button type="submit">Log in</button>
-          <a href="/register" className="button-secondary button-link">Private sign up</a>
         </div>
       </form>
     </section>

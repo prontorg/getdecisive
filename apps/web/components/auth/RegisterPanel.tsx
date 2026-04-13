@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 type RegisterPanelProps = {
   error?: string;
   email?: string;
@@ -30,7 +28,6 @@ export function RegisterPanel({ error, email, name, inviteCode }: RegisterPanelP
         </label>
         <div className="button-row">
           <button type="submit">Create account</button>
-          <Link href="/login" className="button-secondary button-link">Already have access</Link>
         </div>
       </form>
     </section>

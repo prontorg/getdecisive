@@ -12,13 +12,11 @@ type AppHeaderProps = {
 
 export function AppHeader({ loggedIn, isAdmin }: AppHeaderProps) {
   const pathname = usePathname();
-  const navItems = loggedIn
-    ? [
-        { href: appRoutes.dashboard, label: 'Dashboard' },
-        { href: appRoutes.analysis, label: 'Analysis' },
-        ...(isAdmin ? [{ href: appRoutes.admin, label: 'Admin' }] : []),
-      ]
-    : [];
+  const navItems = [
+    { href: loggedIn ? appRoutes.dashboard : appRoutes.login, label: 'Dashboard' },
+    { href: loggedIn ? appRoutes.analysis : appRoutes.login, label: 'Training plan' },
+    ...(isAdmin ? [{ href: appRoutes.admin, label: 'Settings' }] : []),
+  ];
 
   return (
     <header className="app-topbar md-surface md-surface-raised">

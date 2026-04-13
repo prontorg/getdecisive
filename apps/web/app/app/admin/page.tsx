@@ -15,9 +15,9 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
   return (
     <AppPageShell tone="admin">
       <AppHero
-        eyebrow="Admin"
+        eyebrow="Settings"
         title="Invite-only control room"
-        description="Keep admin focused on access, account security, and platform visibility. This tab is only shown to you."
+        description="Keep settings focused on access, account security, and platform visibility. This tab is only shown to you."
         chips={(
           <>
             <span className="chip">Admin: {user.displayName}</span>
