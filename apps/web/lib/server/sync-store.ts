@@ -121,3 +121,23 @@ function postgresSyncStore(): SyncStore {
 export function getSyncStore(): SyncStore {
   return isPostgresSyncStoreEnabled() ? postgresSyncStore() : fileSyncStore();
 }
+
+export async function getLatestSyncJobForUser(userId: string, fallbackJobs: SyncJobRecord[] = []): Promise<SyncJobRecord | null> {
+  if (isPostgresSyncStoreEnabled()) {
+    return getSyncStore().getLatestSyncJob(userId);
+  }
+  return fallbackJobs.filter((job) => job.userId === userId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] || null;
+}
+
+export async function getLatestSnapshotForUser(
+  userId: string,
+  connectionId?: string,
+  fallbackSnapshots: IntervalsSnapshotRecord[] = [],
+): Promise<IntervalsSnapshotRecord | null> {
+  if (isPostgresSyncStoreEnabled()) {
+    return getSyncStore().getLatestSnapshot(userId, connectionId);
+  }
+  return fallbackSnapshots
+    .filter((snapshot) => snapshot.userId === userId && (!connectionId || snapshot.connectionId === connectionId))
+    .sort((a, b) => b.capturedAt.localeCompare(a.capturedAt))[0] || null;
+}

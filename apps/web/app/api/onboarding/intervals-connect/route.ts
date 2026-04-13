@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
 import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
-import { applyIntervalsCredentials, getLatestSyncJob } from '../../../../lib/server/platform-state';
+import { applyIntervalsCredentials, getLatestIntervalsConnection, getLatestSyncJob } from '../../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../../lib/server/session';
+import { getLatestSnapshotForUser } from '../../../../lib/server/sync-store';
 import { triggerSyncWorker } from '../../../../lib/server/sync-worker';
 
 export async function POST(request: Request) {

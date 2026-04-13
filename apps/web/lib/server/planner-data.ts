@@ -8,13 +8,12 @@ import {
   completeIntervalsSyncJob,
   deriveOnboardingStatus,
   getLatestIntervalsConnection,
-  getLatestIntervalsSnapshot,
-  getLatestSyncJob,
   getOnboardingRun,
   getUserById,
   type PlatformState,
   type UserRecord,
 } from './platform-state';
+import { getLatestSnapshotForUser, getLatestSyncJobForUser } from './sync-store';
 
 const execFileAsync = promisify(execFile);
 const HERMES_HOME = process.env.HERMES_HOME || '/root/.hermes/profiles/profdecisive';
@@ -166,16 +165,16 @@ export function authorizeLiveIntervalsState(context: AuthenticatedPlannerContext
   return connection.externalAthleteId === live.athlete_id ? live : null;
 }
 
-function getStoredLiveState(context: AuthenticatedPlannerContext): LiveState | null {
+async function getStoredLiveState(context: AuthenticatedPlannerContext): Promise<LiveState | null> {
   const connection = getLatestIntervalsConnection(context.state, context.user.id);
   if (!connection) return null;
-  const snapshot = getLatestIntervalsSnapshot(context.state, context.user.id, connection.id);
+  const snapshot = await getLatestSnapshotForUser(context.user.id, connection.id, context.state.intervalsSnapshots);
   if (!snapshot) return null;
   return authorizeLiveIntervalsState(context, snapshot.liveState);
 }
 
-export function resolveAuthorizedLiveState(context: AuthenticatedPlannerContext, sharedLive?: LiveState | null): LiveState | null {
-  return getStoredLiveState(context) || authorizeLiveIntervalsState(context, sharedLive);
+export async function resolveAuthorizedLiveState(context: AuthenticatedPlannerContext, sharedLive?: LiveState | null): Promise<LiveState | null> {
+  return await getStoredLiveState(context) || authorizeLiveIntervalsState(context, sharedLive);
 }
 
 export async function hydrateUserSnapshotFromSharedLive(
@@ -183,10 +182,10 @@ export async function hydrateUserSnapshotFromSharedLive(
   userId: string,
   sharedLive?: LiveState | null,
 ): Promise<boolean> {
-  const syncJob = getLatestSyncJob(state, userId);
+  const syncJob = await getLatestSyncJobForUser(userId, state.syncJobs);
   const connection = syncJob ? state.intervalsConnections.find((item) => item.id === syncJob.connectionId && item.userId === userId) || null : null;
   if (!connection || !syncJob || syncJob.status === 'completed') return false;
-  if (getLatestIntervalsSnapshot(state, userId, connection.id)) return false;
+  if (await getLatestSnapshotForUser(userId, connection.id, state.intervalsSnapshots)) return false;
 
   const live = sharedLive ?? await getLiveIntervalsState();
   if (!live?.athlete_id || live.athlete_id !== connection.externalAthleteId) return false;
@@ -198,7 +197,7 @@ export async function hydrateUserSnapshotFromSharedLive(
 export async function getAuthorizedPlannerLiveContext(userId: string): Promise<{ context: AuthenticatedPlannerContext; live: LiveState | null } | null> {
   const context = await getAuthenticatedPlannerContext(userId);
   if (!context) return null;
-  const live = resolveAuthorizedLiveState(context, await getLiveIntervalsState());
+  const live = await resolveAuthorizedLiveState(context, await getLiveIntervalsState());
   return { context, live };
 }
 
