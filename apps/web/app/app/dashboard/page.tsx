@@ -41,7 +41,7 @@ export default async function DashboardPage() {
         </p>
         <div className="dashboard-embed-frame-shell">
           <iframe
-            src="/"
+            src="/?embed=1"
             title="Decisive coach dashboard"
             className="dashboard-embed-frame"
             loading="lazy"
