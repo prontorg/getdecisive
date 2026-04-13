@@ -1,5 +1,6 @@
 import type { OnboardingState, PlatformRole } from '@decisive/types';
 
+import type { LiveState } from './live-state';
 import { hashPassword, isPasswordHash, verifyPassword } from './auth-password';
 
 export type InviteRecord = {
@@ -67,6 +68,15 @@ export type SyncJobRecord = {
   updatedAt: string;
 };
 
+export type IntervalsSnapshotRecord = {
+  id: string;
+  userId: string;
+  connectionId: string;
+  sourceJobId: string;
+  capturedAt: string;
+  liveState: LiveState;
+};
+
 export type PlatformState = {
   invites: InviteRecord[];
   users: UserRecord[];
@@ -74,6 +84,7 @@ export type PlatformState = {
   onboardingRuns: OnboardingRunRecord[];
   intervalsConnections: IntervalsConnectionRecord[];
   syncJobs: SyncJobRecord[];
+  intervalsSnapshots: IntervalsSnapshotRecord[];
   auditEvents: AuditEventRecord[];
 };
 
@@ -125,6 +136,7 @@ export function createSeedPlatformState(): PlatformState {
     onboardingRuns: [],
     intervalsConnections: [],
     syncJobs: [],
+    intervalsSnapshots: [],
     auditEvents: [],
   };
 }
@@ -239,6 +251,29 @@ export function getLatestSyncJob(state: PlatformState, userId: string): SyncJobR
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] || null;
 }
 
+export function getLatestIntervalsSnapshot(
+  state: PlatformState,
+  userId: string,
+  connectionId?: string,
+): IntervalsSnapshotRecord | null {
+  return state.intervalsSnapshots
+    .filter((snapshot) => snapshot.userId === userId && (!connectionId || snapshot.connectionId === connectionId))
+    .sort((a, b) => b.capturedAt.localeCompare(a.capturedAt))[0] || null;
+}
+
+export function getLatestIntervalsConnection(state: PlatformState, userId: string): IntervalsConnectionRecord | null {
+  return state.intervalsConnections
+    .filter((connection) => connection.userId === userId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] || null;
+}
+
+function getConnectionForLiveState(state: PlatformState, userId: string, athleteId?: string): IntervalsConnectionRecord | null {
+  if (!athleteId) return null;
+  return state.intervalsConnections
+    .filter((connection) => connection.userId === userId && connection.externalAthleteId === athleteId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] || null;
+}
+
 export function updateSyncJobProgress(
   state: PlatformState,
   jobId: string,
@@ -253,6 +288,61 @@ export function updateSyncJobProgress(
   if (typeof input.lastError === 'string') job.lastError = input.lastError;
   job.updatedAt = nowIso();
   return job;
+}
+
+export function completeIntervalsSyncJob(state: PlatformState, jobId: string, liveState: LiveState): IntervalsSnapshotRecord {
+  const job = state.syncJobs.find((item) => item.id === jobId);
+  if (!job) throw new Error('Sync job not found');
+
+  const connection = state.intervalsConnections.find((item) => item.id === job.connectionId && item.userId === job.userId);
+  if (!connection) throw new Error('Intervals connection not found');
+  if (liveState.athlete_id && liveState.athlete_id !== connection.externalAthleteId) {
+    throw new Error('Live state athlete does not match the connected athlete');
+  }
+
+  const capturedAt = nowIso();
+  const existing = state.intervalsSnapshots.find((item) => item.connectionId === connection.id) || null;
+  const snapshot: IntervalsSnapshotRecord = existing || {
+    id: makeId('snapshot'),
+    userId: job.userId,
+    connectionId: connection.id,
+    sourceJobId: job.id,
+    capturedAt,
+    liveState,
+  };
+
+  snapshot.sourceJobId = job.id;
+  snapshot.capturedAt = capturedAt;
+  snapshot.liveState = liveState;
+
+  if (!existing) {
+    state.intervalsSnapshots.push(snapshot);
+  }
+
+  connection.syncStatus = 'ready';
+  job.status = 'completed';
+  job.progressPct = 100;
+  job.statusMessage = job.jobType === 'intervals_initial_sync' ? 'Initial sync complete' : 'Incremental sync complete';
+  job.finishedAt = capturedAt;
+  job.updatedAt = capturedAt;
+
+  const onboarding = getOnboardingRun(state, job.userId);
+  if (onboarding) {
+    onboarding.state = 'ready';
+    onboarding.progressPct = 100;
+    onboarding.statusMessage = 'Dashboard ready';
+    onboarding.updatedAt = capturedAt;
+  }
+
+  state.auditEvents.push({
+    id: makeId('audit'),
+    eventType: 'intervals.snapshot_ready',
+    entityType: 'intervals_snapshot',
+    entityId: snapshot.id,
+    createdAt: capturedAt,
+  });
+
+  return snapshot;
 }
 
 export function applyIntervalsCredentials(state: PlatformState, userId: string, input: IntervalsInput): OnboardingRunRecord {
@@ -310,6 +400,18 @@ export function deriveOnboardingStatus(state: PlatformState, userId: string, now
   if (onboarding.state === 'ready') return onboarding;
 
   const syncJob = getLatestSyncJob(state, userId);
+  const latestConnection = getLatestIntervalsConnection(state, userId);
+  const snapshot = getLatestIntervalsSnapshot(state, userId, syncJob?.connectionId || latestConnection?.id);
+  if (snapshot && syncJob?.status === 'completed') {
+    onboarding.state = 'ready';
+    onboarding.progressPct = 100;
+    onboarding.statusMessage = 'Dashboard ready';
+    onboarding.updatedAt = nowIso();
+    const connection = state.intervalsConnections.find((item) => item.id === snapshot.connectionId);
+    if (connection) connection.syncStatus = 'ready';
+    return onboarding;
+  }
+
   const elapsed = now.getTime() - new Date(onboarding.syncStartedAt).getTime();
   const step = SYNC_STEPS.find((item) => elapsed < item.maxElapsedMs);
 
@@ -335,28 +437,17 @@ export function deriveOnboardingStatus(state: PlatformState, userId: string, now
     return onboarding;
   }
 
-  onboarding.state = 'ready';
-  onboarding.progressPct = 100;
-  onboarding.statusMessage = 'Dashboard ready';
+  onboarding.state = 'sync_building_dashboard';
+  onboarding.progressPct = 88;
+  onboarding.statusMessage = 'Waiting for the user-scoped Intervals snapshot to finish.';
   onboarding.updatedAt = nowIso();
 
-  const connection = state.intervalsConnections.find((item) => item.userId === userId);
-  if (connection) connection.syncStatus = 'ready';
   if (syncJob) {
-    syncJob.status = 'completed';
-    syncJob.progressPct = 100;
-    syncJob.statusMessage = 'Initial sync complete';
-    syncJob.finishedAt = nowIso();
+    syncJob.status = 'running';
+    syncJob.progressPct = 88;
+    syncJob.statusMessage = 'Waiting for the user-scoped Intervals snapshot to finish.';
     syncJob.updatedAt = nowIso();
   }
-
-  state.auditEvents.push({
-    id: makeId('audit'),
-    eventType: 'onboarding.ready',
-    entityType: 'onboarding_run',
-    entityId: onboarding.id,
-    createdAt: nowIso(),
-  });
 
   return onboarding;
 }

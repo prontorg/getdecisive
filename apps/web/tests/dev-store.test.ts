@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -51,5 +51,34 @@ test('savePlatformState writes atomically without leaving an empty store file', 
     assert.equal(raw.includes('invites'), true);
   } finally {
     process.chdir(cwd);
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('loadPlatformState honors DECISIVE_PLATFORM_STORE_PATH for shared worker access', async () => {
+  const cwd = process.cwd();
+  const dir = await mkdtemp(join(tmpdir(), 'decisive-dev-store-env-'));
+  const storePath = join(dir, 'shared-store.json');
+  const previous = process.env.DECISIVE_PLATFORM_STORE_PATH;
+  process.chdir(dir);
+  process.env.DECISIVE_PLATFORM_STORE_PATH = storePath;
+
+  try {
+    const state = createSeedPlatformState();
+    await savePlatformState(state);
+
+    const raw = await readFile(storePath, 'utf8');
+    const loaded = await loadPlatformState();
+
+    assert.equal(raw.includes('DECISIVE-INVITE'), true);
+    assert.equal(loaded.invites[0]?.code, 'DECISIVE-INVITE');
+  } finally {
+    if (previous === undefined) {
+      delete process.env.DECISIVE_PLATFORM_STORE_PATH;
+    } else {
+      process.env.DECISIVE_PLATFORM_STORE_PATH = previous;
+    }
+    process.chdir(cwd);
+    await rm(dir, { recursive: true, force: true });
   }
 });

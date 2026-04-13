@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 
 import {
   applyIntervalsCredentials,
+  completeIntervalsSyncJob,
   createSeedPlatformState,
+  deriveOnboardingStatus,
+  getLatestIntervalsSnapshot,
   loginWithPassword,
   registerUserWithInvite,
   validateInviteCode,
@@ -86,4 +89,60 @@ test('applyIntervalsCredentials moves onboarding into sync flow with progress me
   assert.equal(state.syncJobs[0]?.jobType, 'intervals_initial_sync');
   assert.equal(state.syncJobs[0]?.status, 'queued');
   assert.equal(state.auditEvents.at(-1)?.eventType, 'intervals.connected');
+});
+
+test('deriveOnboardingStatus waits for a persisted user snapshot before marking ready', () => {
+  const state = createSeedPlatformState();
+  const registration = registerUserWithInvite(state, {
+    inviteCode: 'DECISIVE-INVITE',
+    email: 'athlete@example.com',
+    password: 'secret123',
+    displayName: 'Athlete',
+  });
+
+  applyIntervalsCredentials(state, registration.user.id, {
+    athleteId: '17634020',
+    credentialPayload: 'api_key=xyz',
+    connectionLabel: 'Primary account',
+  });
+  state.onboardingRuns[0]!.syncStartedAt = '2026-04-13T00:00:00Z';
+
+  const onboarding = deriveOnboardingStatus(state, registration.user.id, new Date('2026-04-13T00:00:20Z'));
+
+  assert.equal(onboarding?.state, 'sync_building_dashboard');
+  assert.equal(onboarding?.progressPct, 88);
+  assert.match(onboarding?.statusMessage || '', /user-scoped Intervals snapshot/i);
+});
+
+test('completeIntervalsSyncJob stores a user-scoped snapshot and marks the connection ready', () => {
+  const state = createSeedPlatformState();
+  const registration = registerUserWithInvite(state, {
+    inviteCode: 'DECISIVE-INVITE',
+    email: 'athlete@example.com',
+    password: 'secret123',
+    displayName: 'Athlete',
+  });
+
+  applyIntervalsCredentials(state, registration.user.id, {
+    athleteId: '17634020',
+    credentialPayload: 'api_key=xyz',
+    connectionLabel: 'Primary account',
+  });
+
+  const job = state.syncJobs[0]!;
+  const snapshot = completeIntervalsSyncJob(state, job.id, {
+    today: '2026-04-13',
+    athlete_id: '17634020',
+    today_plan: 'Z2 endurance',
+    tomorrow_plan: '6x4 min @ 410-420 W',
+    wellness: { ctl: 107, atl: 128 },
+  });
+
+  assert.equal(snapshot.connectionId, job.connectionId);
+  assert.equal(snapshot.userId, registration.user.id);
+  assert.equal(snapshot.liveState.athlete_id, '17634020');
+  assert.equal(state.intervalsConnections[0]?.syncStatus, 'ready');
+  assert.equal(state.syncJobs[0]?.status, 'completed');
+  assert.equal(state.onboardingRuns[0]?.state, 'ready');
+  assert.equal(getLatestIntervalsSnapshot(state, registration.user.id)?.liveState.today, '2026-04-13');
 });

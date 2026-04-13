@@ -3,7 +3,18 @@ import { execFile } from 'node:child_process';
 
 import { appRoutes } from '../routes';
 import { loadPlatformState } from './dev-store';
-import { deriveOnboardingStatus, getOnboardingRun, getUserById, type PlatformState, type UserRecord } from './platform-state';
+import type { LiveRow, LiveState } from './live-state';
+import {
+  completeIntervalsSyncJob,
+  deriveOnboardingStatus,
+  getLatestIntervalsConnection,
+  getLatestIntervalsSnapshot,
+  getLatestSyncJob,
+  getOnboardingRun,
+  getUserById,
+  type PlatformState,
+  type UserRecord,
+} from './platform-state';
 
 const execFileAsync = promisify(execFile);
 const HERMES_HOME = process.env.HERMES_HOME || '/root/.hermes/profiles/profdecisive';
@@ -16,42 +27,6 @@ export type AuthenticatedPlannerContext = {
   onboardingState: string;
 };
 
-type LiveRow = {
-  activity_id: string;
-  start_date_local: string;
-  name?: string;
-  session_type?: string;
-  training_load?: number;
-  duration_s?: number;
-  weighted_avg_watts?: number;
-  average_watts?: number;
-  average_heartrate?: number;
-  max_heartrate?: number;
-  zone_times?: Record<string, number>;
-  summary?: {
-    short_label?: string;
-  };
-};
-
-type LiveState = {
-  today: string;
-  today_plan?: string;
-  tomorrow_plan?: string;
-  goal_race_date?: string;
-  athlete_id?: string;
-  working_threshold_w?: number;
-  season_focus?: string;
-  season_phase?: string;
-  wellness?: {
-    ctl?: number;
-    atl?: number;
-  };
-  wellness_series?: Array<{ id: string; ctl?: number; atl?: number }>;
-  recent_rows?: LiveRow[];
-  latest_day_rows?: LiveRow[];
-  month_zone_totals?: Record<string, number>;
-  next_three?: Array<{ day: string; date: string; plan: string; weather?: { label?: string; tmax?: number; precip?: number } }>;
-};
 
 export type PlannerDayPayload = {
   date: string;
@@ -186,15 +161,44 @@ print(json.dumps(state, ensure_ascii=False, default=str))
 
 export function authorizeLiveIntervalsState(context: AuthenticatedPlannerContext, live?: LiveState | null): LiveState | null {
   if (!live?.athlete_id) return null;
-  const connection = context.state.intervalsConnections.find((item) => item.userId === context.user.id && item.syncStatus === 'ready');
-  if (!connection) return null;
+  const connection = getLatestIntervalsConnection(context.state, context.user.id);
+  if (!connection || connection.syncStatus !== 'ready') return null;
   return connection.externalAthleteId === live.athlete_id ? live : null;
+}
+
+function getStoredLiveState(context: AuthenticatedPlannerContext): LiveState | null {
+  const connection = getLatestIntervalsConnection(context.state, context.user.id);
+  if (!connection) return null;
+  const snapshot = getLatestIntervalsSnapshot(context.state, context.user.id, connection.id);
+  if (!snapshot) return null;
+  return authorizeLiveIntervalsState(context, snapshot.liveState);
+}
+
+export function resolveAuthorizedLiveState(context: AuthenticatedPlannerContext, sharedLive?: LiveState | null): LiveState | null {
+  return getStoredLiveState(context) || authorizeLiveIntervalsState(context, sharedLive);
+}
+
+export async function hydrateUserSnapshotFromSharedLive(
+  state: PlatformState,
+  userId: string,
+  sharedLive?: LiveState | null,
+): Promise<boolean> {
+  const syncJob = getLatestSyncJob(state, userId);
+  const connection = syncJob ? state.intervalsConnections.find((item) => item.id === syncJob.connectionId && item.userId === userId) || null : null;
+  if (!connection || !syncJob || syncJob.status === 'completed') return false;
+  if (getLatestIntervalsSnapshot(state, userId, connection.id)) return false;
+
+  const live = sharedLive ?? await getLiveIntervalsState();
+  if (!live?.athlete_id || live.athlete_id !== connection.externalAthleteId) return false;
+
+  completeIntervalsSyncJob(state, syncJob.id, live);
+  return true;
 }
 
 export async function getAuthorizedPlannerLiveContext(userId: string): Promise<{ context: AuthenticatedPlannerContext; live: LiveState | null } | null> {
   const context = await getAuthenticatedPlannerContext(userId);
   if (!context) return null;
-  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
+  const live = resolveAuthorizedLiveState(context, await getLiveIntervalsState());
   return { context, live };
 }
 

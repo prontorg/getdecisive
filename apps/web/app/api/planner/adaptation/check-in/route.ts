@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import { addUserAdaptationEntry } from '../../../../../lib/server/planner-customization';
-import { authorizeLiveIntervalsState, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../../../lib/server/planner-data';
+import { getAuthorizedPlannerLiveContext } from '../../../../../lib/server/planner-data';
 import { getSessionUserId } from '../../../../../lib/server/session';
 
 function deriveStatus(scores: number[], illness: boolean) {
@@ -25,12 +25,11 @@ export async function POST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.redirect(new URL(appRoutes.login, request.url));
 
-  const context = await getAuthenticatedPlannerContext(userId);
-  if (!context) return NextResponse.redirect(new URL(appRoutes.onboardingSync, request.url));
+  const planner = await getAuthorizedPlannerLiveContext(userId);
+  if (!planner) return NextResponse.redirect(new URL(appRoutes.onboardingSync, request.url));
 
   const formData = await request.formData();
-  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
-  const today = live?.today || new Date().toISOString().slice(0, 10);
+  const today = planner.live?.today || new Date().toISOString().slice(0, 10);
 
   const legs = Number(formData.get('legs') || 3);
   const sleep = Number(formData.get('sleep') || 3);

@@ -6,8 +6,22 @@ import {
   type PlatformState,
 } from './platform-state';
 
+function normalizePlatformState(state: PlatformState): PlatformState {
+  return {
+    ...state,
+    invites: state.invites || [],
+    users: state.users || [],
+    memberships: state.memberships || [],
+    onboardingRuns: state.onboardingRuns || [],
+    intervalsConnections: state.intervalsConnections || [],
+    syncJobs: state.syncJobs || [],
+    intervalsSnapshots: state.intervalsSnapshots || [],
+    auditEvents: state.auditEvents || [],
+  };
+}
+
 function getStorePath(): string {
-  return join(process.cwd(), '.decisive-dev-store.json');
+  return process.env.DECISIVE_PLATFORM_STORE_PATH || join(process.cwd(), '.decisive-dev-store.json');
 }
 
 function getBackupPath(storePath: string): string {
@@ -38,11 +52,11 @@ export async function loadPlatformState(): Promise<PlatformState> {
   await ensureStoreFile();
   const raw = await readFile(storePath, 'utf8');
   try {
-    return JSON.parse(raw) as PlatformState;
+    return normalizePlatformState(JSON.parse(raw) as PlatformState);
   } catch {
     try {
       const backupRaw = await readFile(getBackupPath(storePath), 'utf8');
-      return JSON.parse(backupRaw) as PlatformState;
+      return normalizePlatformState(JSON.parse(backupRaw) as PlatformState);
     } catch {
       const seed = createSeedPlatformState();
       await savePlatformState(seed);

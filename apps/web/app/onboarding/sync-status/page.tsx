@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { appRoutes } from '../../../lib/routes';
 import { loadPlatformState, savePlatformState } from '../../../lib/server/dev-store';
+import { hydrateUserSnapshotFromSharedLive } from '../../../lib/server/planner-data';
 import { deriveOnboardingStatus, getUserById } from '../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../lib/server/session';
 
@@ -23,6 +24,7 @@ export default async function SyncStatusPage() {
   if (!userId) redirect(appRoutes.login);
 
   const state = await loadPlatformState();
+  await hydrateUserSnapshotFromSharedLive(state, userId);
   const onboarding = deriveOnboardingStatus(state, userId);
   await savePlatformState(state);
   const user = getUserById(state, userId);
