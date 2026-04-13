@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { PlannerTabs } from '../_components/planner-tabs';
+import { AppCard, AppHero, AppHighlightsGrid, AppMetricCard, AppMetricStrip, AppPageShell, AppSectionColumns, AppSectionStack } from '../_components/material-shell';
 import { appRoutes } from '../../../lib/routes';
 import {
   buildAdaptationPayload,
@@ -34,46 +35,36 @@ export default async function AnalysisPage() {
   const adaptation = buildAdaptationPayload(live, adaptationEntries);
 
   return (
-    <main className="page-shell">
-      <section className="hero hero-pretty">
-        <div className="hero-copy">
-          <div className="kicker">Analysis</div>
-          <h1>Strengths, weaknesses, goals, and adaptation</h1>
-          <p>
+    <AppPageShell>
+      <AppHero
+        eyebrow="Analysis"
+        title="Strengths, weaknesses, goals, and adaptation"
+        description={(
+          <>
             This is the deep performance layer behind the Dashboard. Use it to understand system trends,
             bias the plan, and decide when adaptation should override the nominal structure.
-          </p>
-          <div className="chip-row">
+          </>
+        )}
+        chips={(
+          <>
             <span className="chip">Intervals writes: {day.intervalsPlanWriteState}</span>
             <span className="chip">Onboarding: {context.onboardingState}</span>
             {day.goalRaceDate ? <span className="chip">Goal race: {day.goalRaceDate}</span> : null}
-          </div>
-        </div>
-      </section>
+          </>
+        )}
+      />
 
       <PlannerTabs active="analysis" isAdmin={isAdmin} />
 
-      <section className="metrics-grid">
-        <div className="metric-card">
-          <div className="kicker">Fitness</div>
-          <h2>{day.ctl.toFixed(0)}</h2>
-          <p>CTL</p>
-        </div>
-        <div className="metric-card">
-          <div className="kicker">Fatigue</div>
-          <h2>{day.atl.toFixed(0)}</h2>
-          <p>ATL</p>
-        </div>
-        <div className="metric-card">
-          <div className="kicker">Freshness</div>
-          <h2 className={day.form >= 0 ? 'metric-value-positive' : 'metric-value-negative'}>{day.form >= 0 ? '+' : ''}{day.form.toFixed(0)}</h2>
-          <p>Form</p>
-        </div>
-      </section>
+      <AppMetricStrip>
+        <AppMetricCard label="Fitness" value={day.ctl.toFixed(0)} detail="CTL" />
+        <AppMetricCard label="Fatigue" value={day.atl.toFixed(0)} detail="ATL" />
+        <AppMetricCard label="Freshness" value={`${day.form >= 0 ? '+' : ''}${day.form.toFixed(0)}`} detail="Form" tone={day.form >= 0 ? 'positive' : 'negative'} />
+      </AppMetricStrip>
 
-      <section className="analysis-wide-grid">
-        <div className="section-stack">
-          <div className="card">
+      <AppSectionColumns variant="analysis">
+        <AppSectionStack>
+          <AppCard>
             <div className="kicker">Today in context</div>
             <h2>{day.shouldActuallyHappenToday}</h2>
             <p>{day.why}</p>
@@ -81,17 +72,17 @@ export default async function AnalysisPage() {
             <p><strong>Planned tomorrow:</strong> {day.plannedTomorrow}</p>
             <p><strong>Protect next:</strong> {day.nextToProtect}</p>
             {day.latestWorkoutSummary ? <p><strong>Latest workout day:</strong> {day.latestWorkoutSummary}</p> : null}
-          </div>
+          </AppCard>
 
-          <div className="card">
+          <AppCard>
             <div className="kicker">Power profile</div>
             <h2>Current strengths</h2>
             <ul className="list">{profile.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
             <h3>Current weaknesses</h3>
             <ul className="list">{profile.weaknesses.map((item) => <li key={item}>{item}</li>)}</ul>
-          </div>
+          </AppCard>
 
-          <div className="card">
+          <AppCard>
             <div className="kicker">Goal alignment</div>
             <h2>Active goals</h2>
             <ul className="list">{goals.activeGoals.map((goal) => <li key={`${goal.title}-${goal.targetDate || 'none'}`}>{goal.title}{goal.targetDate ? ` • ${goal.targetDate}` : ''}</li>)}</ul>
@@ -99,48 +90,48 @@ export default async function AnalysisPage() {
             <p>{goals.currentPlanFitSummary}</p>
             <h3>Alignment summary</h3>
             <ul className="list">{profile.goalAlignmentSummary.map((item) => <li key={item}>{item}</li>)}</ul>
-          </div>
-        </div>
+          </AppCard>
+        </AppSectionStack>
 
-        <div className="section-stack">
-          <div className="card">
+        <AppSectionStack>
+          <AppCard>
             <div className="kicker">Trend direction by system</div>
             <ul className="list">{profile.trendDirectionBySystem.map((item) => <li key={item.system}><strong>{item.system}:</strong> {item.trend} — {item.note}</li>)}</ul>
-          </div>
-          <div className="card">
+          </AppCard>
+          <AppCard>
             <div className="kicker">Adaptation feedback</div>
             <h2>{adaptation.adaptationTrigger}</h2>
             <p>{adaptation.userFacingExplanation}</p>
             <ul className="list">{adaptation.sessionsChanged.map((item) => <li key={item}>{item}</li>)}</ul>
             <h3>Return criteria</h3>
             <ul className="list">{adaptation.returnToFullTrainingCriteria.map((item) => <li key={item}>{item}</li>)}</ul>
-          </div>
-        </div>
-      </section>
+          </AppCard>
+        </AppSectionStack>
+      </AppSectionColumns>
 
-      <section className="card" style={{ marginTop: 18 }}>
+      <AppCard className="mt-18">
         <div className="kicker">Power-curve highlights and live focus</div>
-        <div className="analysis-highlights-grid">
+        <AppHighlightsGrid>
           {profile.powerCurveHighlights.map((item) => (
-            <div className="card" key={item.label}>
+            <AppCard key={item.label}>
               <div className="kicker">{item.label}</div>
               <h3>{item.value}</h3>
               <p>{item.interpretation}</p>
-            </div>
+            </AppCard>
           ))}
-          <div className="card">
+          <AppCard>
             <div className="kicker">Latest workout day</div>
             <ul className="list">{profile.latestWorkoutDay.map((item) => <li key={item}>{item}</li>)}</ul>
-          </div>
-          <div className="card">
+          </AppCard>
+          <AppCard>
             <div className="kicker">Current month zone focus</div>
             <ul className="list">{profile.monthZoneFocus.map((item) => <li key={item.zone}>{item.zone} • {item.hours}</li>)}</ul>
-          </div>
-        </div>
-      </section>
+          </AppCard>
+        </AppHighlightsGrid>
+      </AppCard>
 
       <section className="panel-grid" style={{ marginTop: 16 }}>
-        <div className="card">
+        <AppCard>
           <div className="kicker">Goal editor</div>
           <h2>Bias the month-first plan</h2>
           <p>Add live priorities for the next block without writing anything back to Intervals.</p>
@@ -200,9 +191,9 @@ export default async function AnalysisPage() {
               ))}
             </div>
           ) : null}
-        </div>
+        </AppCard>
 
-        <div className="card">
+        <AppCard>
           <div className="kicker">Sickness / adaptation input</div>
           <h2>Log today before forcing the session</h2>
           <p>Use this to keep the recommendation anchored to freshness, illness, and what needs protecting next.</p>
@@ -246,17 +237,17 @@ export default async function AnalysisPage() {
               </div>
             )) : <div className="status-item"><strong>No check-ins yet.</strong><p>Once logged, this history becomes the manual context layer above the live Intervals signals.</p></div>}
           </div>
-        </div>
+        </AppCard>
       </section>
 
-      <section className="card" style={{ marginTop: 16 }}>
+      <AppCard className="mt-18">
         <div className="kicker">Navigation</div>
         <div className="button-row">
           <a href="/" className="button-link">Coach dashboard</a>
           <Link href={appRoutes.dashboard} className="button-link">Open Dashboard</Link>
           {isAdmin ? <Link href={appRoutes.admin} className="button-link">Open Admin</Link> : null}
         </div>
-      </section>
-    </main>
+      </AppCard>
+    </AppPageShell>
   );
 }

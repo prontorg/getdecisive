@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { PlannerTabs } from '../_components/planner-tabs';
+import { AppCard, AppHero, AppPageShell } from '../_components/material-shell';
 import { appRoutes } from '../../../lib/routes';
 import { getAuthenticatedAppContext } from '../../../lib/server/app-context';
 import { getSessionUserId } from '../../../lib/server/session';
@@ -13,24 +14,24 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
   const { user, onboarding, state } = await getAuthenticatedAppContext(userId, { requireAdmin: true });
 
   return (
-    <main className="page-shell page-shell-admin">
-      <section className="hero hero-pretty">
-        <div className="hero-copy">
-          <div className="kicker">Admin</div>
-          <h1>Invite-only control room</h1>
-          <p>Keep admin focused on access, account security, and platform visibility. This tab is only shown to you.</p>
-          <div className="chip-row">
+    <AppPageShell tone="admin">
+      <AppHero
+        eyebrow="Admin"
+        title="Invite-only control room"
+        description="Keep admin focused on access, account security, and platform visibility. This tab is only shown to you."
+        chips={(
+          <>
             <span className="chip">Admin: {user.displayName}</span>
             <span className="chip">Email: {user.email}</span>
             <span className="chip">Users: {state.users.length}</span>
-          </div>
-        </div>
-      </section>
+          </>
+        )}
+      />
 
       <PlannerTabs active="admin" isAdmin />
 
       <section className="panel-grid">
-        <section className="card">
+        <AppCard>
           <div className="kicker">Password</div>
           <h2>Change password</h2>
           <p>Update the password used for the decisive planner login.</p>
@@ -53,9 +54,9 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
               <button type="submit">Update password</button>
             </div>
           </form>
-        </section>
+        </AppCard>
 
-        <section className="card">
+        <AppCard>
           <div className="kicker">Access model</div>
           <h2>Invite-only signup</h2>
           <p>The public view now splits cleanly between signup and beta enrollment, and the invite code is no longer visible in the signup form.</p>
@@ -91,8 +92,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
               </div>
             ))}
           </div>
-        </section>
+        </AppCard>
       </section>
-    </main>
+    </AppPageShell>
   );
 }
