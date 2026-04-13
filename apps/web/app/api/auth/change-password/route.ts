@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
-import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
-import { changeUserPassword } from '../../../../lib/server/platform-state';
+import { changeUserPasswordRecord } from '../../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../../lib/server/session';
 
 export async function POST(request: Request) {
@@ -18,10 +17,8 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL(`${appRoutes.account}?error=${encodeURIComponent('New passwords do not match')}`, request.url));
   }
 
-  const state = await loadPlatformState();
   try {
-    changeUserPassword(state, userId, currentPassword, nextPassword);
-    await savePlatformState(state);
+    await changeUserPasswordRecord(userId, currentPassword, nextPassword);
     return NextResponse.redirect(new URL(`${appRoutes.account}?notice=${encodeURIComponent('Password updated')}`, request.url));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Could not update password';

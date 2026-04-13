@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
+import { applyIntervalsCredentialsRecord } from '../../../../lib/server/auth-store';
 import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
-import { applyIntervalsCredentials, getLatestIntervalsConnection, getLatestSyncJob } from '../../../../lib/server/platform-state';
+import { getLatestSyncJob } from '../../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../../lib/server/session';
-import { getLatestSnapshotForUser } from '../../../../lib/server/sync-store';
 import { triggerSyncWorker } from '../../../../lib/server/sync-worker';
 
 export async function POST(request: Request) {
@@ -20,9 +20,11 @@ export async function POST(request: Request) {
 
   const state = await loadPlatformState();
   try {
-    const onboarding = applyIntervalsCredentials(state, userId, { athleteId, credentialPayload, connectionLabel });
+    const { onboarding } = await applyIntervalsCredentialsRecord(userId, { athleteId, credentialPayload, connectionLabel });
     const syncJob = getLatestSyncJob(state, userId);
-    await savePlatformState(state);
+    if (syncJob) {
+      await savePlatformState(state);
+    }
     try {
       triggerSyncWorker(process.env.DECISIVE_PLATFORM_STORE_PATH);
     } catch (error) {

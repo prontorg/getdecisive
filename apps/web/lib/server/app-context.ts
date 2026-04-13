@@ -1,13 +1,12 @@
 import { redirect } from 'next/navigation';
 
-import { loadPlatformState } from './dev-store';
-import { deriveOnboardingStatus, getOnboardingRun, getUserById, isAdminUser } from './platform-state';
+import { getPlatformState, getUserByIdRecord, getOnboardingRunRecord, getMembershipRolesRecord } from './auth-store';
 
 export type AuthenticatedAppContext = {
   userId: string;
-  user: NonNullable<ReturnType<typeof getUserById>>;
-  state: Awaited<ReturnType<typeof loadPlatformState>>;
-  onboarding: NonNullable<ReturnType<typeof getOnboardingRun>>;
+  user: Awaited<ReturnType<typeof getUserByIdRecord>> extends infer T ? NonNullable<T> : never;
+  state: Awaited<ReturnType<typeof getPlatformState>>;
+  onboarding: Awaited<ReturnType<typeof getOnboardingRunRecord>> extends infer T ? NonNullable<T> : never;
   isAdmin: boolean;
 };
 
@@ -15,13 +14,14 @@ export async function getAuthenticatedAppContext(
   userId: string,
   options: { requireReady?: boolean; requireAdmin?: boolean } = {},
 ): Promise<AuthenticatedAppContext> {
-  const state = await loadPlatformState();
-  const onboarding = deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
-  const user = getUserById(state, userId);
+  const state = await getPlatformState();
+  const onboarding = await getOnboardingRunRecord(userId);
+  const user = await getUserByIdRecord(userId);
 
   if (!user || !onboarding) redirect('/login');
 
-  const admin = isAdminUser(state, userId);
+  const roles = await getMembershipRolesRecord(userId);
+  const admin = roles.includes('admin');
   if (options.requireReady && onboarding.state !== 'ready') redirect('/onboarding/sync-status');
   if (options.requireAdmin && !admin) redirect('/app/dashboard');
 

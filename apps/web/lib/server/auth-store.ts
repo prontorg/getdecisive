@@ -1,3 +1,4 @@
+import type { PlatformRole } from '@decisive/types';
 import { randomUUID } from 'node:crypto';
 
 import { getPgPool, isPostgresSyncStoreEnabled } from './pg';
@@ -25,7 +26,31 @@ function makeId(prefix: string) {
 }
 
 export async function getPlatformState(): Promise<PlatformState> {
-  return loadPlatformState();
+  const state = await loadPlatformState();
+  if (!isPostgresSyncStoreEnabled()) return state;
+
+  const [usersResult, membershipsResult, rolesResult, invitesResult, onboardingResult, connectionsResult] = await Promise.all([
+    getPgPool().query(`select users.id, users.email, users.password_hash, users.display_name, workspaces.id as workspace_id from users left join workspace_memberships on workspace_memberships.user_id = users.id left join workspaces on workspaces.id = workspace_memberships.workspace_id`),
+    getPgPool().query(`select id, workspace_id, user_id from workspace_memberships`),
+    getPgPool().query(`select workspace_membership_roles.membership_id, workspace_membership_roles.role_key from workspace_membership_roles`),
+    getPgPool().query(`select id, code_hash, status, max_uses, used_count from invite_codes`),
+    getPgPool().query(`select id, user_id, state, progress_pct, status_message, details_json, updated_at from onboarding_runs`),
+    getPgPool().query(`select intervals_connections.id, athlete_profiles.user_id, intervals_connections.external_athlete_id, intervals_connections.credential_ref, intervals_connections.sync_status, intervals_connections.created_at from intervals_connections join athlete_profiles on athlete_profiles.id = intervals_connections.athlete_profile_id`),
+  ]);
+
+  const rolesByMembership = new Map<string, string[]>();
+  for (const row of rolesResult.rows) {
+    const existing = rolesByMembership.get(row.membership_id) || [];
+    existing.push(row.role_key);
+    rolesByMembership.set(row.membership_id, existing);
+  }
+
+  state.users = usersResult.rows.map((row) => ({ id: row.id, email: row.email, displayName: row.display_name, password: row.password_hash, workspaceId: row.workspace_id }));
+  state.memberships = membershipsResult.rows.map((row) => ({ id: row.id, workspaceId: row.workspace_id, userId: row.user_id, roles: (rolesByMembership.get(row.id) || []) as PlatformRole[] }));
+  state.invites = invitesResult.rows.map((row) => ({ id: row.id, code: row.code_hash, status: row.status, maxUses: row.max_uses, usedCount: row.used_count }));
+  state.onboardingRuns = onboardingResult.rows.map((row) => ({ id: row.id, userId: row.user_id, state: row.state, progressPct: row.progress_pct, statusMessage: row.status_message, syncStartedAt: row.details_json?.syncStartedAt, updatedAt: row.updated_at?.toISOString?.() || row.updated_at }));
+  state.intervalsConnections = connectionsResult.rows.map((row) => ({ id: row.id, userId: row.user_id, externalAthleteId: row.external_athlete_id, credentialPayload: row.credential_ref, syncStatus: row.sync_status, createdAt: row.created_at?.toISOString?.() || row.created_at }));
+  return state;
 }
 
 export async function savePlatformAuthState(state: PlatformState): Promise<void> {
@@ -207,6 +232,112 @@ export async function getMembershipRolesRecord(userId: string): Promise<string[]
     [userId],
   );
   return result.rows.map((row) => row.role_key);
+}
+
+export async function changeUserPasswordRecord(userId: string, currentPassword: string, nextPassword: string): Promise<UserRecord> {
+  if (!nextPassword.trim()) throw new Error('New password is required');
+
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    const user = state.users.find((entry) => entry.id === userId) || null;
+    if (!user) throw new Error('User not found');
+    if (!verifyPassword(currentPassword, user.password)) throw new Error('Current password is incorrect');
+    user.password = hashPassword(nextPassword.trim());
+    state.auditEvents.push({ id: makeId('audit'), eventType: 'user.password_changed', entityType: 'user', entityId: user.id, createdAt: nowIso() });
+    await savePlatformState(state);
+    return user;
+  }
+
+  const current = await getUserByIdRecord(userId);
+  if (!current) throw new Error('User not found');
+  if (!verifyPassword(currentPassword, current.password)) throw new Error('Current password is incorrect');
+  const nextHash = hashPassword(nextPassword.trim());
+  await getPgPool().query(`update users set password_hash = $2 where id = $1`, [userId, nextHash]);
+  await getPgPool().query(
+    `insert into audit_events (id, actor_user_id, event_type, entity_type, entity_id, payload_json) values ($1,$2,$3,$4,$5,$6::jsonb)`,
+    [`audit_${randomUUID()}`, userId, 'user.password_changed', 'user', userId, JSON.stringify({})],
+  );
+  return { ...current, password: nextHash };
+}
+
+export async function applyIntervalsCredentialsRecord(userId: string, input: { athleteId: string; credentialPayload: string; connectionLabel?: string }): Promise<{ onboarding: OnboardingRunRecord; connection: IntervalsConnectionRecord }> {
+  if (!input.athleteId.trim()) throw new Error('Intervals athlete ID is required');
+  if (!input.credentialPayload.trim()) throw new Error('Intervals credential payload is required');
+
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    const onboarding = state.onboardingRuns.find((item) => item.userId === userId);
+    if (!onboarding) throw new Error('Onboarding run not found');
+    const connection: IntervalsConnectionRecord = {
+      id: makeId('intervals'),
+      userId,
+      externalAthleteId: input.athleteId.trim(),
+      credentialPayload: input.credentialPayload.trim(),
+      connectionLabel: input.connectionLabel?.trim() || undefined,
+      syncStatus: 'sync_started',
+      createdAt: nowIso(),
+    };
+    state.intervalsConnections.push(connection);
+    const syncJob = {
+      id: makeId('syncjob'),
+      userId,
+      connectionId: connection.id,
+      jobType: 'intervals_initial_sync' as const,
+      status: 'queued' as const,
+      progressPct: 25,
+      statusMessage: 'Sync job queued',
+      startedAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.syncJobs.push(syncJob);
+    onboarding.state = 'sync_started';
+    onboarding.progressPct = 25;
+    onboarding.statusMessage = 'Sync job queued';
+    onboarding.syncStartedAt = nowIso();
+    onboarding.updatedAt = nowIso();
+    await savePlatformState(state);
+    return { onboarding, connection };
+  }
+
+  const onboarding = await getOnboardingRunRecord(userId);
+  if (!onboarding) throw new Error('Onboarding run not found');
+  const workspaceId = (await getUserByIdRecord(userId))?.workspaceId;
+  if (!workspaceId) throw new Error('Workspace not found');
+  const athleteProfileId = `athlete_profile_${userId}`;
+  const connection: IntervalsConnectionRecord = {
+    id: `intervals_${randomUUID()}`,
+    userId,
+    externalAthleteId: input.athleteId.trim(),
+    credentialPayload: input.credentialPayload.trim(),
+    connectionLabel: input.connectionLabel?.trim() || undefined,
+    syncStatus: 'sync_started',
+    createdAt: nowIso(),
+  };
+  await getPgPool().query(
+    `insert into athlete_profiles (id, user_id, workspace_id, display_name)
+     values ($1,$2,$3,$4)
+     on conflict (id) do nothing`,
+    [athleteProfileId, userId, workspaceId, connection.connectionLabel || 'Athlete'],
+  );
+  await getPgPool().query(
+    `insert into intervals_connections (id, athlete_profile_id, auth_mode, credential_ref, external_athlete_id, sync_status, created_at)
+     values ($1,$2,$3,$4,$5,$6,$7)`,
+    [connection.id, athleteProfileId, 'api_key', connection.credentialPayload, connection.externalAthleteId, connection.syncStatus, connection.createdAt],
+  );
+  const syncJobId = `syncjob_${randomUUID()}`;
+  await getPgPool().query(
+    `insert into sync_jobs_runtime (id, user_id, connection_id, job_type, status, progress_pct, status_message, started_at, updated_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$8)`,
+    [syncJobId, userId, connection.id, 'intervals_initial_sync', 'queued', 25, 'Sync job queued', nowIso()],
+  );
+  await getPgPool().query(
+    `update onboarding_runs set state = $2, progress_pct = $3, status_message = $4, details_json = jsonb_set(coalesce(details_json, '{}'::jsonb), '{syncStartedAt}', to_jsonb($5::text)), updated_at = $5 where id = $1`,
+    [onboarding.id, 'sync_started', 25, 'Sync job queued', nowIso()],
+  );
+  return {
+    onboarding: { ...onboarding, state: 'sync_started', progressPct: 25, statusMessage: 'Sync job queued', syncStartedAt: nowIso(), updatedAt: nowIso() },
+    connection,
+  };
 }
 
 export async function upsertIntervalsConnectionRecord(connection: IntervalsConnectionRecord): Promise<void> {

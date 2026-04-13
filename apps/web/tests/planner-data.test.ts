@@ -58,7 +58,7 @@ test('live planner data is only exposed to the matching connected athlete', () =
   assert.equal(blocked, null);
 });
 
-test('resolveAuthorizedLiveState prefers the user snapshot over the shared live source', () => {
+test('resolveAuthorizedLiveState prefers the user snapshot over the shared live source', async () => {
   const state = createSeedPlatformState();
   state.users.push({
     id: 'user_1',
@@ -96,7 +96,7 @@ test('resolveAuthorizedLiveState prefers the user snapshot over the shared live 
     onboardingState: 'ready',
   };
 
-  const resolved = resolveAuthorizedLiveState(context, { today: '2026-04-13', athlete_id: 'other-athlete' });
+  const resolved = await resolveAuthorizedLiveState(context, { today: '2026-04-13', athlete_id: 'other-athlete' });
 
   assert.equal(resolved?.athlete_id, '17634020');
   assert.equal(resolved?.tomorrow_plan, '6x4 min @ 410-420 W');
