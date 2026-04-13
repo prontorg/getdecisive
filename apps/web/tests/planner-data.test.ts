@@ -29,6 +29,28 @@ test('planner day payload is explicitly read-only toward Intervals', () => {
   assert.match(payload.why, /linked to your own login/i);
 });
 
+test('planner day payload treats rest day as a real rest day', () => {
+  const payload = buildPlannerDayPayload(
+    {
+      id: 'user_1',
+      email: 'athlete@example.com',
+      displayName: 'Athlete',
+      password: 'secret123',
+      workspaceId: 'workspace_1',
+    },
+    {
+      today: '2026-04-13',
+      today_plan: 'Rest day',
+      tomorrow_plan: '6x4 min @ 410-420 W',
+      wellness: { ctl: 107, atl: 120 },
+    },
+  );
+
+  assert.equal(payload.plannedToday, 'Rest day');
+  assert.match(payload.shouldActuallyHappenToday, /real rest day/i);
+  assert.match(payload.why, /protect freshness completely today/i);
+});
+
 test('live planner data is only exposed to the matching connected athlete', () => {
   const state = createSeedPlatformState();
   state.users.push({

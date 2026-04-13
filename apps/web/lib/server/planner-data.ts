@@ -120,8 +120,12 @@ function formatDuration(seconds: number): string {
 }
 
 function planLabel(plan?: string): string {
-  if (!plan || plan === 'Z2 endurance') return 'Support endurance';
-  return plan;
+  const text = (plan || '').trim();
+  if (!text || text === 'Z2 endurance') return 'Support endurance';
+  const lower = text.toLowerCase();
+  if (['rest', 'rest day', 'off', 'day off'].includes(lower)) return 'Rest day';
+  if (['recovery', 'easy / recovery ride', 'easy / recovery run'].includes(lower)) return 'Recovery';
+  return text;
 }
 
 function latestWorkoutLine(row: LiveRow): string {
@@ -365,16 +369,26 @@ export function buildPlannerDayPayload(user: UserRecord, live?: LiveState | null
     plannedTomorrow,
     shouldActuallyHappenToday: !usingAuthorizedLiveData
       ? 'No live athlete data is loaded for this account yet.'
-      : form <= -18
-        ? 'Keep today supportive or reduce the quality dose.'
-        : 'Stay aligned with the planned session, but only if it protects the next decisive quality slot.',
+      : plannedToday === 'Rest day'
+        ? 'Today should be a real rest day.'
+        : plannedToday === 'Recovery'
+          ? 'Today should stay genuinely light and recovery-focused.'
+          : form <= -18
+            ? 'Keep today supportive or reduce the quality dose.'
+            : 'Stay aligned with the planned session, but only if it protects the next decisive quality slot.',
     why: !usingAuthorizedLiveData
       ? `${user.displayName}, live planner data is only shown for the Intervals athlete linked to your own login. Connect your account before using analysis or planning decisions from this view.`
-      : form <= -18
-        ? 'Freshness is constrained, so preserve the next decisive session rather than chasing the nominal load.'
-        : 'Freshness is acceptable enough to respect the plan while still filtering it through recovery and next-session protection.',
+      : plannedToday === 'Rest day'
+        ? 'Protect freshness completely today so the next decisive session starts from a better place rather than carrying unnecessary fatigue.'
+        : plannedToday === 'Recovery'
+          ? 'The planned intent is recovery, so keep the cost low instead of leaking load into a support day.'
+          : form <= -18
+            ? 'Freshness is constrained, so preserve the next decisive session rather than chasing the nominal load.'
+            : 'Freshness is acceptable enough to respect the plan while still filtering it through recovery and next-session protection.',
     nextToProtect: usingAuthorizedLiveData
-      ? 'Protect the next repeatability or threshold anchor instead of leaking load into support days.'
+      ? plannedToday === 'Rest day'
+        ? 'Protect tomorrow and the next decisive quality slot by keeping today fully off.'
+        : 'Protect the next repeatability or threshold anchor instead of leaking load into support days.'
       : 'Protect account-scoped data access first, then load the next decisive training anchor from your own Intervals connection.',
     adaptationState: !usingAuthorizedLiveData ? 'watch' : form <= -22 ? 'sick_readjustment' : 'watch',
     planChangeSummary: usingAuthorizedLiveData
