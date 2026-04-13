@@ -34,7 +34,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           <p>Update the password used for the decisive planner login.</p>
           {params.error ? <p className="notice error">{params.error}</p> : null}
           {params.notice ? <p className="notice">{params.notice}</p> : null}
-          <form className="form-grid" action="/planner/api/auth/change-password" method="post">
+          <form className="form-grid" action="/api/auth/change-password" method="post">
             <label>
               <span>Current password</span>
               <input name="currentPassword" type="password" placeholder="Current password" required />
@@ -62,7 +62,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <div className="status-item"><strong>Used invites</strong><p>{state.invites.reduce((sum, invite) => sum + invite.usedCount, 0)}</p></div>
             <div className="status-item"><strong>Registered users</strong><p>{state.users.length}</p></div>
           </div>
-          <form className="form-grid" action="/planner/api/invites/create" method="post" style={{ marginTop: 16 }}>
+          <form className="form-grid" action="/api/invites/create" method="post" style={{ marginTop: 16 }}>
             <label>
               <span>Invite code</span>
               <input name="code" type="text" placeholder="DECISIVE-BETA" />
@@ -81,7 +81,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 <strong>{invite.code}</strong>
                 <p>Status: {invite.status} • Used {invite.usedCount}/{invite.maxUses}</p>
                 {invite.status === 'active' ? (
-                  <form action="/planner/api/invites/revoke" method="post">
+                  <form action="/api/invites/revoke" method="post">
                     <input type="hidden" name="inviteId" value={invite.id} />
                     <button type="submit" className="button-secondary">Revoke</button>
                   </form>

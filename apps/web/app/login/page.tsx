@@ -6,9 +6,9 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <div className="kicker">Separate planner site</div>
-          <h1>Access decisive planner</h1>
-          <p>Simple private login for the planner product. Sign up with an invite first, then connect Intervals in onboarding.</p>
+          <div className="kicker">Decisive platform</div>
+          <h1>Access decisive</h1>
+          <p>One login for the full decisive.coach application. Sign up with an invite first, then connect Intervals in onboarding.</p>
         </div>
       </section>
       <LoginPanel error={params.error} notice={params.notice} />

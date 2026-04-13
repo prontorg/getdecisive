@@ -8,7 +8,7 @@ export function IntervalsConnectPanel({ error }: { error?: string }) {
         move to the production-safe credentials path.
       </p>
       {error ? <p className="notice error">{error}</p> : null}
-      <form className="form-grid" action="/planner/api/onboarding/intervals-connect" method="post" style={{ marginTop: 16 }}>
+      <form className="form-grid" action="/api/onboarding/intervals-connect" method="post" style={{ marginTop: 16 }}>
         <label>
           <span>Athlete ID</span>
           <input name="athleteId" type="text" placeholder="17634020" defaultValue="17634020" required />

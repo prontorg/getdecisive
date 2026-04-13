@@ -5,7 +5,7 @@ const SESSION_COOKIE = 'decisive_session_user';
 
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  response.headers.set('x-decisive-app-scope', 'planner-separate-site');
+  response.headers.set('x-decisive-app-scope', 'decisive-platform');
   response.headers.set('x-decisive-current-path', request.nextUrl.pathname);
 
   if (request.nextUrl.pathname.startsWith('/app')) {

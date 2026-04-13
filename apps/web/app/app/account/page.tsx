@@ -32,7 +32,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <p>Update the password used for the decisive planner login.</p>
           {params.error ? <p className="notice error">{params.error}</p> : null}
           {params.notice ? <p className="notice">{params.notice}</p> : null}
-          <form className="form-grid" action="/planner/api/auth/change-password" method="post">
+          <form className="form-grid" action="/api/auth/change-password" method="post">
             <label>
               <span>Current password</span>
               <input name="currentPassword" type="password" placeholder="Current password" required />

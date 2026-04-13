@@ -48,7 +48,7 @@ export function AppHeader({ loggedIn, isAdmin }: AppHeaderProps) {
               <Link href={appRoutes.register} className="button-link">Sign up</Link>
             </>
           ) : (
-            <form action="/planner/api/auth/logout" method="post">
+            <form action="/api/auth/logout" method="post">
               <button type="submit" className="button-secondary">Log out</button>
             </form>
           )}

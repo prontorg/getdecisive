@@ -129,7 +129,7 @@ export default async function AnalysisPage() {
           <div className="kicker">Goal editor</div>
           <h2>Bias the month-first plan</h2>
           <p>Add live priorities for the next block without writing anything back to Intervals.</p>
-          <form action="/planner/api/planner/goals/update" method="post" className="form-grid">
+          <form action="/api/planner/goals/update" method="post" className="form-grid">
             <label>
               <span>Goal title</span>
               <input name="title" type="text" placeholder="e.g. Hold repeatability deeper into the block" required />
@@ -191,7 +191,7 @@ export default async function AnalysisPage() {
           <div className="kicker">Sickness / adaptation input</div>
           <h2>Log today before forcing the session</h2>
           <p>Use this to keep the recommendation anchored to freshness, illness, and what needs protecting next.</p>
-          <form action="/planner/api/planner/adaptation/check-in" method="post" className="form-grid">
+          <form action="/api/planner/adaptation/check-in" method="post" className="form-grid">
             <div className="form-split form-split-quad">
               <label>
                 <span>Legs</span>

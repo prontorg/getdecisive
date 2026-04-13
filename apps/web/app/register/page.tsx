@@ -8,7 +8,7 @@ export default async function RegisterPage({ searchParams }: { searchParams?: Pr
         <div className="hero-copy auth-hero-copy">
           <div className="kicker">Selective access</div>
           <h1>Private signup</h1>
-          <p>Create the account first, then complete the guided Intervals connection in the next onboarding step.</p>
+          <p>Create your decisive account first, then complete the guided Intervals connection in the next onboarding step.</p>
         </div>
       </section>
       <section className="auth-split">

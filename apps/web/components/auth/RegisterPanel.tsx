@@ -14,7 +14,7 @@ export function RegisterPanel({ error, email, name, inviteCode }: RegisterPanelP
       <h2>Create your account</h2>
       <p className="muted">Keep signup simple here. Intervals connection happens in the guided onboarding step right after account creation.</p>
       {error ? <p className="notice error">{error}</p> : null}
-      <form className="form-grid" action="/planner/api/auth/register" method="post">
+      <form className="form-grid" action="/api/auth/register" method="post">
         <input name="inviteCode" type="hidden" value={inviteCode || ''} />
         <label>
           <span>Email</span>
