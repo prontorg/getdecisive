@@ -40,13 +40,12 @@ export default async function AnalysisPage() {
           <div className="kicker">Analysis</div>
           <h1>Strengths, weaknesses, goals, and adaptation</h1>
           <p>
-            This is the separate deep-analysis tab. Daily operational guidance stays in Dashboard and Plan,
-            while this view holds the bigger performance picture and why the planner changes.
+            This is the deep performance layer behind the Dashboard. Use it to understand system trends,
+            bias the plan, and decide when adaptation should override the nominal structure.
           </p>
           <div className="chip-row">
             <span className="chip">Intervals writes: {day.intervalsPlanWriteState}</span>
             <span className="chip">Onboarding: {context.onboardingState}</span>
-            <span className="chip">CTL {day.ctl.toFixed(0)} / ATL {day.atl.toFixed(0)} / Form {day.form >= 0 ? '+' : ''}{day.form.toFixed(0)}</span>
             {day.goalRaceDate ? <span className="chip">Goal race: {day.goalRaceDate}</span> : null}
           </div>
         </div>
@@ -54,39 +53,74 @@ export default async function AnalysisPage() {
 
       <PlannerTabs active="analysis" isAdmin={isAdmin} />
 
-      <section className="panel-grid">
-        <div className="card">
-          <div className="kicker">Today in context</div>
-          <h2>{day.shouldActuallyHappenToday}</h2>
-          <p>{day.why}</p>
-          <p><strong>Planned today:</strong> {day.plannedToday}</p>
-          <p><strong>Planned tomorrow:</strong> {day.plannedTomorrow}</p>
-          <p><strong>Protect next:</strong> {day.nextToProtect}</p>
-          {day.latestWorkoutSummary ? <p><strong>Latest workout day:</strong> {day.latestWorkoutSummary}</p> : null}
+      <section className="metrics-grid">
+        <div className="metric-card">
+          <div className="kicker">Fitness</div>
+          <h2>{day.ctl.toFixed(0)}</h2>
+          <p>CTL</p>
         </div>
-
-        <div className="card">
-          <div className="kicker">Power profile</div>
-          <h2>Current strengths</h2>
-          <ul className="list">{profile.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
-          <h3>Current weaknesses</h3>
-          <ul className="list">{profile.weaknesses.map((item) => <li key={item}>{item}</li>)}</ul>
+        <div className="metric-card">
+          <div className="kicker">Fatigue</div>
+          <h2>{day.atl.toFixed(0)}</h2>
+          <p>ATL</p>
         </div>
-
-        <div className="card">
-          <div className="kicker">Goal alignment</div>
-          <h2>Active goals</h2>
-          <ul className="list">{goals.activeGoals.map((goal) => <li key={`${goal.title}-${goal.targetDate || 'none'}`}>{goal.title}{goal.targetDate ? ` • ${goal.targetDate}` : ''}</li>)}</ul>
-          <h3>Current fit</h3>
-          <p>{goals.currentPlanFitSummary}</p>
-          <h3>Alignment summary</h3>
-          <ul className="list">{profile.goalAlignmentSummary.map((item) => <li key={item}>{item}</li>)}</ul>
+        <div className="metric-card">
+          <div className="kicker">Freshness</div>
+          <h2 className={day.form >= 0 ? 'metric-value-positive' : 'metric-value-negative'}>{day.form >= 0 ? '+' : ''}{day.form.toFixed(0)}</h2>
+          <p>Form</p>
         </div>
       </section>
 
-      <section className="card" style={{ marginTop: 16 }}>
+      <section className="analysis-wide-grid">
+        <div className="section-stack">
+          <div className="card">
+            <div className="kicker">Today in context</div>
+            <h2>{day.shouldActuallyHappenToday}</h2>
+            <p>{day.why}</p>
+            <p><strong>Planned today:</strong> {day.plannedToday}</p>
+            <p><strong>Planned tomorrow:</strong> {day.plannedTomorrow}</p>
+            <p><strong>Protect next:</strong> {day.nextToProtect}</p>
+            {day.latestWorkoutSummary ? <p><strong>Latest workout day:</strong> {day.latestWorkoutSummary}</p> : null}
+          </div>
+
+          <div className="card">
+            <div className="kicker">Power profile</div>
+            <h2>Current strengths</h2>
+            <ul className="list">{profile.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
+            <h3>Current weaknesses</h3>
+            <ul className="list">{profile.weaknesses.map((item) => <li key={item}>{item}</li>)}</ul>
+          </div>
+
+          <div className="card">
+            <div className="kicker">Goal alignment</div>
+            <h2>Active goals</h2>
+            <ul className="list">{goals.activeGoals.map((goal) => <li key={`${goal.title}-${goal.targetDate || 'none'}`}>{goal.title}{goal.targetDate ? ` • ${goal.targetDate}` : ''}</li>)}</ul>
+            <h3>Current fit</h3>
+            <p>{goals.currentPlanFitSummary}</p>
+            <h3>Alignment summary</h3>
+            <ul className="list">{profile.goalAlignmentSummary.map((item) => <li key={item}>{item}</li>)}</ul>
+          </div>
+        </div>
+
+        <div className="section-stack">
+          <div className="card">
+            <div className="kicker">Trend direction by system</div>
+            <ul className="list">{profile.trendDirectionBySystem.map((item) => <li key={item.system}><strong>{item.system}:</strong> {item.trend} — {item.note}</li>)}</ul>
+          </div>
+          <div className="card">
+            <div className="kicker">Adaptation feedback</div>
+            <h2>{adaptation.adaptationTrigger}</h2>
+            <p>{adaptation.userFacingExplanation}</p>
+            <ul className="list">{adaptation.sessionsChanged.map((item) => <li key={item}>{item}</li>)}</ul>
+            <h3>Return criteria</h3>
+            <ul className="list">{adaptation.returnToFullTrainingCriteria.map((item) => <li key={item}>{item}</li>)}</ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="card" style={{ marginTop: 18 }}>
         <div className="kicker">Power-curve highlights and live focus</div>
-        <div className="panel-grid">
+        <div className="analysis-highlights-grid">
           {profile.powerCurveHighlights.map((item) => (
             <div className="card" key={item.label}>
               <div className="kicker">{item.label}</div>
@@ -215,26 +249,11 @@ export default async function AnalysisPage() {
         </div>
       </section>
 
-      <section className="panel-grid" style={{ marginTop: 16 }}>
-        <div className="card">
-          <div className="kicker">Trend direction by system</div>
-          <ul className="list">{profile.trendDirectionBySystem.map((item) => <li key={item.system}><strong>{item.system}:</strong> {item.trend} — {item.note}</li>)}</ul>
-        </div>
-        <div className="card">
-          <div className="kicker">Adaptation feedback</div>
-          <h2>{adaptation.adaptationTrigger}</h2>
-          <p>{adaptation.userFacingExplanation}</p>
-          <ul className="list">{adaptation.sessionsChanged.map((item) => <li key={item}>{item}</li>)}</ul>
-          <h3>Return criteria</h3>
-          <ul className="list">{adaptation.returnToFullTrainingCriteria.map((item) => <li key={item}>{item}</li>)}</ul>
-        </div>
-      </section>
-
       <section className="card" style={{ marginTop: 16 }}>
         <div className="kicker">Navigation</div>
         <div className="button-row">
           <a href="/" className="button-link">Coach dashboard</a>
-          <Link href={appRoutes.dashboard} className="button-link">Open Planning</Link>
+          <Link href={appRoutes.dashboard} className="button-link">Open Dashboard</Link>
           {isAdmin ? <Link href={appRoutes.admin} className="button-link">Open Admin</Link> : null}
         </div>
       </section>

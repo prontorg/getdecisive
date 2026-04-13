@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     <main className="page-shell">
       <section className="hero hero-pretty">
         <div className="hero-copy">
-          <div className="kicker">Planning</div>
+          <div className="kicker">Dashboard</div>
           <h1>What should happen today</h1>
           <p>
             Welcome, {user.displayName}. Keep this view focused on what was planned, what freshness allows,
@@ -30,43 +30,62 @@ export default async function DashboardPage() {
           <div className="chip-row">
             <span className="chip">User: {user.email}</span>
             <span className="chip">Onboarding: {onboarding.state}</span>
-            <span className="chip">Goal race: {day.goalRaceDate || 'not set'}</span>
           </div>
         </div>
       </section>
 
       <PlannerTabs active="dashboard" isAdmin={isAdmin} />
 
-      <section className="panel-grid">
-        <div className="card">
-          <div className="kicker">Recommendation</div>
-          <h2>{day.shouldActuallyHappenToday}</h2>
-          <p>{day.why}</p>
-          <p><strong>Planned today:</strong> {day.plannedToday}</p>
-          <p><strong>Planned tomorrow:</strong> {day.plannedTomorrow}</p>
-          <p><strong>Protect next:</strong> {day.nextToProtect}</p>
-        </div>
-        <div className="card">
+      <section className="metrics-grid">
+        <div className="metric-card">
           <div className="kicker">Fitness</div>
-          <h2>CTL {day.ctl.toFixed(0)} • ATL {day.atl.toFixed(0)} • Form {day.form >= 0 ? '+' : ''}{day.form.toFixed(0)}</h2>
-          <p>Live Intervals-derived freshness is feeding the planning recommendation.</p>
-          {day.latestWorkoutSummary ? <p><strong>Latest workout day:</strong> {day.latestWorkoutSummary}</p> : null}
+          <h2>{day.ctl.toFixed(0)}</h2>
+          <p>CTL</p>
         </div>
-        <div className="card">
-          <div className="kicker">Readiness</div>
-          <h2>Check before forcing quality</h2>
-          <p>Use the Analysis tab for illness/adaptation notes and goal bias. Keep this view operational.</p>
-          <p><strong>Intervals writes:</strong> {day.intervalsPlanWriteState}</p>
+        <div className="metric-card">
+          <div className="kicker">Fatigue</div>
+          <h2>{day.atl.toFixed(0)}</h2>
+          <p>ATL</p>
+        </div>
+        <div className="metric-card">
+          <div className="kicker">Freshness</div>
+          <h2 className={day.form >= 0 ? 'metric-value-positive' : 'metric-value-negative'}>{day.form >= 0 ? '+' : ''}{day.form.toFixed(0)}</h2>
+          <p>Form</p>
         </div>
       </section>
 
-      <section className="card" style={{ marginTop: 16 }}>
-        <div className="kicker">Session controls</div>
-        <div className="button-row">
-          <a href="/" className="button-link">Coach dashboard</a>
-          <a href={appRoutes.analysis} className="button-link">Open Analysis</a>
-          {isAdmin ? <a href={appRoutes.admin} className="button-link">Open Admin</a> : null}
-          <form action="/planner/api/auth/logout" method="post"><button type="submit" className="button-secondary">Log out</button></form>
+      <section className="panel-grid-wide panel-grid">
+        <div className="section-stack">
+          <div className="card">
+            <div className="kicker">Recommendation</div>
+            <h2>{day.shouldActuallyHappenToday}</h2>
+            <p>{day.why}</p>
+            <p><strong>Planned today:</strong> {day.plannedToday}</p>
+            <p><strong>Planned tomorrow:</strong> {day.plannedTomorrow}</p>
+            <p><strong>Protect next:</strong> {day.nextToProtect}</p>
+          </div>
+          <div className="card">
+            <div className="kicker">Readiness</div>
+            <h2>Check before forcing quality</h2>
+            <p>Use the Analysis tab for illness, adaptation, and goal-bias decisions. Keep this view operational.</p>
+            <p><strong>Intervals writes:</strong> {day.intervalsPlanWriteState}</p>
+          </div>
+        </div>
+        <div className="section-stack">
+          <div className="card">
+            <div className="kicker">Latest workout</div>
+            <h2>Last workout day</h2>
+            {day.latestWorkoutSummary ? <p>{day.latestWorkoutSummary}</p> : <p>No latest workout summary loaded yet.</p>}
+          </div>
+          <div className="card">
+            <div className="kicker">Controls</div>
+            <div className="button-row">
+              <a href="/" className="button-link">Coach dashboard</a>
+              <a href={appRoutes.analysis} className="button-link">Open Analysis</a>
+              {isAdmin ? <a href={appRoutes.admin} className="button-link">Open Admin</a> : null}
+              <form action="/planner/api/auth/logout" method="post"><button type="submit" className="button-secondary">Log out</button></form>
+            </div>
+          </div>
         </div>
       </section>
     </main>

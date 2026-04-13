@@ -13,7 +13,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
   const { user, onboarding, state } = await getAuthenticatedAppContext(userId, { requireAdmin: true });
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-shell-admin">
       <section className="hero hero-pretty">
         <div className="hero-copy">
           <div className="kicker">Admin</div>

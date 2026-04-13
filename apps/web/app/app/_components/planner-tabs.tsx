@@ -9,9 +9,9 @@ type PlannerTabsProps = {
 
 export function PlannerTabs({ active, isAdmin = false }: PlannerTabsProps) {
   const tabs = [
-    { id: 'dashboard', href: appRoutes.dashboard, label: 'Planning', kicker: 'Race-first execution' },
-    { id: 'analysis', href: appRoutes.analysis, label: 'Analysis', kicker: 'Individual data view' },
-    ...(isAdmin ? [{ id: 'admin', href: appRoutes.admin, label: 'Admin', kicker: 'Invite-only control' }] : []),
+    { id: 'dashboard', href: appRoutes.dashboard, label: 'Dashboard', kicker: 'Daily decision center' },
+    { id: 'analysis', href: appRoutes.analysis, label: 'Analysis', kicker: 'Deep performance lab' },
+    ...(isAdmin ? [{ id: 'admin', href: appRoutes.admin, label: 'Admin', kicker: 'Access and security' }] : []),
   ] as Array<{ id: PlannerTabsProps['active']; href: string; label: string; kicker: string }>;
 
   return (
