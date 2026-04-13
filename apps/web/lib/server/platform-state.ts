@@ -53,12 +53,27 @@ export type AuditEventRecord = {
   createdAt: string;
 };
 
+export type SyncJobRecord = {
+  id: string;
+  userId: string;
+  connectionId: string;
+  jobType: 'intervals_initial_sync' | 'intervals_incremental_sync';
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  progressPct: number;
+  statusMessage: string;
+  startedAt?: string;
+  finishedAt?: string;
+  lastError?: string;
+  updatedAt: string;
+};
+
 export type PlatformState = {
   invites: InviteRecord[];
   users: UserRecord[];
   memberships: MembershipRecord[];
   onboardingRuns: OnboardingRunRecord[];
   intervalsConnections: IntervalsConnectionRecord[];
+  syncJobs: SyncJobRecord[];
   auditEvents: AuditEventRecord[];
 };
 
@@ -75,11 +90,11 @@ export type IntervalsInput = {
   connectionLabel?: string;
 };
 
-const SYNC_STEPS: Array<{ maxElapsedMs: number; state: OnboardingState; progressPct: number; statusMessage: string }> = [
-  { maxElapsedMs: 4_000, state: 'sync_started', progressPct: 25, statusMessage: 'Sync job queued' },
-  { maxElapsedMs: 8_000, state: 'sync_importing_history', progressPct: 42, statusMessage: 'Importing Intervals history' },
-  { maxElapsedMs: 12_000, state: 'sync_processing_activities', progressPct: 68, statusMessage: 'Processing activities and classifying sessions' },
-  { maxElapsedMs: 16_000, state: 'sync_building_dashboard', progressPct: 88, statusMessage: 'Building dashboard and coaching read models' },
+const SYNC_STEPS: Array<{ maxElapsedMs: number; state: OnboardingState; progressPct: number; statusMessage: string; jobStatus: 'queued' | 'running' | 'completed' }> = [
+  { maxElapsedMs: 4_000, state: 'sync_started', progressPct: 25, statusMessage: 'Sync job queued', jobStatus: 'queued' },
+  { maxElapsedMs: 8_000, state: 'sync_importing_history', progressPct: 42, statusMessage: 'Importing Intervals history', jobStatus: 'running' },
+  { maxElapsedMs: 12_000, state: 'sync_processing_activities', progressPct: 68, statusMessage: 'Processing activities and classifying sessions', jobStatus: 'running' },
+  { maxElapsedMs: 16_000, state: 'sync_building_dashboard', progressPct: 88, statusMessage: 'Building dashboard and coaching read models', jobStatus: 'running' },
 ];
 
 function nowIso() {
@@ -109,6 +124,7 @@ export function createSeedPlatformState(): PlatformState {
     memberships: [],
     onboardingRuns: [],
     intervalsConnections: [],
+    syncJobs: [],
     auditEvents: [],
   };
 }
@@ -217,6 +233,28 @@ export function getOnboardingRun(state: PlatformState, userId: string): Onboardi
   return state.onboardingRuns.find((item) => item.userId === userId) || null;
 }
 
+export function getLatestSyncJob(state: PlatformState, userId: string): SyncJobRecord | null {
+  return state.syncJobs
+    .filter((job) => job.userId === userId)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] || null;
+}
+
+export function updateSyncJobProgress(
+  state: PlatformState,
+  jobId: string,
+  input: Partial<Pick<SyncJobRecord, 'status' | 'progressPct' | 'statusMessage' | 'finishedAt' | 'lastError'>>,
+): SyncJobRecord | null {
+  const job = state.syncJobs.find((item) => item.id === jobId) || null;
+  if (!job) return null;
+  if (input.status) job.status = input.status;
+  if (typeof input.progressPct === 'number') job.progressPct = input.progressPct;
+  if (typeof input.statusMessage === 'string') job.statusMessage = input.statusMessage;
+  if (typeof input.finishedAt === 'string') job.finishedAt = input.finishedAt;
+  if (typeof input.lastError === 'string') job.lastError = input.lastError;
+  job.updatedAt = nowIso();
+  return job;
+}
+
 export function applyIntervalsCredentials(state: PlatformState, userId: string, input: IntervalsInput): OnboardingRunRecord {
   if (!input.athleteId.trim()) throw new Error('Intervals athlete ID is required');
   if (!input.credentialPayload.trim()) throw new Error('Intervals credential payload is required');
@@ -234,6 +272,19 @@ export function applyIntervalsCredentials(state: PlatformState, userId: string, 
     createdAt: nowIso(),
   };
   state.intervalsConnections.push(connection);
+
+  const syncJob: SyncJobRecord = {
+    id: makeId('syncjob'),
+    userId,
+    connectionId: connection.id,
+    jobType: 'intervals_initial_sync',
+    status: 'queued',
+    progressPct: 25,
+    statusMessage: 'Sync job queued',
+    startedAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+  state.syncJobs.push(syncJob);
 
   onboarding.state = 'sync_started';
   onboarding.progressPct = 25;
@@ -258,13 +309,29 @@ export function deriveOnboardingStatus(state: PlatformState, userId: string, now
   if (!onboarding.syncStartedAt) return onboarding;
   if (onboarding.state === 'ready') return onboarding;
 
+  const syncJob = getLatestSyncJob(state, userId);
   const elapsed = now.getTime() - new Date(onboarding.syncStartedAt).getTime();
   const step = SYNC_STEPS.find((item) => elapsed < item.maxElapsedMs);
+
+  if (syncJob?.status === 'failed') {
+    onboarding.state = 'sync_started';
+    onboarding.progressPct = syncJob.progressPct;
+    onboarding.statusMessage = syncJob.lastError || syncJob.statusMessage;
+    onboarding.updatedAt = nowIso();
+    return onboarding;
+  }
+
   if (step) {
     onboarding.state = step.state;
     onboarding.progressPct = step.progressPct;
     onboarding.statusMessage = step.statusMessage;
     onboarding.updatedAt = nowIso();
+    if (syncJob) {
+      syncJob.status = step.jobStatus;
+      syncJob.progressPct = step.progressPct;
+      syncJob.statusMessage = step.statusMessage;
+      syncJob.updatedAt = nowIso();
+    }
     return onboarding;
   }
 
@@ -275,6 +342,13 @@ export function deriveOnboardingStatus(state: PlatformState, userId: string, now
 
   const connection = state.intervalsConnections.find((item) => item.userId === userId);
   if (connection) connection.syncStatus = 'ready';
+  if (syncJob) {
+    syncJob.status = 'completed';
+    syncJob.progressPct = 100;
+    syncJob.statusMessage = 'Initial sync complete';
+    syncJob.finishedAt = nowIso();
+    syncJob.updatedAt = nowIso();
+  }
 
   state.auditEvents.push({
     id: makeId('audit'),

@@ -2,8 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
-import { loadPlatformState } from '../../../lib/server/dev-store';
-import { deriveOnboardingStatus, getOnboardingRun, getUserById } from '../../../lib/server/platform-state';
+import { getAuthenticatedAppContext } from '../../../lib/server/app-context';
 import { getSessionUserId } from '../../../lib/server/session';
 
 export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string; notice?: string }> }) {
@@ -11,11 +10,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   const userId = await getSessionUserId();
   if (!userId) redirect(appRoutes.login);
 
-  const state = await loadPlatformState();
-  const onboarding = deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
-  const user = getUserById(state, userId);
-
-  if (!user || !onboarding) redirect(appRoutes.login);
+  const { user, onboarding } = await getAuthenticatedAppContext(userId);
 
   return (
     <main className="page-shell">

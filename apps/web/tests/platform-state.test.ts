@@ -82,5 +82,8 @@ test('applyIntervalsCredentials moves onboarding into sync flow with progress me
   assert.equal(onboarding.state, 'sync_started');
   assert.equal(onboarding.progressPct, 25);
   assert.equal(state.intervalsConnections[0].externalAthleteId, '17634020');
+  assert.equal(state.syncJobs.length, 1);
+  assert.equal(state.syncJobs[0]?.jobType, 'intervals_initial_sync');
+  assert.equal(state.syncJobs[0]?.status, 'queued');
   assert.equal(state.auditEvents.at(-1)?.eventType, 'intervals.connected');
 });

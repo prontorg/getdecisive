@@ -191,6 +191,13 @@ export function authorizeLiveIntervalsState(context: AuthenticatedPlannerContext
   return connection.externalAthleteId === live.athlete_id ? live : null;
 }
 
+export async function getAuthorizedPlannerLiveContext(userId: string): Promise<{ context: AuthenticatedPlannerContext; live: LiveState | null } | null> {
+  const context = await getAuthenticatedPlannerContext(userId);
+  if (!context) return null;
+  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
+  return { context, live };
+}
+
 function recentSessionCounts(rows: LiveRow[]): Record<string, number> {
   return rows.reduce<Record<string, number>>((acc, row) => {
     const key = row.session_type || 'Other';

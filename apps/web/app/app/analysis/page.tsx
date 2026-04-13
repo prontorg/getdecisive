@@ -4,15 +4,12 @@ import { redirect } from 'next/navigation';
 import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
 import {
-  authorizeLiveIntervalsState,
   buildAdaptationPayload,
   buildGoalPayload,
   buildPlannerDayPayload,
   buildPowerProfilePayload,
-  getAuthenticatedPlannerContext,
-  getLiveIntervalsState,
+  getAuthorizedPlannerLiveContext,
 } from '../../../lib/server/planner-data';
-import { loadPlatformState } from '../../../lib/server/dev-store';
 import { getUserAdaptationEntries, getUserGoalEntries } from '../../../lib/server/planner-customization';
 import { isAdminUser } from '../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../lib/server/session';
@@ -21,12 +18,11 @@ export default async function AnalysisPage() {
   const userId = await getSessionUserId();
   if (!userId) redirect(appRoutes.login);
 
-  const context = await getAuthenticatedPlannerContext(userId);
-  if (!context) redirect(appRoutes.onboardingSync);
+  const planner = await getAuthorizedPlannerLiveContext(userId);
+  if (!planner) redirect(appRoutes.onboardingSync);
 
-  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
-  const state = await loadPlatformState();
-  const isAdmin = isAdminUser(state, userId);
+  const { context, live } = planner;
+  const isAdmin = isAdminUser(context.state, userId);
   const [goalEntries, adaptationEntries] = await Promise.all([
     getUserGoalEntries(userId),
     getUserAdaptationEntries(userId),

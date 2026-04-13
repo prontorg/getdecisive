@@ -2,27 +2,20 @@ import { redirect } from 'next/navigation';
 
 import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
-import { loadPlatformState } from '../../../lib/server/dev-store';
-import { buildPlannerDayPayload, authorizeLiveIntervalsState, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../lib/server/planner-data';
-import { deriveOnboardingStatus, getOnboardingRun, getUserById, isAdminUser } from '../../../lib/server/platform-state';
+import { buildPlannerDayPayload, getAuthorizedPlannerLiveContext } from '../../../lib/server/planner-data';
+import { getAuthenticatedAppContext } from '../../../lib/server/app-context';
 import { getSessionUserId } from '../../../lib/server/session';
 
 export default async function DashboardPage() {
   const userId = await getSessionUserId();
   if (!userId) redirect(appRoutes.login);
 
-  const state = await loadPlatformState();
-  const onboarding = deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
-  const user = getUserById(state, userId);
+  const appContext = await getAuthenticatedAppContext(userId, { requireReady: true });
 
-  if (!user || !onboarding) redirect(appRoutes.login);
-  if (onboarding.state !== 'ready') redirect(appRoutes.onboardingSync);
-
-  const plannerContext = await getAuthenticatedPlannerContext(userId);
-  if (!plannerContext) redirect(appRoutes.onboardingSync);
-  const live = authorizeLiveIntervalsState(plannerContext, await getLiveIntervalsState());
-  const day = buildPlannerDayPayload(plannerContext.user, live);
-  const isAdmin = isAdminUser(state, userId);
+  const planner = await getAuthorizedPlannerLiveContext(userId);
+  if (!planner) redirect(appRoutes.onboardingSync);
+  const day = buildPlannerDayPayload(planner.context.user, planner.live);
+  const { user, onboarding, isAdmin } = appContext;
 
   return (
     <main className="page-shell">
