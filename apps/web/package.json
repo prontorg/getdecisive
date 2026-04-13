@@ -1,0 +1,27 @@
+{
+  "name": "@decisive/web",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "next": "15.5.15",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "@decisive/types": "0.1.0",
+    "@decisive/config": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.0.12",
+    "@types/react-dom": "19.0.4",
+    "tsx": "4.19.3",
+    "typescript": "5.8.3"
+  }
+}

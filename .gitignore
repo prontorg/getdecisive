@@ -1,0 +1,27 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.*.local
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+coverage/
+.dist/
+*.log
+.DS_Store
+
+# Local planner runtime state
+apps/web/.decisive-dev-store.json
+apps/web/.decisive-dev-store.json.bak
+apps/web/.decisive-dev-store.json.tmp
+apps/web/.decisive-planner-customization.json
+apps/web/tsconfig.tsbuildinfo
+
+# Python / local worker artifacts
+apps/worker/__pycache__/
+
+# Local editor / misc
+.vscode/
+.idea/
