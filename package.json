@@ -13,6 +13,12 @@
     "lint:web": "npm run lint -w apps/web",
     "typecheck:web": "npm run typecheck -w apps/web"
   },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10"
+  },
   "engines": {
     "node": ">=22.0.0"
   }
