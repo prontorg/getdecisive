@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { buildPowerProfilePayload, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../../lib/server/planner-data';
+import { buildPowerProfilePayload, authorizeLiveIntervalsState, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../../lib/server/planner-data';
 import { getSessionUserId } from '../../../../lib/server/session';
 
 export async function GET() {
@@ -10,6 +10,6 @@ export async function GET() {
   const context = await getAuthenticatedPlannerContext(userId);
   if (!context) return NextResponse.json({ error: 'Onboarding incomplete' }, { status: 403 });
 
-  const live = await getLiveIntervalsState();
+  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
   return NextResponse.json(buildPowerProfilePayload(live));
 }

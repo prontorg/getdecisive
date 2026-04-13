@@ -38,6 +38,7 @@ type LiveState = {
   today_plan?: string;
   tomorrow_plan?: string;
   goal_race_date?: string;
+  athlete_id?: string;
   working_threshold_w?: number;
   season_focus?: string;
   season_phase?: string;
@@ -174,12 +175,20 @@ for row in state.get('recent_rows', [])[:10]:
         row['zone_times'] = {z.get('id'): int(z.get('secs') or 0) for z in (detail.get('icu_zone_times') or []) if z.get('id')}
     except Exception:
         row['zone_times'] = {}
+state['athlete_id'] = getattr(cfg, 'athlete_id', None)
 state['working_threshold_w'] = getattr(cfg, 'working_threshold_w', None)
 state['season_focus'] = getattr(cfg, 'season_focus', None)
 state['season_phase'] = getattr(cfg, 'season_phase', None)
 print(json.dumps(state, ensure_ascii=False, default=str))
 `;
   return await runPythonJson(py);
+}
+
+export function authorizeLiveIntervalsState(context: AuthenticatedPlannerContext, live?: LiveState | null): LiveState | null {
+  if (!live?.athlete_id) return null;
+  const connection = context.state.intervalsConnections.find((item) => item.userId === context.user.id && item.syncStatus === 'ready');
+  if (!connection) return null;
+  return connection.externalAthleteId === live.athlete_id ? live : null;
 }
 
 function recentSessionCounts(rows: LiveRow[]): Record<string, number> {
@@ -320,20 +329,29 @@ export function buildPlannerDayPayload(user: UserRecord, live?: LiveState | null
   const latestSummary = (live?.latest_day_rows || []).map(latestWorkoutLine).join(' ⟡ ');
   const plannedToday = planLabel(live?.today_plan);
   const plannedTomorrow = planLabel(live?.tomorrow_plan);
+  const usingAuthorizedLiveData = Boolean(live);
 
   return {
     date: live?.today || todayIso(),
     plannedToday,
     plannedTomorrow,
-    shouldActuallyHappenToday: form <= -18
-      ? 'Keep today supportive or reduce the quality dose.'
-      : 'Stay aligned with the planned session, but only if it protects the next decisive quality slot.',
-    why: live
-      ? `${user.displayName} now sees live Intervals-derived freshness and workout history in the planner. The recommendation is anchored to today’s plan, tomorrow’s plan, and the current load/freshness picture.`
-      : `${user.displayName} is in the read-only planner phase, so the product should show a day decision that stays integrated with block logic, freshness, and recent execution rather than pushing edits to Intervals.`,
-    nextToProtect: 'Protect the next repeatability or threshold anchor instead of leaking load into support days.',
-    adaptationState: form <= -22 ? 'sick_readjustment' : 'watch',
-    planChangeSummary: 'No remote calendar edits allowed yet; planner remains internal/read-only toward Intervals.',
+    shouldActuallyHappenToday: !usingAuthorizedLiveData
+      ? 'No live athlete data is loaded for this account yet.'
+      : form <= -18
+        ? 'Keep today supportive or reduce the quality dose.'
+        : 'Stay aligned with the planned session, but only if it protects the next decisive quality slot.',
+    why: !usingAuthorizedLiveData
+      ? `${user.displayName}, live planner data is only shown for the Intervals athlete linked to your own login. Connect your account before using analysis or planning decisions from this view.`
+      : form <= -18
+        ? 'Freshness is constrained, so preserve the next decisive session rather than chasing the nominal load.'
+        : 'Freshness is acceptable enough to respect the plan while still filtering it through recovery and next-session protection.',
+    nextToProtect: usingAuthorizedLiveData
+      ? 'Protect the next repeatability or threshold anchor instead of leaking load into support days.'
+      : 'Protect account-scoped data access first, then load the next decisive training anchor from your own Intervals connection.',
+    adaptationState: !usingAuthorizedLiveData ? 'watch' : form <= -22 ? 'sick_readjustment' : 'watch',
+    planChangeSummary: usingAuthorizedLiveData
+      ? 'No remote calendar edits allowed yet; planner remains internal/read-only toward Intervals.'
+      : 'Planner remains read-only and now only exposes live training data for the athlete linked to the logged-in user.',
     intervalsPlanWriteState: 'disabled_read_only',
     ctl,
     atl,

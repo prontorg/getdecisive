@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { buildAdaptationPayload, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../../lib/server/planner-data';
+import { buildAdaptationPayload, authorizeLiveIntervalsState, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../../lib/server/planner-data';
 import { getUserAdaptationEntries } from '../../../../lib/server/planner-customization';
 import { getSessionUserId } from '../../../../lib/server/session';
 
@@ -11,7 +11,7 @@ export async function GET() {
   const context = await getAuthenticatedPlannerContext(userId);
   if (!context) return NextResponse.json({ error: 'Onboarding incomplete' }, { status: 403 });
 
-  const live = await getLiveIntervalsState();
+  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
   const entries = await getUserAdaptationEntries(userId);
   return NextResponse.json(buildAdaptationPayload(live, entries));
 }

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
 import { loadPlatformState, savePlatformState } from '../../../lib/server/dev-store';
-import { buildPlannerDayPayload, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../lib/server/planner-data';
+import { buildPlannerDayPayload, authorizeLiveIntervalsState, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../lib/server/planner-data';
 import { deriveOnboardingStatus, getOnboardingRun, getUserById, isAdminUser } from '../../../lib/server/platform-state';
 import { getSessionUserId } from '../../../lib/server/session';
 
@@ -21,7 +21,7 @@ export default async function DashboardPage() {
 
   const plannerContext = await getAuthenticatedPlannerContext(userId);
   if (!plannerContext) redirect(appRoutes.onboardingSync);
-  const live = await getLiveIntervalsState();
+  const live = authorizeLiveIntervalsState(plannerContext, await getLiveIntervalsState());
   const day = buildPlannerDayPayload(plannerContext.user, live);
   const isAdmin = isAdminUser(state, userId);
 

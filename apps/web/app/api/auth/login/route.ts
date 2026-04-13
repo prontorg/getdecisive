@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { appRoutes } from '../../../../lib/routes';
 import { loadPlatformState } from '../../../../lib/server/dev-store';
 import { deriveOnboardingStatus, loginWithPassword } from '../../../../lib/server/platform-state';
-import { sessionCookieName } from '../../../../lib/server/session';
+import { buildSessionCookieOptions, sessionCookieName } from '../../../../lib/server/session';
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -19,10 +19,7 @@ export async function POST(request: Request) {
   const onboarding = deriveOnboardingStatus(state, user.id);
   const nextUrl = onboarding?.state === 'ready' ? appRoutes.dashboard : appRoutes.onboardingSync;
   const response = NextResponse.redirect(new URL(nextUrl, request.url));
-  response.cookies.set(sessionCookieName, user.id, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-  });
+  const cookie = buildSessionCookieOptions(request, { value: user.id });
+  response.cookies.set(sessionCookieName, cookie.value, cookie);
   return response;
 }

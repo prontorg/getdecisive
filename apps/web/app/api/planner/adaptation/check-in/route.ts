@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import { addUserAdaptationEntry } from '../../../../../lib/server/planner-customization';
-import { getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../../../lib/server/planner-data';
+import { authorizeLiveIntervalsState, getAuthenticatedPlannerContext, getLiveIntervalsState } from '../../../../../lib/server/planner-data';
 import { getSessionUserId } from '../../../../../lib/server/session';
 
 function deriveStatus(scores: number[], illness: boolean) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (!context) return NextResponse.redirect(new URL(appRoutes.onboardingSync, request.url));
 
   const formData = await request.formData();
-  const live = await getLiveIntervalsState();
+  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
   const today = live?.today || new Date().toISOString().slice(0, 10);
 
   const legs = Number(formData.get('legs') || 3);

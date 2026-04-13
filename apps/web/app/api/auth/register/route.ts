@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { appRoutes } from '../../../../lib/routes';
 import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
 import { applyIntervalsCredentials, registerUserWithInvite } from '../../../../lib/server/platform-state';
-import { sessionCookieName } from '../../../../lib/server/session';
+import { buildSessionCookieOptions, sessionCookieName } from '../../../../lib/server/session';
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -25,11 +25,8 @@ export async function POST(request: Request) {
     }
     await savePlatformState(state);
     const response = NextResponse.redirect(new URL(wantsIntervalsLink ? appRoutes.onboardingSync : appRoutes.onboardingIntervals, request.url));
-    response.cookies.set(sessionCookieName, registration.user.id, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-    });
+    const cookie = buildSessionCookieOptions(request, { value: registration.user.id });
+    response.cookies.set(sessionCookieName, cookie.value, cookie);
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Registration failed';

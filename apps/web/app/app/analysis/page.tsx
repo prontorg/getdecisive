@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { PlannerTabs } from '../_components/planner-tabs';
 import { appRoutes } from '../../../lib/routes';
 import {
+  authorizeLiveIntervalsState,
   buildAdaptationPayload,
   buildGoalPayload,
   buildPlannerDayPayload,
@@ -23,7 +24,7 @@ export default async function AnalysisPage() {
   const context = await getAuthenticatedPlannerContext(userId);
   if (!context) redirect(appRoutes.onboardingSync);
 
-  const live = await getLiveIntervalsState();
+  const live = authorizeLiveIntervalsState(context, await getLiveIntervalsState());
   const state = await loadPlatformState();
   const isAdmin = isAdminUser(state, userId);
   const [goalEntries, adaptationEntries] = await Promise.all([
