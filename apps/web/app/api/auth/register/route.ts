@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
-import { loadPlatformState, savePlatformState } from '../../../../lib/server/dev-store';
-import { registerUserWithInvite } from '../../../../lib/server/platform-state';
+import { registerUserWithInviteRecord } from '../../../../lib/server/auth-store';
 import { buildSessionCookieOptions, sessionCookieName } from '../../../../lib/server/session';
 
 export async function POST(request: Request) {
@@ -12,11 +11,8 @@ export async function POST(request: Request) {
   const password = String(formData.get('password') || '');
   const displayName = String(formData.get('displayName') || '');
 
-  const state = await loadPlatformState();
-
   try {
-    const registration = registerUserWithInvite(state, { inviteCode, email, password, displayName });
-    await savePlatformState(state);
+    const registration = await registerUserWithInviteRecord({ inviteCode, email, password, displayName });
     const response = NextResponse.redirect(new URL(appRoutes.onboardingIntervals, request.url));
     const cookie = buildSessionCookieOptions(request, { value: registration.user.id });
     response.cookies.set(sessionCookieName, cookie.value, cookie);
