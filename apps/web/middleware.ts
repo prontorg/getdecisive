@@ -1,20 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const SESSION_COOKIE = 'decisive_session_user';
+import { appRoutes } from './lib/routes';
+import { sessionCookieName } from './lib/server/session';
+
+const AUTH_PAGES = new Set([appRoutes.landing, appRoutes.login, appRoutes.register]);
+
+function redirectTo(path: string, request: NextRequest) {
+  return NextResponse.redirect(new URL(path, request.url));
+}
 
 export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  response.headers.set('x-decisive-app-scope', 'decisive-platform');
-  response.headers.set('x-decisive-current-path', request.nextUrl.pathname);
+  const pathname = request.nextUrl.pathname;
+  const session = request.cookies.get(sessionCookieName)?.value;
 
-  if (request.nextUrl.pathname.startsWith('/app')) {
-    const session = request.cookies.get(SESSION_COOKIE)?.value;
-    if (!session) {
-      return NextResponse.redirect(new URL('/login', request.url));
+  if (!session) {
+    if (pathname === appRoutes.landing) {
+      return redirectTo(appRoutes.login, request);
+    }
+
+    if (pathname.startsWith('/app') || pathname.startsWith('/onboarding')) {
+      return redirectTo(appRoutes.login, request);
     }
   }
 
+  if (session && AUTH_PAGES.has(pathname)) {
+    return redirectTo(appRoutes.dashboard, request);
+  }
+
+  const response = NextResponse.next();
+  response.headers.set('x-decisive-app-scope', 'decisive-platform');
+  response.headers.set('x-decisive-current-path', pathname);
   return response;
 }
 
