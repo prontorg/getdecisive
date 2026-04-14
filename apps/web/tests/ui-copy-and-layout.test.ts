@@ -7,7 +7,9 @@ const webRoot = process.cwd();
 const platformRoot = join(webRoot, '..', '..');
 const loginPanelPath = join(webRoot, 'components/auth/LoginPanel.tsx');
 const headerPath = join(webRoot, 'app/app/_components/app-header.tsx');
-const planPagePath = join(webRoot, 'app/app/_components/training-plan-page.tsx');
+const planPagePath = join(webRoot, 'app/app/plan/page.tsx');
+const trainingPlanPagePath = join(webRoot, 'app/app/_components/training-plan-page.tsx');
+const calendarPagePath = join(webRoot, 'app/app/calendar/page.tsx');
 const accountPagePath = join(webRoot, 'app/app/account/page.tsx');
 const adminPagePath = join(webRoot, 'app/app/admin/page.tsx');
 const dashboardPagePath = join(webRoot, 'app/app/dashboard/page.tsx');
@@ -32,15 +34,24 @@ test('login screen copy and auth-page header chrome match the latest product wor
 });
 
 test('training plan page uses the latest decisive monthly-planner framing and layout', async () => {
-  const source = await readFile(planPagePath, 'utf8');
+  const [planPageSource, source, calendarPageSource] = await Promise.all([
+    readFile(planPagePath, 'utf8'),
+    readFile(trainingPlanPagePath, 'utf8'),
+    readFile(calendarPagePath, 'utf8'),
+  ]);
 
-  assert.match(source, /title="Plan"/i);
+  assert.match(planPageSource, /mode=\"plan\"/i);
+  assert.match(calendarPageSource, /mode=\"calendar\"/i);
+  assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
+  assert.match(source, /Calendar-first monthly planning surface/i);
+  assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
   assert.match(source, /Build next 4 weeks/i);
   assert.match(source, /Confirm Context/i);
   assert.match(source, /Set Month Direction/i);
   assert.match(source, /Review Draft/i);
   assert.match(source, /Calendar Review/i);
   assert.match(source, /Calendar is the main review surface/i);
+  assert.match(source, /Calendar-first monthly planning surface/i);
   assert.match(source, /Publish/i);
   assert.match(source, /Looks right/i);
   assert.match(source, /What should this month do\?/i);

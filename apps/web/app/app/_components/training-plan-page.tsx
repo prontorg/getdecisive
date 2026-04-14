@@ -65,11 +65,13 @@ function weekdayLabel(date: string) {
 }
 
 export async function TrainingPlanPage({
+  mode = 'plan',
   moveConflict,
   moveConflictReason,
   moveConflictSuggestedDate,
   notice,
 }: {
+  mode?: 'plan' | 'calendar';
   moveConflict?: string;
   moveConflictReason?: string;
   moveConflictSuggestedDate?: string;
@@ -101,6 +103,15 @@ export async function TrainingPlanPage({
     weeks: latestDraft.weeks,
   } : null);
   const calendarDays = latestDraft ? monthDays(latestDraft.monthStart).days : [];
+  const isCalendarMode = mode === 'calendar';
+  const heroTitle = isCalendarMode ? 'Calendar' : 'Plan';
+  const heroEyebrow = isCalendarMode ? 'Calendar' : 'Plan';
+  const heroDescription = isCalendarMode
+    ? 'Calendar-first monthly planning surface with month visibility, conflict-aware workout actions, and recent-vs-planned comparison.'
+    : 'Build next 4 weeks from your live Intervals context, then refine only the future with explicit constraints, rationale, and safe publish rules.';
+  const reviewsIntro = isCalendarMode
+    ? 'Calendar-first monthly planning surface. Keep the whole month visible, act on one session at a time, and drop into detail only when needed.'
+    : 'Calendar is the main review surface. Keep the month visible, act on one session at a time, then open details only when you need extra rationale.';
   const workoutsByDate = new Map<string, typeof latestDraft extends infer T ? any : never>();
   if (latestDraft) {
     for (const workout of latestDraft.weeks.flatMap((week) => week.workouts)) {
@@ -113,13 +124,9 @@ export async function TrainingPlanPage({
   return (
     <AppPageShell>
       <AppHero
-        eyebrow="Plan"
-        title="Plan"
-        description={(
-          <>
-            Build next 4 weeks from your live Intervals context, then refine only the future with explicit constraints, rationale, and safe publish rules.
-          </>
-        )}
+        eyebrow={heroEyebrow}
+        title={heroTitle}
+        description={heroDescription}
       />
 
       <section className="card md-surface md-surface-card mt-18">
@@ -158,10 +165,16 @@ export async function TrainingPlanPage({
           <span className="chip">Set Month Direction</span>
           <span className="chip">Review Draft</span>
           <span className="chip">Publish</span>
+          {isCalendarMode ? (
+            <a href={appRoutes.plan} className="button-secondary button-link">Back to plan builder</a>
+          ) : (
+            <a href={appRoutes.calendar} className="button-secondary button-link">Open full calendar</a>
+          )}
         </div>
       </section>
 
-      <section className="training-plan-grid training-plan-grid-cards mt-18">
+      {!isCalendarMode ? (
+        <section className="training-plan-grid training-plan-grid-cards mt-18">
         <AppCard className="training-plan-card">
           <div className="kicker">Confirm Context</div>
           <h3>Build next 4 weeks</h3>
@@ -255,6 +268,7 @@ export async function TrainingPlanPage({
           </form>
         </AppCard>
       </section>
+      ) : null}
 
       <section className="training-plan-grid training-plan-grid-top mt-18">
         <AppCard className="training-plan-card training-plan-grid-main">
@@ -265,7 +279,7 @@ export async function TrainingPlanPage({
               <div className="status-list compact-status-list">
                 <div className="status-item">
                   <strong>Calendar Review</strong>
-                  <p>Calendar is the main review surface. Keep the month visible, act on one session at a time, then open details only when you need extra rationale.</p>
+                  <p>{reviewsIntro}</p>
                 </div>
               </div>
               <div className="training-plan-state-pills training-plan-state-pills-quad">
