@@ -131,6 +131,17 @@ type MonthlyPlanDraft = {
   publishState: 'draft' | 'published';
 };
 
+type PlanningEvent = {
+  id: string;
+  title: string;
+  date: string;
+  type: 'A_race' | 'B_race' | 'C_race' | 'training_camp' | 'travel' | 'blackout';
+  priority: 'primary' | 'support' | 'optional';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type PlannerCustomizationStore = {
   goalsByUser: Record<string, GoalEntry[]>;
   adaptationByUser: Record<string, AdaptationEntry[]>;
@@ -140,9 +151,10 @@ type PlannerCustomizationStore = {
   dailyDecisionsByUser: Record<string, DailyDecision[]>;
   monthlyInputsByUser: Record<string, MonthlyPlanInput[]>;
   monthlyDraftsByUser: Record<string, MonthlyPlanDraft[]>;
+  planningEventsByUser: Record<string, PlanningEvent[]>;
 };
 
-export type { GoalEntry, AdaptationEntry, MonthlyPlanInput, MonthlyPlanWorkout, MonthlyPlanWeek, MonthlyPlanDraft, PlannerCustomizationStore };
+export type { GoalEntry, AdaptationEntry, MonthlyPlanInput, MonthlyPlanWorkout, MonthlyPlanWeek, MonthlyPlanDraft, PlanningEvent, PlannerCustomizationStore };
 
 function nowIso() {
   return new Date().toISOString();
@@ -162,6 +174,7 @@ function createSeedStore(): PlannerCustomizationStore {
     dailyDecisionsByUser: {},
     monthlyInputsByUser: {},
     monthlyDraftsByUser: {},
+    planningEventsByUser: {},
   };
 }
 
@@ -187,6 +200,7 @@ export async function loadPlannerCustomizationStore(): Promise<PlannerCustomizat
     dailyDecisionsByUser: parsed.dailyDecisionsByUser || {},
     monthlyInputsByUser: parsed.monthlyInputsByUser || {},
     monthlyDraftsByUser: parsed.monthlyDraftsByUser || {},
+    planningEventsByUser: parsed.planningEventsByUser || {},
   };
 }
 
@@ -405,4 +419,58 @@ export async function publishMonthlyPlanDraftLocally(
   target.updatedAt = nowIso();
   await saveStore(store);
   return target;
+}
+
+export async function listPlanningEvents(userId: string): Promise<PlanningEvent[]> {
+  const store = await loadStore();
+  return (store.planningEventsByUser[userId] || []).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export async function savePlanningEvent(
+  userId: string,
+  input: Omit<PlanningEvent, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+): Promise<PlanningEvent> {
+  const store = await loadStore();
+  const existing = store.planningEventsByUser[userId] || [];
+  const now = nowIso();
+  const nextEntry: PlanningEvent = {
+    ...input,
+    id: input.id || makeId('plan_event'),
+    createdAt: existing.find((item) => item.id === input.id)?.createdAt || now,
+    updatedAt: now,
+  };
+  store.planningEventsByUser[userId] = [nextEntry, ...existing.filter((item) => item.id !== nextEntry.id)]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 32);
+  await saveStore(store);
+  return nextEntry;
+}
+
+export async function updatePlanningEvent(
+  userId: string,
+  eventId: string,
+  patch: Partial<Omit<PlanningEvent, 'id' | 'createdAt' | 'updatedAt'>>,
+): Promise<PlanningEvent | null> {
+  const store = await loadStore();
+  const events = store.planningEventsByUser[userId] || [];
+  const target = events.find((item) => item.id === eventId);
+  if (!target) return null;
+  Object.assign(target, patch, { updatedAt: nowIso() });
+  store.planningEventsByUser[userId] = events.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  await saveStore(store);
+  return target;
+}
+
+export async function removePlanningEvent(userId: string, eventId: string): Promise<void> {
+  const store = await loadStore();
+  const events = store.planningEventsByUser[userId] || [];
+  store.planningEventsByUser[userId] = events.filter((item) => item.id !== eventId);
+  await saveStore(store);
+}
+
+export async function listPlanningEventsInWindow(userId: string, startDate: string, endDate: string): Promise<PlanningEvent[]> {
+  const events = await listPlanningEvents(userId);
+  return events
+    .filter((item) => item.date >= startDate && item.date <= endDate)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }

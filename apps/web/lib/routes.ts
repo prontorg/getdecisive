@@ -6,6 +6,8 @@ export const appRoutes = {
   onboardingSync: '/onboarding/sync-status',
   dashboard: '/app/dashboard',
   plan: '/app/plan',
+  planRaces: '/app/plan/races',
+  styleGuide: '/app/style-guide',
   analysis: '/app/analysis',
   calendar: '/app/calendar',
   workouts: '/app/workouts',

@@ -62,6 +62,21 @@ test('training plan page uses the latest decisive monthly-planner framing and la
 
   assert.match(planPageSource, /mode=\"plan\"/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
+  assert.match(source, /Status quo/i);
+  assert.match(source, /Goals and races/i);
+  assert.match(source, /Parameters/i);
+  assert.match(source, /Draft next month/i);
+  assert.match(source, /training-plan-step-card/i);
+  assert.match(source, /training-plan-step-card-status/i);
+  assert.match(source, /training-plan-step-card-goals/i);
+  assert.match(source, /training-plan-step-card-parameters/i);
+  assert.match(source, /training-plan-step-card-draft/i);
+  assert.match(source, /Go to style guide/i);
+  assert.match(source, /Open race calendar/i);
+  assert.match(source, /Generate next month/i);
+  assert.match(source, /appRoutes\.styleGuide/i);
+  assert.match(source, /appRoutes\.planRaces/i);
+  assert.match(calendarPageSource, /mode=\"calendar\"/i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
   assert.match(source, /Live week first\. Future weeks stay editable\./i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
@@ -82,7 +97,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(source, /Live week first\. Future weeks stay editable\./i);
   assert.match(source, /Live week on top, editable month underneath\./i);
-  assert.match(statefulBuilderSource, /Generate plan/i);
+  assert.match(statefulBuilderSource, /Generate next month/i);
   assert.match(await readFile(join(webRoot, 'app/api/planner/month/draft/route.ts'), 'utf8'), /appRoutes\.plan\?notice=.*Draft generated|revalidatePath\(appRoutes\.calendar\)/i);
   assert.doesNotMatch(source, /Open full calendar/i);
   assert.match(source, /Review the live week and the generated month/i);
@@ -224,7 +239,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /buildBuilderSubmitPayload/i);
   assert.match(statefulBuilderSource, /selectAlternativeRecommendation/i);
   assert.match(statefulBuilderSource, /selectPrimaryRecommendation/i);
-  assert.match(statefulBuilderSource, /Generate plan/i);
+  assert.match(statefulBuilderSource, /Generate next month/i);
   assert.match(source, /Review the live week and the generated month/i);
   assert.match(statefulBuilderSource, /Compact builder/i);
   assert.match(source, /Pick a direction, then build\./i);
@@ -453,4 +468,11 @@ test('configuration pages expose athlete configuration and admin-only user manag
   assert.match(intervalsConnectPanel, /Intervals is mandatory in v1/i);
   assert.match(workoutsPage, /redirect\(appRoutes\.plan\)/i);
   assert.doesNotMatch(workoutsPage, /Workout export scaffold/i);
+  const routesSource = await readFile(join(webRoot, 'lib/routes.ts'), 'utf8');
+  const styleGuidePageSource = await readFile(join(webRoot, 'app/app/style-guide/page.tsx'), 'utf8');
+  const planRacesPageSource = await readFile(join(webRoot, 'app/app/plan/races/page.tsx'), 'utf8');
+  assert.match(routesSource, /styleGuide:\s*'\/app\/style-guide'/i);
+  assert.match(routesSource, /planRaces:\s*'\/app\/plan\/races'/i);
+  assert.match(styleGuidePageSource, /Planner style guide/i);
+  assert.match(planRacesPageSource, /Race calendar/i);
 });

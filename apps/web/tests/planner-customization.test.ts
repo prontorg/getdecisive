@@ -261,3 +261,43 @@ test('moving a workout onto another workout day should be rejected as a conflict
     assert.equal(after?.weeks[0]?.workouts[0]?.date, '2026-04-07');
   });
 });
+
+test('planner race events are stored newest-first and can be filtered by planning window', async () => {
+  await withPlannerCustomizationModule(async ({
+    savePlanningEvent,
+    listPlanningEvents,
+    listPlanningEventsInWindow,
+    updatePlanningEvent,
+    removePlanningEvent,
+  }) => {
+    const first = await savePlanningEvent('user_1', {
+      title: 'Track Meeting A',
+      date: '2026-05-12',
+      type: 'A_race',
+      priority: 'primary',
+      notes: 'Main target',
+    });
+    const second = await savePlanningEvent('user_1', {
+      title: 'Road support race',
+      date: '2026-04-28',
+      type: 'B_race',
+      priority: 'support',
+    });
+
+    const listed = await listPlanningEvents('user_1');
+    assert.equal(listed.length, 2);
+    assert.equal(listed[0]?.id, second.id);
+
+    const updated = await updatePlanningEvent('user_1', first.id, { notes: 'A priority target', priority: 'primary' });
+    assert.equal(updated?.notes, 'A priority target');
+
+    const inWindow = await listPlanningEventsInWindow('user_1', '2026-05-01', '2026-05-31');
+    assert.equal(inWindow.length, 1);
+    assert.equal(inWindow[0]?.title, 'Track Meeting A');
+
+    await removePlanningEvent('user_1', second.id);
+    const afterRemove = await listPlanningEvents('user_1');
+    assert.equal(afterRemove.length, 1);
+    assert.equal(afterRemove[0]?.title, 'Track Meeting A');
+  });
+});

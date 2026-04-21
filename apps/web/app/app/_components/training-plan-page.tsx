@@ -289,13 +289,38 @@ export async function TrainingPlanPage({
 
       {!isCalendarMode ? (
         <section className="training-plan-top-strip mt-18">
-          <AppCard className="training-plan-card training-plan-card-flat">
+          <div className="training-plan-step-grid">
+            <AppCard className="training-plan-step-card training-plan-step-card-status">
+              <div className="kicker">Step 1</div>
+              <h3>Status quo</h3>
+              <p>{contextPayload.recentHistory.loadSummary}</p>
+              <div className="training-plan-mini-facts">
+                <span className="training-plan-mini-fact"><strong>Freshness</strong>{contextPayload.currentState.freshnessSummary}</span>
+                <span className="training-plan-mini-fact"><strong>Main implication</strong>{contextPayload.recentHistory.repeatablePattern}</span>
+              </div>
+            </AppCard>
+
+            <AppCard className="training-plan-step-card training-plan-step-card-goals">
+              <div className="kicker">Step 2</div>
+              <h3>Goals and races</h3>
+              <p>{draftOriginLabel}</p>
+              <div className="training-plan-top-strip__actions">
+                <a href={appRoutes.planRaces} className="button-secondary button-link">Open race calendar</a>
+                <a href={appRoutes.styleGuide} className="button-secondary button-link">Go to style guide</a>
+              </div>
+            </AppCard>
+          </div>
+
+          <AppCard className="training-plan-card training-plan-card-flat training-plan-step-card training-plan-step-card-parameters">
             <div className="training-plan-quick-builder">
                 <div className="training-plan-quick-builder__header">
                   <div>
+                    <div className="kicker">Step 3</div>
                     <div className="kicker">Quick builder</div>
-                    <h3>Choose, tune, review</h3>
+                    <h3>Parameters</h3>
+                    <p>Choose, tune, review</p>
                     <p>Pick a direction, then build.</p>
+                    <p>Set a few parameters, then Generate next month.</p>
                   </div>
                   <div className="chip-row planning-recommendation-chip-row">
                     <span className="chip">Draft: {draftStatusLabel}</span>
@@ -361,11 +386,11 @@ export async function TrainingPlanPage({
       )}
 
       <section id="review" className="training-plan-review-stack mt-18">
-        <AppCard className="training-plan-card training-plan-card-fullwidth">
+        <AppCard className="training-plan-card training-plan-card-fullwidth training-plan-step-card training-plan-step-card-draft">
           <div className="planning-workspace-section__header planning-workspace-section__header-review">
             <div>
               <span className="training-plan-step-pill">Step 4</span>
-              <div className="kicker">Review</div>
+              <div className="kicker">Draft next month</div>
               <h2>Review the live week and the generated month</h2>
               {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
               {latestDraft ? <p>{reviewsIntro}</p> : null}

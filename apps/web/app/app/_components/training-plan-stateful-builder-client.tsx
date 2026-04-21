@@ -195,7 +195,7 @@ export function TrainingPlanStatefulBuilderClient({
             {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day) => <option key={day} value={day}>{day}</option>)}
           </select>
         </label>
-        <button type="submit">Generate plan</button>
+        <button type="submit">Generate next month</button>
 
         <details className="training-plan-builder-advanced">
           <summary>More options</summary>
