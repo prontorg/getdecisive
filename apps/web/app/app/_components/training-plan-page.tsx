@@ -175,11 +175,11 @@ export async function TrainingPlanPage({
   const heroTitle = isCalendarMode ? 'Calendar' : 'Plan';
   const heroEyebrow = isCalendarMode ? 'Calendar' : 'Plan';
   const heroDescription = isCalendarMode
-    ? 'Calendar-first planner: the active week is shown from the live runtime layer, while later weeks stay editable in the monthly draft layer.'
-    : 'Active week / today / tomorrow stay live runtime-backed. Future weeks, month shaping, and publish stay in the editable draft layer.';
+    ? 'Live week first. Future weeks stay editable.'
+    : 'Live week first. Future weeks stay editable.';
   const reviewsIntro = isCalendarMode
-    ? 'Month grid stays visible. The active week is a live runtime override; later weeks still come from the draft you can move, refine, and publish.'
-    : 'Use the live active-week call for today/tomorrow, then edit only the future draft weeks and the remaining bridge slots inside this week.';
+    ? 'Live week on top, editable month underneath.'
+    : 'Live week on top, editable month underneath.';
   const nextFourWeekRange = latestDraft?.weeks?.length
     ? formatRange(latestDraft.weeks[0]!.workouts[0]!.date, latestDraft.weeks[latestDraft.weeks.length - 1]!.workouts[latestDraft.weeks[latestDraft.weeks.length - 1]!.workouts.length - 1]!.date)
     : null;
@@ -442,12 +442,14 @@ export async function TrainingPlanPage({
                 <div className="status-item training-plan-week-decision-panel">
                   <strong>Active week • live runtime</strong>
                   <p>{activePlanning.summary?.weekIntention || 'Planning refresh pending'}</p>
-                  <p>Planned today: {activePlanning.summary?.plannedToday || '—'}</p>
-                  <p>Actually today: {activePlanning.summary?.actualToday || '—'}</p>
-                  <p>Planned tomorrow: {activePlanning.summary?.plannedTomorrow || '—'}</p>
-                  <p>Tomorrow likely becomes: {activePlanning.summary?.likelyTomorrow || '—'}</p>
+                  <div className="training-plan-mini-facts">
+                    <span className="training-plan-mini-fact"><strong>Today</strong>{activePlanning.summary?.plannedToday || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Done</strong>{activePlanning.summary?.actualToday || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Tomorrow</strong>{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Confidence</strong>{activePlanning.summary?.confidence || '—'}</span>
+                  </div>
                   <p>{activePlanning.summary?.reason || 'Waiting for a current planning decision.'}</p>
-                  <p>Confidence {activePlanning.summary?.confidence || '—'}{activePlanning.summary?.nextKeyDay ? ` • Next key day ${activePlanning.summary.nextKeyDay}` : ''}</p>
+                  <p>{activePlanning.summary?.nextKeyDay ? `Next key day ${activePlanning.summary.nextKeyDay}` : 'Next key day still resolving.'}</p>
                   {activePlanning.summary?.risks?.length ? (
                     <p>Risk: {activePlanning.summary.risks[0]}</p>
                   ) : null}
@@ -455,56 +457,56 @@ export async function TrainingPlanPage({
                 <div className="status-item training-plan-week-decision-panel">
                   <strong>Active-week edits • draft bridge</strong>
                   <p>{currentWeekBridge?.draftBridgeLabel || 'Remaining editable slots in this week are not available yet.'}</p>
-                  <p>{currentWeekBridge?.liveWindowLabel || 'Live today / tomorrow guidance stays runtime-backed.'}</p>
-                  <p>{currentWeekBridge?.remainingDays.length ? `Editable remaining days: ${currentWeekBridge.remainingDays.join(', ')}` : 'No remaining editable days in this week.'}</p>
-                  <p>{currentWeekBridge?.missedSessions.length ? `Missed draft slots detected: ${currentWeekBridge.missedSessions.length}` : 'No missed draft slots detected in this week so far.'}</p>
+                  <div className="training-plan-mini-facts">
+                    <span className="training-plan-mini-fact"><strong>Days</strong>{currentWeekBridge?.remainingDays.length ? currentWeekBridge.remainingDays.join(', ') : 'None'}</span>
+                    <span className="training-plan-mini-fact"><strong>Missed</strong>{String(currentWeekBridge?.missedSessions.length || 0)}</span>
+                    <span className="training-plan-mini-fact"><strong>Hours left</strong>{currentWeekBridge ? `${currentWeekBridge.remainingWeekHours.toFixed(1)} h` : '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Key slots</strong>{String(currentWeekBridge?.remainingQualityBudget ?? '—')}</span>
+                  </div>
                   <p>{currentWeekBridge?.recommendationText || 'Waiting for a current-week bridge recommendation.'}</p>
-                  <p>Remaining week budget: {currentWeekBridge ? `${currentWeekBridge.remainingWeekHours.toFixed(1)} h` : '—'} • Remaining key slots: {currentWeekBridge?.remainingQualityBudget ?? '—'}</p>
-                  <p>{currentWeekBridge?.recommendedNextKeyDay ? `Recommended next key day: ${currentWeekBridge.recommendedNextKeyDay}` : 'Recommended next key day is still being resolved.'}</p>
-                  <p>{currentWeekBridge?.plannedSoFar.length ? `Draft slots already in play: ${currentWeekBridge.plannedSoFar.join(' | ')}` : 'No draft slots have landed earlier in this week.'}</p>
-                  <p>{currentWeekBridge?.completedSoFar.length ? `Completed this week: ${currentWeekBridge.completedSoFar.join(' | ')}` : 'No completed work has been imported into this week yet.'}</p>
-                  <p>These actions rewrite only the remaining draft bridge for this week. Completed work and the live today / tomorrow call stay runtime-backed.</p>
-                  <div className="button-row">
+                  <p>{currentWeekBridge?.recommendedNextKeyDay ? `Next key day ${currentWeekBridge.recommendedNextKeyDay}` : 'Next key day still resolving.'}</p>
+                  <p className="muted">Only future bridge slots change. Completed work and the live today/tomorrow call stay fixed.</p>
+                  <div className="button-row training-plan-action-pills">
                     <form action="/api/planner/month/replan" method="post">
                       <input type="hidden" name="draftId" value={latestDraft.id} />
                       <input type="hidden" name="scenario" value="missed_session" />
-                      <button type="submit">repair missed draft slot</button>
+                      <button type="submit">Repair</button>
                     </form>
                     <form action="/api/planner/month/replan" method="post">
                       <input type="hidden" name="draftId" value={latestDraft.id} />
                       <input type="hidden" name="scenario" value="fatigued" />
-                      <button type="submit">cut current-week bridge</button>
+                      <button type="submit">Cut load</button>
                     </form>
                     <form action="/api/planner/month/replan" method="post">
                       <input type="hidden" name="draftId" value={latestDraft.id} />
                       <input type="hidden" name="scenario" value="fresher" />
-                      <button type="submit">spend extra freshness</button>
+                      <button type="submit">Use freshness</button>
                     </form>
                     <form action="/api/planner/month/replan" method="post">
                       <input type="hidden" name="draftId" value={latestDraft.id} />
                       <input type="hidden" name="scenario" value="reduce_load" />
-                      <button type="submit">reduce bridge load</button>
+                      <button type="submit">Reduce</button>
                     </form>
                     <form action="/api/planner/month/replan" method="post">
                       <input type="hidden" name="draftId" value={latestDraft.id} />
                       <input type="hidden" name="scenario" value="increase_specificity" />
-                      <button type="submit">make bridge more race-like</button>
+                      <button type="submit">Race-like</button>
                     </form>
                   </div>
                 </div>
                 <div className="training-plan-calendar-toolbar__actions">
                   {!isCalendarMode ? (
-                    <a href={appRoutes.calendar} className="button-secondary button-link">Open compact calendar</a>
+                    <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
                   ) : (
-                    <a href={appRoutes.plan} className="button-secondary button-link">Back to plan builder</a>
+                    <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
                   )}
-                  <a href={appRoutes.dashboard} className="button-secondary button-link">Back to dashboard</a>
+                  <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
                   <details className="training-plan-inline-panel">
                     <summary title="More month actions">⋯</summary>
                     <div className="training-plan-inline-panel__content">
                       <div className="training-plan-calendar-publish-copy">
-                        <strong>Publish future draft layer</strong>
-                        <p>Use after your future-week moves are final. Active week remains live runtime-backed.</p>
+                        <strong>Publish future draft</strong>
+                        <p>Future weeks only. Live week stays runtime-backed.</p>
                       </div>
                       <form action="/api/planner/month/publish" method="post">
                         <input type="hidden" name="draftId" value={latestDraft.id} />
