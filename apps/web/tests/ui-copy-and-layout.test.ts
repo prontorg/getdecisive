@@ -24,15 +24,21 @@ const workoutsPagePath = join(webRoot, 'app/app/workouts/page.tsx');
 const dashboardScriptPath = '/root/.hermes/profiles/profdecisive/scripts/intervals_dashboard.py';
 
 test('login screen copy and auth-page header chrome match the latest product wording', async () => {
-  const [loginPanel, header, registerPage, registerPanel] = await Promise.all([
+  const [loginPanel, header, registerPage, registerPanel, loginPageSource] = await Promise.all([
     readFile(loginPanelPath, 'utf8'),
     readFile(headerPath, 'utf8'),
     readFile(join(webRoot, 'app/register/page.tsx'), 'utf8'),
     readFile(join(webRoot, 'components/auth/RegisterPanel.tsx'), 'utf8'),
+    readFile(join(webRoot, 'app/login/page.tsx'), 'utf8'),
   ]);
 
-  assert.match(loginPanel, />Get decisive<\/h2>/i);
-  assert.match(loginPanel, /<div className="kicker">Login<\/div>/i);
+  assert.match(loginPanel, /auth-login-card-m3/i);
+  assert.match(loginPanel, /auth-login-card__header/i);
+  assert.match(loginPanel, /auth-login-form/i);
+  assert.match(loginPanel, /auth-login-submit/i);
+  assert.match(loginPageSource, /auth-screen-shell-m3/i);
+  assert.match(loginPageSource, /auth-screen-panel-m3/i);
+  assert.match(loginPageSource, /auth-invite-row-m3/i);
   assert.doesNotMatch(loginPanel, /Simple account login/i);
   assert.doesNotMatch(loginPanel, /Launch auth/i);
   assert.match(header, /const hideNavForAuthScreen = pathname === appRoutes\.login \|\| pathname === appRoutes\.register/i);
