@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 
 import { appRoutes } from '../../../../lib/routes';
 import { applyIntervalsCredentialsRecord, getDerivedOnboardingStatusRecord } from '../../../../lib/server/auth-store';
+import { captureRouteError, logRouteEvent, redirectWithError, redirectWithNotice } from '../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../lib/server/session';
 import { triggerSyncWorker } from '../../../../lib/server/sync-worker';
+
+const ROUTE = '/api/onboarding/intervals-connect';
 
 function resolveRedirectPath(raw: string | null | undefined, fallback: string) {
   const value = (raw || '').trim();
@@ -14,7 +17,7 @@ function resolveRedirectPath(raw: string | null | undefined, fallback: string) {
 export async function POST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
-    return NextResponse.redirect(new URL(appRoutes.login, request.url));
+    return redirectWithError(ROUTE, request, appRoutes.login, 'Intervals connect blocked because no active session exists');
   }
 
   const formData = await request.formData();
@@ -25,19 +28,20 @@ export async function POST(request: Request) {
 
   try {
     await applyIntervalsCredentialsRecord(userId, { athleteId, credentialPayload, connectionLabel });
+    logRouteEvent(ROUTE, 'info', 'Intervals credentials saved', { userId, athleteId, redirectTo });
     try {
       triggerSyncWorker(process.env.DECISIVE_PLATFORM_STORE_PATH);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not launch sync worker';
-      return NextResponse.redirect(new URL(`${redirectTo}?error=${encodeURIComponent(message)}`, request.url));
+      const message = captureRouteError(ROUTE, error, { userId, athleteId, phase: 'triggerSyncWorker' });
+      return redirectWithError(ROUTE, request, `${redirectTo}?error=${encodeURIComponent(message)}`, message, { userId, athleteId });
     }
     const onboarding = await getDerivedOnboardingStatusRecord(userId);
     const destination = onboarding?.state === 'ready'
       ? appRoutes.dashboard
       : redirectTo === appRoutes.onboardingIntervals ? appRoutes.onboardingSync : `${redirectTo}?notice=${encodeURIComponent('Intervals sync started')}`;
-    return NextResponse.redirect(new URL(destination, request.url));
+    return redirectWithNotice(ROUTE, request, destination, { userId, athleteId, onboardingState: onboarding?.state || null });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Could not connect Intervals';
-    return NextResponse.redirect(new URL(`${redirectTo}?error=${encodeURIComponent(message)}`, request.url));
+    const message = captureRouteError(ROUTE, error, { userId, athleteId, redirectTo });
+    return redirectWithError(ROUTE, request, `${redirectTo}?error=${encodeURIComponent(message)}`, message, { userId, athleteId, redirectTo });
   }
 }

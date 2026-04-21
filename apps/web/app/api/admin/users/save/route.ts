@@ -3,10 +3,12 @@ import { NextResponse } from 'next/server';
 import { appRoutes } from '../../../../../lib/routes';
 import {
   createManagedUserRecord,
-  getMembershipRolesRecord,
   updateManagedUserRecord,
 } from '../../../../../lib/server/auth-store';
+import { captureRouteError, redirectWithError, redirectWithNotice, requireAdminActor } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
+
+const ROUTE = '/api/admin/users/save';
 
 function parseRoles(raw: FormDataEntryValue | null) {
   return String(raw || 'athlete')
@@ -17,9 +19,8 @@ function parseRoles(raw: FormDataEntryValue | null) {
 
 export async function POST(request: Request) {
   const actorUserId = await getSessionUserId();
-  if (!actorUserId) return NextResponse.redirect(new URL(appRoutes.login, request.url));
-  const roles = await getMembershipRolesRecord(actorUserId);
-  if (!roles.includes('admin')) return NextResponse.redirect(new URL(appRoutes.dashboard, request.url));
+  const adminAccess = await requireAdminActor(actorUserId, ROUTE, request);
+  if (!adminAccess.allowed) return adminAccess.response;
 
   const formData = await request.formData();
   const userId = String(formData.get('userId') || '').trim();
@@ -31,12 +32,12 @@ export async function POST(request: Request) {
   try {
     if (userId) {
       await updateManagedUserRecord(userId, { email, displayName, password, roles: managedRoles });
-      return NextResponse.redirect(new URL(`${appRoutes.admin}?notice=${encodeURIComponent('User updated')}`, request.url));
+      return redirectWithNotice(ROUTE, request, `${appRoutes.admin}?notice=${encodeURIComponent('User updated')}`, { actorUserId, userId, roles: managedRoles.join(',') });
     }
-    await createManagedUserRecord(actorUserId, { email, displayName, password, roles: managedRoles });
-    return NextResponse.redirect(new URL(`${appRoutes.admin}?notice=${encodeURIComponent('User created')}`, request.url));
+    await createManagedUserRecord(actorUserId!, { email, displayName, password, roles: managedRoles });
+    return redirectWithNotice(ROUTE, request, `${appRoutes.admin}?notice=${encodeURIComponent('User created')}`, { actorUserId, email, roles: managedRoles.join(',') });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Could not save user';
-    return NextResponse.redirect(new URL(`${appRoutes.admin}?error=${encodeURIComponent(message)}`, request.url));
+    const message = captureRouteError(ROUTE, error, { actorUserId, userId: userId || null, email, roles: managedRoles.join(',') });
+    return redirectWithError(ROUTE, request, `${appRoutes.admin}?error=${encodeURIComponent(message)}`, message, { actorUserId, userId: userId || null, email });
   }
 }

@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
-import { buildGoalPayload, buildMonthlyPlannerDraftPayload, getAuthorizedPlannerLiveContext } from '../../../../../lib/server/planner-data';
+import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
 import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, replaceMonthlyPlanWeek, updateMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
+import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
+
+const ROUTE = '/api/planner/month/week';
 
 function tuneWeekFromAction(
   week: NonNullable<Awaited<ReturnType<typeof getLatestMonthlyPlanDraft>>>['weeks'][number],
@@ -79,69 +82,75 @@ function tuneWeekFromAction(
 
 export async function POST(request: Request) {
   const userId = await getSessionUserId();
-  if (!userId) return NextResponse.redirect(new URL(appRoutes.login, request.url));
+  if (!userId) return redirectWithNotice(ROUTE, request, appRoutes.login, { reason: 'no_session' });
 
-  const planner = await getAuthorizedPlannerLiveContext(userId);
-  if (!planner) return NextResponse.redirect(new URL(appRoutes.onboardingSync, request.url));
+  const planner = await requirePlanningApiAccess(userId, ROUTE);
+  if (!planner) return redirectWithNotice(ROUTE, request, appRoutes.onboardingSync, { userId, reason: 'planner_unavailable' });
 
   const contentType = request.headers.get('content-type') || '';
   const isJson = contentType.includes('application/json');
   const parsed = isJson ? await request.json().catch(() => null) : await request.formData().catch(() => null);
-  if (!parsed) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+  if (!parsed) return routeErrorResponse(ROUTE, 400, 'Invalid payload', { userId, contentType });
 
   const pick = (key: string) => parsed instanceof FormData ? parsed.get(key) : parsed[key];
   const draftId = String(pick('draftId') || '');
   const weekId = String(pick('weekId') || '');
   const action = String(pick('action') || '');
-  if (!draftId || !weekId || !action) return NextResponse.json({ error: 'Missing identifiers' }, { status: 400 });
+  if (!draftId || !weekId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, weekId, action });
 
-  const draft = await getLatestMonthlyPlanDraft(userId);
-  const latestInput = await getLatestMonthlyPlanInput(userId);
-  const week = draft?.weeks.find((item) => item.id === weekId);
-  if (!draft || draft.id !== draftId || !week) return NextResponse.json({ error: 'Draft or week not found' }, { status: 404 });
+  try {
+    const draft = await getLatestMonthlyPlanDraft(userId);
+    const latestInput = await getLatestMonthlyPlanInput(userId);
+    const week = draft?.weeks.find((item) => item.id === weekId);
+    if (!draft || draft.id !== draftId || !week) return routeErrorResponse(ROUTE, 404, 'Draft or week not found', { userId, draftId, weekId, action });
 
-  let nextDraft = null;
-  if (action === 'regenerate') {
-    const currentDirection = buildGoalPayload(planner.live, await getUserGoalEntries(userId)).goalHistory[0]?.title;
-    const regenerated = buildMonthlyPlannerDraftPayload(planner.live, {
-      objective: latestInput?.objective || 'repeatability',
-      ambition: latestInput?.ambition || 'balanced',
-      currentDirection,
-      successMarkers: latestInput?.successMarkers || [],
-      mustFollow: {
-        noBackToBackHardDays: latestInput?.mustFollow.noBackToBackHardDays,
-        maxWeeklyHours: latestInput?.mustFollow.maxWeeklyHours,
-      },
-    }).weeks[week.weekIndex - 1];
-    if (!regenerated) return NextResponse.json({ error: 'Could not regenerate week' }, { status: 500 });
-    nextDraft = await replaceMonthlyPlanWeek(userId, draftId, {
-      id: week.id,
-      weekIndex: week.weekIndex,
-      label: regenerated.label,
-      intent: regenerated.intent,
-      targetHours: regenerated.targetHours,
-      targetLoad: regenerated.targetLoad,
-      longSessionDay: regenerated.longSessionDay,
-      rationale: regenerated.rationale,
-      workouts: regenerated.workouts.map((workout, index) => ({
-        id: `${week.id}_regen_${index + 1}`,
-        date: workout.date,
-        label: workout.label,
-        category: workout.category,
-        durationMinutes: workout.durationMinutes,
-        targetLoad: workout.targetLoad,
-        locked: false,
-        source: 'generated',
-        status: 'planned',
-      })),
-    });
-  } else {
-    nextDraft = await updateMonthlyPlanWeek(userId, draftId, weekId, tuneWeekFromAction(week, action));
+    let nextDraft = null;
+    if (action === 'regenerate') {
+      const currentDirection = buildGoalPayload(planner.live, await getUserGoalEntries(userId)).goalHistory[0]?.title;
+      const regenerated = buildMonthlyPlannerDraftPayload(planner.live, {
+        objective: latestInput?.objective || 'repeatability',
+        ambition: latestInput?.ambition || 'balanced',
+        currentDirection,
+        successMarkers: latestInput?.successMarkers || [],
+        mustFollow: {
+          noBackToBackHardDays: latestInput?.mustFollow.noBackToBackHardDays,
+          maxWeeklyHours: latestInput?.mustFollow.maxWeeklyHours,
+        },
+      }).weeks[week.weekIndex - 1];
+      if (!regenerated) return routeErrorResponse(ROUTE, 500, 'Could not regenerate week', { userId, draftId, weekId, action });
+      nextDraft = await replaceMonthlyPlanWeek(userId, draftId, {
+        id: week.id,
+        weekIndex: week.weekIndex,
+        label: regenerated.label,
+        intent: regenerated.intent,
+        targetHours: regenerated.targetHours,
+        targetLoad: regenerated.targetLoad,
+        longSessionDay: regenerated.longSessionDay,
+        rationale: regenerated.rationale,
+        workouts: regenerated.workouts.map((workout, index) => ({
+          id: `${week.id}_regen_${index + 1}`,
+          date: workout.date,
+          label: workout.label,
+          category: workout.category,
+          durationMinutes: workout.durationMinutes,
+          targetLoad: workout.targetLoad,
+          locked: false,
+          source: 'generated',
+          status: 'planned',
+        })),
+      });
+    } else {
+      nextDraft = await updateMonthlyPlanWeek(userId, draftId, weekId, tuneWeekFromAction(week, action));
+    }
+
+    logRouteEvent(ROUTE, 'info', 'Week mutation applied', { userId, draftId, weekId, action, isJson });
+    revalidatePath(appRoutes.plan);
+    if (parsed instanceof FormData) {
+      return redirectWithNotice(ROUTE, request, appRoutes.plan, { userId, draftId, weekId, action });
+    }
+    return NextResponse.json(nextDraft);
+  } catch (error) {
+    const message = captureRouteError(ROUTE, error, { userId, draftId, weekId, action, isJson });
+    return routeErrorResponse(ROUTE, 500, message, { userId, draftId, weekId, action, isJson });
   }
-
-  revalidatePath(appRoutes.plan);
-  if (parsed instanceof FormData) {
-    return NextResponse.redirect(new URL(appRoutes.plan, request.url));
-  }
-  return NextResponse.json(nextDraft);
 }
