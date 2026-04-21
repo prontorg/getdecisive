@@ -184,11 +184,11 @@ test('hydrateUserSnapshotFromSharedLive completes the latest sync job when the s
   assert.equal(state.intervalsSnapshots[0]?.liveState.athlete_id, '17634020');
 });
 
-test('power profile payload points deep analysis to the dedicated analysis tab', () => {
+test('power profile payload points deep analysis to the planner workspace', () => {
   const payload = buildPowerProfilePayload();
 
-  assert.equal(payload.analysisViewRoute, appRoutes.analysis);
-  assert.equal(payload.recommendedEmphasisChanges.some((item) => /Analysis/.test(item)), true);
+  assert.equal(payload.analysisViewRoute, appRoutes.plan);
+  assert.equal(payload.recommendedEmphasisChanges.some((item) => /Plan/.test(item)), true);
 });
 
 test('goal and adaptation payloads explain safe read-only behavior', () => {

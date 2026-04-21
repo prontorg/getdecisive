@@ -694,10 +694,10 @@ function computePowerProfile(live: LiveState | null) {
     ],
     recommendedEmphasisChanges: [
       'Keep the daily recommendation inside Dashboard and Plan.',
-      'Use Analysis for the bigger power-profile, goal-alignment, and adaptation picture.',
+      'Use Plan for the bigger power-profile, goal-alignment, and adaptation picture.',
       avgLongHours < 3 ? 'Reinforce durability support before stacking more sharp work.' : 'Durability support is present enough to let quality stay specific.',
     ],
-    analysisViewRoute: appRoutes.analysis,
+    analysisViewRoute: appRoutes.plan,
     latestWorkoutDay: (live?.latest_day_rows || []).map(latestWorkoutLine),
     monthZoneFocus: monthFocus,
   };

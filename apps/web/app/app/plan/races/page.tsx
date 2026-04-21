@@ -78,7 +78,6 @@ export default async function PlanRacesPage({
           </div>
           <div className="training-plan-top-strip__actions mt-18">
             <Link href={appRoutes.plan} className="button-secondary button-link">Back to plan</Link>
-            <Link href={appRoutes.styleGuide} className="button-secondary button-link">Open style guide</Link>
           </div>
         </AppCard>
       </section>

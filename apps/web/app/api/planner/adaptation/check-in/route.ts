@@ -52,8 +52,8 @@ export async function POST(request: Request) {
     action,
   });
 
-  revalidatePath(appRoutes.analysis);
+  revalidatePath(appRoutes.plan);
   revalidatePath(appRoutes.dashboard);
   revalidatePath(appRoutes.plan);
-  return NextResponse.redirect(new URL(appRoutes.analysis, request.url));
+  return NextResponse.redirect(new URL(appRoutes.plan, request.url));
 }

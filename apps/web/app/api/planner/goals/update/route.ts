@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     });
   }
 
-  revalidatePath(appRoutes.analysis);
+  revalidatePath(appRoutes.plan);
   revalidatePath(appRoutes.plan);
   return NextResponse.redirect(new URL(appRoutes.plan, request.url));
 }

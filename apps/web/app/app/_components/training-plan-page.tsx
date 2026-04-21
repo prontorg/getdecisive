@@ -279,7 +279,6 @@ const draftStatusLabel = latestDraft
               </div>
               <div className="training-plan-top-strip__actions">
                 <a href={appRoutes.planRaces} className="button-secondary button-link">Open race calendar</a>
-                <a href={appRoutes.styleGuide} className="button-secondary button-link">Go to style guide</a>
               </div>
             </AppCard>
           </div>

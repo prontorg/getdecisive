@@ -25,7 +25,10 @@ export default async function AccountPage({
 
   const tabs = [
     { id: 'profile', label: 'Profile' },
-    ...(isAdmin ? [{ id: 'user-management', label: 'User management' }] : []),
+    ...(isAdmin ? [
+      { id: 'user-management', label: 'User management' },
+      { id: 'invites', label: 'Invites' },
+    ] : []),
   ];
 
   return (
@@ -172,15 +175,12 @@ export default async function AccountPage({
 
           <AppCard>
             <div className="kicker">Managed accounts</div>
-            <h2>User management and invites</h2>
+            <h2>User management</h2>
             <table>
-              <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Intervals</th><th>Invite / status</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Intervals</th><th>Status</th></tr></thead>
               <tbody>
               {managedUsers.map((entry) => (
                 <tr key={entry.user.id}><td>{entry.user.displayName}</td><td>{entry.user.email}</td><td>{(entry.membership?.roles || []).join(', ') || 'athlete'}</td><td>{entry.intervalsConnection ? `${entry.intervalsConnection.externalAthleteId} • ${entry.intervalsConnection.syncStatus}` : 'not connected'}</td><td>{entry.onboarding?.state || 'account_created'}</td></tr>
-              ))}
-              {state.invites.map((invite) => (
-                <tr key={invite.id}><td>Invite</td><td>{invite.code}</td><td>admin only</td><td>—</td><td>{invite.status} • {invite.usedCount}/{invite.maxUses}</td></tr>
               ))}
               </tbody>
             </table>

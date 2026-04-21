@@ -20,7 +20,6 @@ const appLiveRefreshPath = join(webRoot, 'app/app/_components/app-live-refresh.t
 const deviceLocationSyncPath = join(webRoot, 'app/app/_components/device-location-sync.tsx');
 const middlewarePath = join(webRoot, 'middleware.ts');
 const intervalsConnectPanelPath = join(webRoot, 'components/auth/IntervalsConnectPanel.tsx');
-const workoutsPagePath = join(webRoot, 'app/app/workouts/page.tsx');
 const dashboardScriptPath = '/root/.hermes/profiles/profdecisive/scripts/intervals_dashboard.py';
 
 test('login screen copy and auth-page header chrome match the latest product wording', async () => {
@@ -85,10 +84,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-step-card-goals/i);
   assert.match(source, /training-plan-step-card-parameters/i);
   assert.match(source, /training-plan-step-card-draft/i);
-  assert.match(source, /Go to style guide/i);
+  assert.doesNotMatch(source, /Go to style guide/i);
   assert.match(source, /Open race calendar/i);
   assert.match(source, /Generate next month/i);
-  assert.match(source, /appRoutes\.styleGuide/i);
+  assert.doesNotMatch(source, /appRoutes\.styleGuide/i);
   assert.match(source, /appRoutes\.planRaces/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
@@ -444,14 +443,15 @@ test('middleware protects app pages and sends logged-out users to login by defau
 });
 
 test('configuration pages expose athlete configuration and admin-only user management subtab structure', async () => {
-  const [header, account, admin, intervalsConnectPanel, workoutsPage, syncStatusSource, syncHealthSource] = await Promise.all([
+  const [header, account, admin, intervalsConnectPanel, syncStatusSource, syncHealthSource, inviteCreateRoute, inviteRevokeRoute] = await Promise.all([
     readFile(headerPath, 'utf8'),
     readFile(accountPagePath, 'utf8'),
     readFile(adminPagePath, 'utf8'),
     readFile(intervalsConnectPanelPath, 'utf8'),
-    readFile(workoutsPagePath, 'utf8'),
     readFile(syncStatusPagePath, 'utf8'),
     readFile(join(webRoot, 'lib/server/sync-health.ts'), 'utf8'),
+    readFile(join(webRoot, 'app/api/invites/create/route.ts'), 'utf8'),
+    readFile(join(webRoot, 'app/api/invites/revoke/route.ts'), 'utf8'),
   ]);
 
   assert.doesNotMatch(header, /label: 'Configuration'/i);
@@ -470,6 +470,9 @@ test('configuration pages expose athlete configuration and admin-only user manag
   assert.match(account, /Update password/i);
   assert.match(account, /Invite-only signup/i);
   assert.match(account, /User management/i);
+  assert.match(account, /Invites/i);
+  assert.match(account, /tab === 'invites'/i);
+  assert.match(account, /tab=\$\{entry\.id\}|id: 'invites'/i);
   assert.match(account, /table/i);
   assert.doesNotMatch(account, /<span className="chip">Email:/i);
   assert.doesNotMatch(account, /Onboarding:/i);
@@ -490,16 +493,17 @@ test('configuration pages expose athlete configuration and admin-only user manag
   assert.match(syncHealthSource, /Last snapshot/i);
   assert.match(syncHealthSource, /Last worker update/i);
   assert.match(admin, /redirect\(\`\$\{appRoutes\.account\}\?tab=user-management\`\)/i);
+  assert.match(inviteCreateRoute, /accountInvitesUrl\('notice'|tab=invites&\$\{messageKey\}/i);
+  assert.match(inviteRevokeRoute, /accountInvitesUrl\('notice'|tab=invites&\$\{messageKey\}/i);
   assert.doesNotMatch(intervalsConnectPanel, /dev scaffold flow/i);
   assert.doesNotMatch(intervalsConnectPanel, /api_key=demo-key/i);
   assert.match(intervalsConnectPanel, /Intervals is mandatory in v1/i);
-  assert.match(workoutsPage, /redirect\(appRoutes\.plan\)/i);
-  assert.doesNotMatch(workoutsPage, /Workout export scaffold/i);
   const routesSource = await readFile(join(webRoot, 'lib/routes.ts'), 'utf8');
-  const styleGuidePageSource = await readFile(join(webRoot, 'app/app/style-guide/page.tsx'), 'utf8');
   const planRacesPageSource = await readFile(join(webRoot, 'app/app/plan/races/page.tsx'), 'utf8');
-  assert.match(routesSource, /styleGuide:\s*'\/app\/style-guide'/i);
+  assert.doesNotMatch(routesSource, /styleGuide:\s*'\/app\/style-guide'/i);
+  assert.doesNotMatch(routesSource, /analysis:\s*'\/app\/analysis'/i);
+  assert.doesNotMatch(routesSource, /workouts:\s*'\/app\/workouts'/i);
   assert.match(routesSource, /planRaces:\s*'\/app\/plan\/races'/i);
-  assert.match(styleGuidePageSource, /Planner style guide/i);
-  assert.match(planRacesPageSource, /Race calendar/i);
+  assert.doesNotMatch(account, /tab === 'intervals'/i);
+  assert.doesNotMatch(planRacesPageSource, /Open style guide/i);
 });
