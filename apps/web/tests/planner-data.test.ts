@@ -9,7 +9,9 @@ import {
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
   buildMonthlyPlannerDraftPayload,
+  buildTrainingNeedsSummary,
   buildWeeklyDecisionPayload,
+  buildBlockDecisionSummary,
   replanCurrentWeekForScenario,
   replaceCurrentWeekWithRuntime,
   buildPlannerBlockPayload,
@@ -249,7 +251,7 @@ test('monthly planner draft payload keeps week 4 lighter, respects max weekly ho
   assert.equal(payload.weeks[0]?.completedThisWeek?.length, 3);
   assert.equal(payload.weeks[0]?.workouts.some((workout) => workout.category === 'rest'), true);
   assert.equal(payload.weeks[0]?.workouts.some((workout) => workout.category === 'endurance'), true);
-  assert.equal(payload.weeks[0]?.weekTypeLabel, 'Repeatability week');
+  assert.equal(payload.weeks[0]?.weekTypeLabel, 'Threshold week');
   assert.equal(typeof payload.weeks[0]?.availableHours, 'number');
   assert.equal(payload.weeks[0]?.eventHours, 0);
 });
@@ -375,7 +377,63 @@ test('monthly planner draft payload applies selected rest day, configurable rest
   assert.match(configuredWeek.intent, /^Race-like focus\.|^Threshold focus\.|^Repeatability focus\.|^Lighter week\./i);
 });
 
-test('monthly planner draft payload uses current direction, freshness, and recent signals to bias recommendations', () => {
+test('training-needs summary identifies primary limiter, freshness state, and event pressure from live context', () => {
+  const summary = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-12',
+    working_threshold_w: 365,
+    wellness: { ctl: 106, atl: 123 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 142, duration_s: 7200, weighted_avg_watts: 362, summary: { short_label: '3x15 threshold' }, zone_times: { Z4: 2600 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6900, weighted_avg_watts: 358, summary: { short_label: '2x15 threshold' }, zone_times: { Z4: 2300 } },
+      { activity_id: '3', start_date_local: '2026-04-16T09:00:00', session_type: 'endurance / Z2 ride', training_load: 88, duration_s: 9600, summary: { short_label: 'Long endurance' }, zone_times: { Z2: 8200 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    currentDirection: 'Keep threshold support repeatable without excess fatigue',
+    mustFollow: { maxWeeklyHours: 10.5 },
+  });
+
+  assert.equal(summary.freshnessState, 'constrained');
+  assert.equal(summary.eventPressure, 'near');
+  assert.equal(summary.systemStatus.repeatability, 'needs_focus');
+  assert.equal(summary.systemStatus.threshold_support, 'good');
+  assert.equal(summary.primaryLimiter, 'repeatability');
+  assert.equal(summary.protectedStrengths.includes('threshold_support'), true);
+});
+
+test('block-decision summary turns training needs into coherent week intents and month objective', () => {
+  const needs = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-12',
+    working_threshold_w: 365,
+    wellness: { ctl: 106, atl: 123 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 142, duration_s: 7200, weighted_avg_watts: 362, summary: { short_label: '3x15 threshold' } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6900, weighted_avg_watts: 358, summary: { short_label: '2x15 threshold' } },
+      { activity_id: '3', start_date_local: '2026-04-16T09:00:00', session_type: 'endurance / Z2 ride', training_load: 88, duration_s: 9600, summary: { short_label: 'Long endurance' } },
+    ],
+  }, {
+    objective: 'repeatability',
+    currentDirection: 'Keep threshold support repeatable without excess fatigue',
+    mustFollow: { maxWeeklyHours: 10.5 },
+  });
+
+  const block = buildBlockDecisionSummary(needs, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+  });
+
+  assert.equal(block.monthObjective, 'repeatability');
+  assert.equal(block.primaryNeed, 'repeatability');
+  assert.equal(block.weekDecisions.length, 4);
+  assert.equal(block.weekDecisions[0]?.focus, 'threshold_support');
+  assert.equal(block.weekDecisions[1]?.focus, 'repeatability');
+  assert.equal(block.weekDecisions[2]?.focus, 'race_specificity');
+  assert.equal(block.weekDecisions[3]?.focus, 'freshen');
+});
+
+test('monthly planner draft payload uses training-needs and block-decision logic to keep threshold first, then rebuild repeatability before sharper work', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-20',
     goal_race_date: '2026-05-12',

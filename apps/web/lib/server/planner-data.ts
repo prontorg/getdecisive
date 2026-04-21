@@ -222,6 +222,35 @@ export type PlanningRecommendationPayload = {
   recommendedConstraints: string[];
 };
 
+export type TrainingNeedsSummary = {
+  freshnessState: 'blocked' | 'constrained' | 'usable' | 'fresh';
+  eventPressure: 'far' | 'medium' | 'near' | 'taper';
+  primaryLimiter: 'repeatability' | 'threshold_support' | 'race_specificity' | 'aerobic_durability';
+  protectedStrengths: Array<'repeatability' | 'threshold_support' | 'race_specificity' | 'aerobic_durability'>;
+  systemStatus: {
+    repeatability: 'needs_focus' | 'developing' | 'good';
+    threshold_support: 'needs_focus' | 'developing' | 'good';
+    race_specificity: 'needs_focus' | 'developing' | 'good';
+    aerobic_durability: 'needs_focus' | 'developing' | 'good';
+  };
+  counts: {
+    repeatability: number;
+    threshold_support: number;
+    race_like: number;
+    endurance: number;
+  };
+  recentWeeklyHours: number;
+};
+
+export type BlockDecisionSummary = {
+  monthObjective: 'repeatability' | 'threshold_support' | 'race_specificity' | 'aerobic_support' | 'rebuild' | 'consistency' | 'taper';
+  primaryNeed: TrainingNeedsSummary['primaryLimiter'];
+  weekDecisions: Array<{
+    weekIndex: 1 | 2 | 3 | 4;
+    focus: 'threshold_support' | 'repeatability' | 'race_specificity' | 'freshen';
+  }>;
+};
+
 export async function getAuthenticatedPlannerContext(userId: string): Promise<AuthenticatedPlannerContext | null> {
   const state = await getPlatformState();
   const onboarding = await getDerivedOnboardingStatusRecord(userId) || deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
@@ -426,6 +455,88 @@ function classifyRecentRow(row: LiveRow): 'repeatability' | 'threshold_support' 
   if (duration <= 75 * 60 && load <= 40) return 'recovery';
   if (z2 >= 90 * 60 || duration >= 2.5 * 3600 || load >= 80) return 'endurance';
   return 'endurance';
+}
+
+export function buildTrainingNeedsSummary(
+  live: LiveState | null | undefined,
+  input?: {
+    objective?: string;
+    currentDirection?: string;
+    mustFollow?: { maxWeeklyHours?: number };
+  },
+): TrainingNeedsSummary {
+  const rows = live?.recent_rows || [];
+  const counts = {
+    repeatability: rows.filter((row) => classifyRecentRow(row) === 'repeatability').length,
+    threshold_support: rows.filter((row) => classifyRecentRow(row) === 'threshold_support').length,
+    race_like: rows.filter((row) => classifyRecentRow(row) === 'race_like').length,
+    endurance: rows.filter((row) => classifyRecentRow(row) === 'endurance').length,
+  };
+  const recentHours = rows.reduce((acc, row) => acc + Number(row.duration_s || 0), 0) / 3600;
+  const recentWeeklyHours = rows.length ? recentHours / Math.min(4, Math.max(1, Math.ceil(rows.length / 3))) : Number(input?.mustFollow?.maxWeeklyHours || 8);
+  const form = Number(live?.wellness?.ctl || 0) - Number(live?.wellness?.atl || 0);
+  const freshnessState = form <= -18 ? 'blocked' : form <= -12 ? 'constrained' : form >= 4 ? 'fresh' : 'usable';
+  const today = live?.today || todayIso();
+  const goalDate = live?.goal_race_date ? new Date(`${live.goal_race_date}T00:00:00Z`) : null;
+  const todayDate = new Date(`${today}T00:00:00Z`);
+  const daysToGoal = goalDate ? Math.round((goalDate.getTime() - todayDate.getTime()) / 86400000) : 999;
+  const eventPressure = daysToGoal <= 14 ? 'taper' : daysToGoal <= 35 ? 'near' : daysToGoal <= 70 ? 'medium' : 'far';
+  const systemStatus: TrainingNeedsSummary['systemStatus'] = {
+    repeatability: counts.repeatability >= 2 ? 'good' : counts.repeatability === 1 ? 'developing' : 'needs_focus',
+    threshold_support: counts.threshold_support >= 2 ? 'good' : counts.threshold_support === 1 ? 'developing' : 'needs_focus',
+    race_specificity: counts.race_like >= 1 ? 'good' : eventPressure === 'near' || eventPressure === 'taper' ? 'needs_focus' : 'developing',
+    aerobic_durability: counts.endurance >= 2 && recentWeeklyHours >= Math.max(7.5, Number(input?.mustFollow?.maxWeeklyHours || 10) * 0.72) ? 'good' : counts.endurance >= 1 ? 'developing' : 'needs_focus',
+  };
+  const priorities: Array<TrainingNeedsSummary['primaryLimiter']> = ['repeatability', 'threshold_support', 'race_specificity', 'aerobic_durability'];
+  const objective = input?.objective || 'repeatability';
+  const primaryLimiter = objective === 'threshold_support'
+    ? 'threshold_support'
+    : objective === 'race_specificity'
+      ? (systemStatus.race_specificity === 'needs_focus' ? 'race_specificity' : systemStatus.repeatability === 'needs_focus' ? 'repeatability' : 'threshold_support')
+      : priorities.find((key) => systemStatus[key] === 'needs_focus') || 'repeatability';
+  const protectedStrengths = priorities.filter((key) => systemStatus[key] === 'good');
+  return { freshnessState, eventPressure, primaryLimiter, protectedStrengths, systemStatus, counts, recentWeeklyHours };
+}
+
+export function buildBlockDecisionSummary(
+  needs: TrainingNeedsSummary,
+  input?: { objective?: string; ambition?: string },
+): BlockDecisionSummary {
+  const objective = (input?.objective || 'repeatability') as BlockDecisionSummary['monthObjective'];
+  const monthObjective = objective === 'repeatability' || objective === 'threshold_support' || objective === 'race_specificity'
+    ? objective
+    : needs.primaryLimiter === 'threshold_support'
+      ? 'threshold_support'
+      : needs.primaryLimiter === 'race_specificity'
+        ? 'race_specificity'
+        : 'repeatability';
+  const firstFocus = needs.freshnessState === 'blocked'
+    ? 'freshen'
+    : needs.protectedStrengths.includes('threshold_support') && needs.primaryLimiter === 'repeatability'
+      ? 'threshold_support'
+      : monthObjective === 'threshold_support'
+        ? 'threshold_support'
+        : monthObjective === 'race_specificity' && needs.freshnessState !== 'constrained'
+          ? 'race_specificity'
+          : 'threshold_support';
+  const secondFocus = monthObjective === 'race_specificity'
+    ? 'race_specificity'
+    : needs.primaryLimiter === 'repeatability'
+      ? 'repeatability'
+      : monthObjective === 'threshold_support'
+        ? 'threshold_support'
+        : 'repeatability';
+  const thirdFocus = needs.eventPressure === 'near' || monthObjective === 'race_specificity' ? 'race_specificity' : secondFocus;
+  return {
+    monthObjective,
+    primaryNeed: needs.primaryLimiter,
+    weekDecisions: [
+      { weekIndex: 1, focus: firstFocus },
+      { weekIndex: 2, focus: secondFocus },
+      { weekIndex: 3, focus: thirdFocus },
+      { weekIndex: 4, focus: 'freshen' },
+    ],
+  };
 }
 
 function mean(values: number[]): number {
@@ -1193,16 +1304,19 @@ export function buildMonthlyPlannerDraftPayload(
   const completedThisWeekHours = completedThisWeek.reduce((acc, row) => acc + Number(row.durationMinutes || 0), 0) / 60;
   const planEvents = input.planEvents || [];
 
+  const needs = buildTrainingNeedsSummary(live, input);
+  const blockDecision = buildBlockDecisionSummary(needs, { objective, ambition });
+
   const weeks = weekLabels.map((label, index) => {
     const monday = new Date(start);
     monday.setUTCDate(start.getUTCDate() + index * 7);
     const recentRows = live?.recent_rows || [];
-    const repeatabilityHits = recentRows.filter((row) => classifyRecentRow(row) === 'repeatability').length;
-    const thresholdHits = recentRows.filter((row) => classifyRecentRow(row) === 'threshold_support').length;
-    const raceLikeHits = recentRows.filter((row) => classifyRecentRow(row) === 'race_like').length;
-    const enduranceHits = recentRows.filter((row) => classifyRecentRow(row) === 'endurance').length;
-    const recentHours = recentRows.reduce((acc, row) => acc + Number(row.duration_s || 0), 0) / 3600;
-    const recentWeeklyHours = recentRows.length ? recentHours / Math.min(4, Math.max(1, Math.ceil(recentRows.length / 3))) : weeklyCap * 0.8;
+    const repeatabilityHits = needs.counts.repeatability;
+    const thresholdHits = needs.counts.threshold_support;
+    const raceLikeHits = needs.counts.race_like;
+    const enduranceHits = needs.counts.endurance;
+    const recentWeeklyHours = needs.recentWeeklyHours;
+    const weekDecision = blockDecision.weekDecisions[index] || blockDecision.weekDecisions[blockDecision.weekDecisions.length - 1]!;
     const repeatabilityDensityLow = repeatabilityHits < 2;
     const thresholdNeedsSupport = thresholdHits < 2 || objective === 'threshold_support' || /threshold/.test(currentDirection);
     const raceSpecificityBias = objective === 'race_specificity' || raceLikeHits < 1 || /race/.test(currentDirection) || nearGoal;
@@ -1215,26 +1329,22 @@ export function buildMonthlyPlannerDraftPayload(
     const repeatabilityReady = repeatabilityHits >= 2 && recentRows
       .filter((row) => classifyRecentRow(row) === 'repeatability')
       .some((row) => Number(row.training_load || 0) >= 120);
-    const hardOne = objective === 'threshold_support'
-      ? 'threshold_support'
-      : objective === 'race_specificity'
+    const hardOne = weekDecision.focus === 'repeatability'
+      ? 'repeatability'
+      : weekDecision.focus === 'race_specificity'
         ? (fatigueBlocked ? 'threshold_support' : 'race_like')
-        : /threshold/.test(currentDirection)
-          ? 'threshold_support'
-          : repeatabilityDensityLow || /repeatability/.test(currentDirection)
-            ? 'repeatability'
-            : repeatabilityReady && !fatigueBlocked
-              ? 'repeatability'
+        : 'threshold_support';
+    const hardTwo = weekDecision.focus === 'freshen'
+      ? 'threshold_support'
+      : weekDecision.focus === 'race_specificity'
+        ? (fatigueBlocked ? 'threshold_support' : 'race_like')
+        : weekDecision.focus === 'repeatability'
+          ? (thresholdNeedsSupport || !thresholdStable ? 'threshold_support' : 'race_like')
+          : thresholdNeedsSupport || !thresholdStable
+            ? 'threshold_support'
+            : raceSpecificityBias && index >= 1 && !fatigueBlocked
+              ? 'race_like'
               : 'threshold_support';
-    const hardTwo = objective === 'race_specificity'
-      ? (fatigueBlocked ? 'threshold_support' : 'race_like')
-      : objective === 'threshold_support'
-        ? (raceSpecificityBias && index >= 2 && !fatigueBlocked ? 'race_like' : 'threshold_support')
-        : thresholdNeedsSupport || !thresholdStable
-          ? 'threshold_support'
-          : raceSpecificityBias && index >= 1 && !fatigueBlocked
-            ? 'race_like'
-            : 'threshold_support';
     const baseHours = Math.min(weeklyCap, Math.max(6.5, Number((Math.min(weeklyCap, recentWeeklyHours * (index === 3 ? 0.78 : index === 2 ? 1.04 : index === 1 ? 1 : 0.94))).toFixed(1))));
     const rawWeekHours = Number(Math.min(weeklyCap, Number((baseHours * weekLoads[index]).toFixed(1))).toFixed(1));
     const isCurrentWeek = index === 0;
@@ -1291,18 +1401,18 @@ export function buildMonthlyPlannerDraftPayload(
       [restOffset, extraRestOffset, (restOffset + 4) % 7, (restOffset + 5) % 7],
     );
 
-    const weekTypeLabel = index === 3
+    const weekTypeLabel = weekDecision.focus === 'freshen'
       ? 'Lighter week'
-      : objective === 'race_specificity'
+      : weekDecision.focus === 'race_specificity'
         ? 'Race-like week'
-        : objective === 'threshold_support' || hardOne === 'threshold_support'
+        : weekDecision.focus === 'threshold_support'
           ? 'Threshold week'
           : 'Repeatability week';
-    const intent = index === 3
+    const intent = weekDecision.focus === 'freshen'
       ? 'Lighter week.'
-      : objective === 'race_specificity'
+      : weekDecision.focus === 'race_specificity'
         ? 'Race-like focus.'
-        : objective === 'threshold_support' || hardOne === 'threshold_support'
+        : weekDecision.focus === 'threshold_support'
           ? 'Threshold focus.'
           : 'Repeatability focus.';
 
