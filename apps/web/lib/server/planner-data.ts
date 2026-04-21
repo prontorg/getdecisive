@@ -558,10 +558,11 @@ function freshnessSummary(form: number): string {
 }
 
 type PlannerWorkoutCategory = 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
+type PlannerWorkoutFamily = 'endurance' | 'recovery' | 'tempo' | 'sweetspot' | 'threshold_support' | 'vo2_support' | 'repeatability' | 'race_specific' | 'opener';
 
 type WorkoutCatalogEntry = {
   id: string;
-  family: 'endurance' | 'recovery' | 'tempo' | 'sweetspot' | 'threshold_support' | 'vo2_support' | 'repeatability' | 'race_specific' | 'opener';
+  family: PlannerWorkoutFamily;
   label: string;
   preferenceTags: string[];
   researchNotes: string[];
@@ -584,7 +585,75 @@ type PlannerIntervalContext = {
   requestedFocusText?: string;
 };
 
+type WorkoutLibrarySlot = 'support_primary' | 'quality_primary' | 'support_secondary' | 'quality_secondary' | 'long_endurance' | 'rest';
+
+type CatalogSelectorContext = {
+  weekFocus: 'threshold_support' | 'repeatability' | 'race_specificity' | 'freshen';
+  slot: WorkoutLibrarySlot;
+  objective: string;
+  freshnessState: 'blocked' | 'constrained' | 'usable' | 'fresh';
+  eventPressure: 'far' | 'medium' | 'near' | 'taper';
+  phaseTag: 'base' | 'build' | 'specific' | 'taper';
+  recentIntervalHints: string[];
+  requestedFocusText: string;
+  isLighterWeek: boolean;
+  alreadyChosenFamilies?: PlannerWorkoutFamily[];
+  preferredCategory?: PlannerWorkoutCategory;
+  index: number;
+  intervalContext: PlannerIntervalContext;
+};
+
+type CatalogSelection = {
+  label: string;
+  category: PlannerWorkoutCategory;
+  intervalLabel: string;
+  family: PlannerWorkoutFamily;
+  rationaleTags: string[];
+};
+
+const SLOT_ALLOWED_FAMILIES: Record<WorkoutLibrarySlot, PlannerWorkoutFamily[]> = {
+  support_primary: ['endurance', 'tempo', 'sweetspot', 'threshold_support', 'recovery'],
+  quality_primary: ['repeatability', 'threshold_support', 'race_specific', 'vo2_support'],
+  support_secondary: ['recovery', 'endurance', 'tempo', 'sweetspot', 'threshold_support'],
+  quality_secondary: ['threshold_support', 'repeatability', 'race_specific', 'vo2_support', 'opener', 'tempo', 'sweetspot'],
+  long_endurance: ['endurance'],
+  rest: [],
+};
+
 const WORKOUT_CATALOG: WorkoutCatalogEntry[] = [
+  {
+    id: 'endurance-support',
+    family: 'endurance',
+    label: 'Support endurance',
+    preferenceTags: ['z2', 'durability'],
+    researchNotes: ['Steady endurance support keeps frequency repeatable and preserves aerobic durability between harder sessions.'],
+    allowedObjectives: ['repeatability', 'threshold_support', 'race_specificity', 'aerobic_support', 'consistency', 'rebuild', 'taper'],
+    phaseTags: ['base', 'build', 'specific', 'taper'],
+    progressionTargets: ['aerobic_durability'],
+    antiRepetitionTags: ['steady_endurance'],
+  },
+  {
+    id: 'recovery-openers',
+    family: 'recovery',
+    label: 'Recovery + openers',
+    preferenceTags: ['recovery', 'openers'],
+    researchNotes: ['A light recovery spin plus openers can keep feel without adding meaningful fatigue in a freshen week.'],
+    allowedObjectives: ['repeatability', 'threshold_support', 'race_specificity', 'aerobic_support', 'consistency', 'rebuild', 'taper'],
+    phaseTags: ['specific', 'taper'],
+    progressionTargets: ['freshness'],
+    antiRepetitionTags: ['openers', 'recovery_spin'],
+  },
+  {
+    id: 'event-openers',
+    family: 'opener',
+    label: 'Openers',
+    preferenceTags: ['openers', 'neuromuscular_readiness'],
+    researchNotes: ['Short opener work can preserve feel and readiness when event pressure is high without turning the day into a full quality load.'],
+    allowedObjectives: ['race_specificity', 'taper'],
+    phaseTags: ['specific', 'taper'],
+    progressionTargets: ['freshness', 'race_tolerance'],
+    antiRepetitionTags: ['openers', 'primer'],
+  },
   {
     id: 'repeatability-30-15',
     family: 'repeatability',
@@ -691,7 +760,193 @@ function plannedIntervalLabel(
   return 'Off / mobility';
 }
 
-type WorkoutLibrarySlot = 'support_primary' | 'quality_primary' | 'support_secondary' | 'quality_secondary' | 'long_endurance' | 'rest';
+function plannerCategoryForFamily(family: PlannerWorkoutFamily): PlannerWorkoutCategory {
+  if (family === 'endurance' || family === 'tempo') return 'endurance';
+  if (family === 'recovery') return 'recovery';
+  if (family === 'threshold_support' || family === 'sweetspot') return 'threshold_support';
+  if (family === 'repeatability' || family === 'vo2_support') return 'repeatability';
+  return 'race_like';
+}
+
+function phaseTagForContext(args: { weekFocus: CatalogSelectorContext['weekFocus']; isLighterWeek: boolean; eventPressure: CatalogSelectorContext['eventPressure'] }): CatalogSelectorContext['phaseTag'] {
+  if (args.eventPressure === 'taper' || args.isLighterWeek || args.weekFocus === 'freshen') return 'taper';
+  if (args.weekFocus === 'race_specificity') return 'specific';
+  return 'build';
+}
+
+function requestedFocusTags(text: string) {
+  const lowered = text.toLowerCase();
+  return {
+    tempo: /tempo/.test(lowered),
+    sweetspot: /sweetspot/.test(lowered),
+    vo2: /\bvo2\b|max aerobic|aerobic power/.test(lowered),
+    opener: /opener|open up|sharpen/.test(lowered),
+    race: /race|specific|stochastic|pursuit|points/.test(lowered),
+    threshold: /threshold|durable power|over-under/.test(lowered),
+    repeatability: /repeatability|30\/15|anaerobic/.test(lowered),
+  };
+}
+
+function scoreCatalogWorkout(entry: WorkoutCatalogEntry, context: CatalogSelectorContext) {
+  let score = 0;
+  const rationaleTags: string[] = [];
+  const requestedTags = requestedFocusTags(context.requestedFocusText);
+  const recentHints = context.recentIntervalHints.join(' ').toLowerCase();
+  const plannerCategory = plannerCategoryForFamily(entry.family);
+
+  if (entry.allowedObjectives.includes(context.objective)) {
+    score += 5;
+    rationaleTags.push('objective_fit');
+  } else if (context.slot.startsWith('support_') && ['aerobic_support', 'consistency', 'rebuild', 'taper'].includes(context.objective) && ['endurance', 'recovery', 'tempo', 'sweetspot'].includes(entry.family)) {
+    score += 2;
+    rationaleTags.push('objective_support_fit');
+  } else {
+    score -= 3;
+  }
+
+  const weekFocusFamilies: Record<CatalogSelectorContext['weekFocus'], PlannerWorkoutFamily[]> = {
+    threshold_support: ['threshold_support', 'sweetspot', 'tempo'],
+    repeatability: ['repeatability', 'vo2_support', 'race_specific'],
+    race_specificity: ['race_specific', 'opener', 'threshold_support'],
+    freshen: ['recovery', 'opener', 'threshold_support'],
+  };
+  if (weekFocusFamilies[context.weekFocus].includes(entry.family)) {
+    score += 4;
+    rationaleTags.push('week_focus_fit');
+  }
+
+  if (entry.phaseTags.includes(context.phaseTag)) {
+    score += 3;
+    rationaleTags.push('phase_fit');
+  }
+
+  if (context.preferredCategory && plannerCategory === context.preferredCategory) {
+    score += 4;
+    rationaleTags.push('category_fit');
+  }
+
+  const progressionMatches = [
+    context.weekFocus === 'repeatability' && entry.progressionTargets.includes('repeatability_density'),
+    context.weekFocus === 'threshold_support' && entry.progressionTargets.includes('threshold_durability'),
+    context.weekFocus === 'race_specificity' && entry.progressionTargets.includes('race_tolerance'),
+    context.objective === 'aerobic_support' && entry.progressionTargets.includes('aerobic_durability'),
+  ].some(Boolean);
+  if (progressionMatches) {
+    score += 2;
+    rationaleTags.push('progression_fit');
+  }
+
+  if (requestedTags.tempo && entry.family === 'tempo') { score += 5; rationaleTags.push('requested_tempo'); }
+  if (requestedTags.sweetspot && entry.family === 'sweetspot' && !/sweetspot/.test(recentHints)) { score += 5; rationaleTags.push('requested_sweetspot'); }
+  if (requestedTags.vo2 && entry.family === 'vo2_support') { score += 5; rationaleTags.push('requested_vo2'); }
+  if (requestedTags.race && entry.family === 'race_specific') { score += 4; rationaleTags.push('requested_race'); }
+  if (requestedTags.threshold && entry.family === 'threshold_support') { score += 3; rationaleTags.push('requested_threshold'); }
+  if (requestedTags.repeatability && entry.family === 'repeatability') { score += 3; rationaleTags.push('requested_repeatability'); }
+  if (requestedTags.opener && (entry.family === 'recovery' || entry.family === 'opener')) { score += 4; rationaleTags.push('requested_openers'); }
+
+  if (context.freshnessState === 'blocked' || context.freshnessState === 'constrained') {
+    if (['vo2_support', 'repeatability', 'race_specific'].includes(entry.family)) score -= 5;
+    if (['endurance', 'recovery', 'tempo', 'sweetspot', 'threshold_support'].includes(entry.family)) score += 2;
+    rationaleTags.push('freshness_adjusted');
+  } else if (context.freshnessState === 'fresh' && ['repeatability', 'vo2_support', 'race_specific'].includes(entry.family)) {
+    score += 1;
+  }
+
+  if (context.eventPressure === 'near' || context.eventPressure === 'taper') {
+    if (entry.family === 'race_specific') { score += 4; rationaleTags.push('event_pressure_race'); }
+    if (entry.family === 'recovery' && /openers/i.test(entry.label)) { score += 3; rationaleTags.push('event_pressure_openers'); }
+  }
+
+  const antiRepeatHit = entry.antiRepetitionTags.some((tag) => recentHints.includes(tag.replaceAll('_', ' ')) || recentHints.includes(tag));
+  if (antiRepeatHit) {
+    score -= 4;
+    rationaleTags.push('anti_repetition_penalty');
+  }
+
+  if (context.alreadyChosenFamilies?.includes(entry.family)) {
+    score -= 3;
+    rationaleTags.push('same_family_week_penalty');
+  }
+
+  if (context.slot === 'support_primary' && entry.family === 'recovery') score -= 6;
+  if (context.slot === 'support_secondary' && context.weekFocus === 'freshen' && context.isLighterWeek && entry.family === 'recovery') score += 6;
+  if (context.slot === 'quality_primary' && ['endurance', 'recovery', 'tempo'].includes(entry.family)) score -= 6;
+  if (context.slot === 'quality_secondary' && context.isLighterWeek && entry.family === 'vo2_support') score -= 6;
+  if (context.slot === 'quality_secondary' && context.weekFocus === 'repeatability' && entry.family === 'race_specific') score += 3;
+
+  return { score, rationaleTags };
+}
+
+function buildCatalogSelection(entry: WorkoutCatalogEntry, context: CatalogSelectorContext, rationaleTags: string[]): CatalogSelection {
+  const family = entry.family;
+  const category = plannerCategoryForFamily(family);
+  if (family === 'tempo') return { label: 'Tempo support', category, intervalLabel: '2x20min tempo @ 290-315w', family, rationaleTags };
+  if (family === 'sweetspot') return { label: 'Sweetspot support', category, intervalLabel: '3x15min sweetspot @ 320-340w', family, rationaleTags };
+  if (family === 'vo2_support') return { label: 'VO2 support', category, intervalLabel: '5x4min max aerobic support @ 390-410w', family, rationaleTags };
+  if (family === 'race_specific') {
+    const label = context.weekFocus === 'repeatability' ? 'Race-pace bridge' : 'Race-like session';
+    const intervalLabel = context.weekFocus === 'repeatability'
+      ? 'race pace jumps + 4x2min stochastic bridge'
+      : plannedIntervalLabel('race_like', context.index, context.intervalContext);
+    return { label, category, intervalLabel, family, rationaleTags };
+  }
+  if (family === 'recovery') {
+    return {
+      label: context.weekFocus === 'freshen' && context.isLighterWeek ? 'Recovery + openers' : 'Recovery spin',
+      category,
+      intervalLabel: plannedIntervalLabel('recovery', context.index, { ...context.intervalContext, taper: context.weekFocus === 'freshen' || context.isLighterWeek || context.eventPressure === 'taper' }),
+      family,
+      rationaleTags,
+    };
+  }
+  if (family === 'opener') {
+    return {
+      label: 'Openers',
+      category,
+      intervalLabel: '3x1min progressive openers + flying efforts',
+      family,
+      rationaleTags,
+    };
+  }
+  if (family === 'threshold_support') {
+    return {
+      label: context.slot === 'quality_primary' ? 'Threshold support anchor' : context.weekFocus === 'freshen' && context.isLighterWeek ? 'Threshold opener set' : 'Threshold support',
+      category,
+      intervalLabel: context.weekFocus === 'freshen' && context.isLighterWeek
+        ? plannedIntervalLabel('threshold_support', context.index, { ...context.intervalContext, thresholdNeedsSupport: false, taper: true })
+        : plannedIntervalLabel('threshold_support', context.index, context.intervalContext),
+      family,
+      rationaleTags,
+    };
+  }
+  if (family === 'endurance') {
+    return {
+      label: context.slot === 'long_endurance' ? (context.isLighterWeek ? 'Endurance support' : 'Long endurance support') : 'Support endurance',
+      category,
+      intervalLabel: plannedIntervalLabel('endurance', context.index, context.intervalContext),
+      family,
+      rationaleTags,
+    };
+  }
+  return {
+    label: entry.label,
+    category,
+    intervalLabel: plannedIntervalLabel(category, context.index, context.intervalContext),
+    family,
+    rationaleTags,
+  };
+}
+
+function selectCatalogWorkout(context: CatalogSelectorContext): CatalogSelection {
+  const allowedFamilies = SLOT_ALLOWED_FAMILIES[context.slot] || [];
+  const candidates = WORKOUT_CATALOG.filter((entry) => allowedFamilies.includes(entry.family));
+  const scored = candidates
+    .map((entry) => ({ entry, ...scoreCatalogWorkout(entry, context) }))
+    .sort((a, b) => b.score - a.score || a.entry.label.localeCompare(b.entry.label));
+  const winner = scored[0]?.entry || WORKOUT_CATALOG[0]!;
+  const rationaleTags = scored[0]?.rationaleTags || ['fallback'];
+  return buildCatalogSelection(winner, context, rationaleTags);
+}
 
 function selectWorkoutFromLibrary(args: {
   weekFocus: 'threshold_support' | 'repeatability' | 'race_specificity' | 'freshen';
@@ -700,99 +955,44 @@ function selectWorkoutFromLibrary(args: {
   index: number;
   context: PlannerIntervalContext;
   isLighterWeek: boolean;
-}): { label: string; category: PlannerWorkoutCategory; intervalLabel: string } {
-  const { weekFocus, slot, category, index, context, isLighterWeek } = args;
+  objective: string;
+  freshnessState: 'blocked' | 'constrained' | 'usable' | 'fresh';
+  eventPressure: 'far' | 'medium' | 'near' | 'taper';
+  alreadyChosenFamilies?: PlannerWorkoutFamily[];
+}): { label: string; category: PlannerWorkoutCategory; intervalLabel: string; family: PlannerWorkoutFamily | 'rest' } {
+  const { weekFocus, slot, category, index, context, isLighterWeek, objective, freshnessState, eventPressure, alreadyChosenFamilies } = args;
 
-  if (slot === 'support_primary') {
+  if (slot === 'rest') {
     return {
-      label: 'Support endurance',
-      category: 'endurance',
-      intervalLabel: plannedIntervalLabel('endurance', index, context),
+      label: 'Rest',
+      category: 'rest',
+      intervalLabel: plannedIntervalLabel('rest', index, context),
+      family: 'rest',
     };
   }
 
-  if (slot === 'support_secondary') {
-    if (weekFocus === 'freshen' && isLighterWeek) {
-      return {
-        label: 'Recovery + openers',
-        category: 'recovery',
-        intervalLabel: plannedIntervalLabel('recovery', index, { ...context, taper: true }),
-      };
-    }
-    return {
-      label: 'Support endurance',
-      category: 'endurance',
-      intervalLabel: plannedIntervalLabel('endurance', index, context),
-    };
-  }
-
-  if (slot === 'quality_primary') {
-    if (category === 'repeatability') {
-      return {
-        label: 'Repeatability density set',
-        category: 'repeatability',
-        intervalLabel: plannedIntervalLabel('repeatability', index, context),
-      };
-    }
-    return {
-      label: 'Threshold support anchor',
-      category: 'threshold_support',
-      intervalLabel: plannedIntervalLabel('threshold_support', index, context),
-    };
-  }
-
-  if (slot === 'quality_secondary') {
-    if (category === 'race_like') {
-      return {
-        label: weekFocus === 'repeatability' ? 'Race-pace bridge' : 'Race-like session',
-        category: 'race_like',
-        intervalLabel: weekFocus === 'repeatability'
-          ? 'race pace jumps + 4x2min stochastic bridge'
-          : plannedIntervalLabel('race_like', index, context),
-      };
-    }
-    if (/sweetspot/i.test((context.recentIntervalHints || []).join(' ')) === false && /sweetspot/i.test(String((context as { requestedFocusText?: string }).requestedFocusText || '')) && !isLighterWeek) {
-      return {
-        label: 'Sweetspot support',
-        category: 'threshold_support',
-        intervalLabel: '3x15min sweetspot @ 320-340w',
-      };
-    }
-    if (/tempo/i.test(String((context as { requestedFocusText?: string }).requestedFocusText || '')) && !isLighterWeek) {
-      return {
-        label: 'Tempo support',
-        category: 'endurance',
-        intervalLabel: '2x20min tempo @ 290-315w',
-      };
-    }
-    if (context.prefersVo2Support && (weekFocus === 'repeatability' || weekFocus === 'threshold_support') && !isLighterWeek) {
-      return {
-        label: 'VO2 support',
-        category: 'repeatability',
-        intervalLabel: '5x4min max aerobic support @ 390-410w',
-      };
-    }
-    return {
-      label: weekFocus === 'freshen' && isLighterWeek ? 'Threshold opener set' : 'Threshold support',
-      category: 'threshold_support',
-      intervalLabel: weekFocus === 'freshen' && isLighterWeek
-        ? plannedIntervalLabel('threshold_support', index, { ...context, thresholdNeedsSupport: false, taper: true })
-        : plannedIntervalLabel('threshold_support', index, context),
-    };
-  }
-
-  if (slot === 'long_endurance') {
-    return {
-      label: isLighterWeek ? 'Endurance support' : 'Long endurance support',
-      category: 'endurance',
-      intervalLabel: plannedIntervalLabel('endurance', index, context),
-    };
-  }
+  const phaseTag = phaseTagForContext({ weekFocus, isLighterWeek, eventPressure });
+  const selection = selectCatalogWorkout({
+    weekFocus,
+    slot,
+    objective,
+    freshnessState,
+    eventPressure,
+    phaseTag,
+    recentIntervalHints: context.recentIntervalHints || [],
+    requestedFocusText: context.requestedFocusText || '',
+    isLighterWeek,
+    alreadyChosenFamilies,
+    preferredCategory: category,
+    index,
+    intervalContext: context,
+  });
 
   return {
-    label: 'Rest',
-    category: 'rest',
-    intervalLabel: plannedIntervalLabel('rest', index, context),
+    label: selection.label,
+    category: selection.category,
+    intervalLabel: selection.intervalLabel,
+    family: selection.family,
   };
 }
 
@@ -1613,6 +1813,9 @@ export function buildMonthlyPlannerDraftPayload(
       index: 0,
       context: intervalContext,
       isLighterWeek,
+      objective,
+      freshnessState: needs.freshnessState,
+      eventPressure: needs.eventPressure,
     });
     const qualityOneWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,
@@ -1621,6 +1824,10 @@ export function buildMonthlyPlannerDraftPayload(
       index: 1,
       context: intervalContext,
       isLighterWeek,
+      objective,
+      freshnessState: needs.freshnessState,
+      eventPressure: needs.eventPressure,
+      alreadyChosenFamilies: supportWorkout.family === 'rest' ? [] : [supportWorkout.family],
     });
     const supportTwoWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,
@@ -1628,6 +1835,10 @@ export function buildMonthlyPlannerDraftPayload(
       index: 2,
       context: intervalContext,
       isLighterWeek,
+      objective,
+      freshnessState: needs.freshnessState,
+      eventPressure: needs.eventPressure,
+      alreadyChosenFamilies: supportWorkout.family === 'rest' ? [] : [supportWorkout.family],
     });
     const qualityTwoWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,
@@ -1636,6 +1847,10 @@ export function buildMonthlyPlannerDraftPayload(
       index: 3,
       context: intervalContext,
       isLighterWeek,
+      objective,
+      freshnessState: needs.freshnessState,
+      eventPressure: needs.eventPressure,
+      alreadyChosenFamilies: [qualityOneWorkout.family].filter((family): family is PlannerWorkoutFamily => family !== 'rest'),
     });
     const longEnduranceWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,
@@ -1643,6 +1858,10 @@ export function buildMonthlyPlannerDraftPayload(
       index: 4,
       context: intervalContext,
       isLighterWeek,
+      objective,
+      freshnessState: needs.freshnessState,
+      eventPressure: needs.eventPressure,
+      alreadyChosenFamilies: [supportWorkout.family, supportTwoWorkout.family].filter((family): family is PlannerWorkoutFamily => family !== 'rest'),
     });
     const restWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,
@@ -1650,6 +1869,9 @@ export function buildMonthlyPlannerDraftPayload(
       index: 5,
       context: intervalContext,
       isLighterWeek,
+      objective,
+      freshnessState: needs.freshnessState,
+      eventPressure: needs.eventPressure,
     });
     const supportDurationMinutes = supportMinutes;
     const supportTargetLoad = Math.round(supportMinutes * 0.5);

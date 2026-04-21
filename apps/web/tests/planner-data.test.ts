@@ -697,6 +697,65 @@ test('monthly planner can select sweetspot support when the direction explicitly
   assert.equal(Boolean(sweetspotWorkout), true);
 });
 
+test('monthly planner family-driven selector penalizes costly quality families when freshness is constrained', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-20',
+    working_threshold_w: 365,
+    wellness: { ctl: 98, atl: 112 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 142, duration_s: 7200, weighted_avg_watts: 360, summary: { short_label: '3x15 threshold' }, zone_times: { Z4: 2500 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 132, duration_s: 5400, summary: { short_label: '30/15 set' }, zone_times: { Z5: 930 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 82, duration_s: 9000, summary: { short_label: 'Support endurance' }, zone_times: { Z2: 7200 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build VO2 support and max aerobic repeatability without digging deeper fatigue',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 9.5 },
+  });
+
+  const firstWeek = payload.weeks[0]!;
+  const vo2Workout = firstWeek.workouts.find((workout) => /vo2|max aerobic|5x4|4x4/i.test(`${workout.label} ${workout.intervalLabel || ''}`));
+
+  assert.equal(Boolean(vo2Workout), false);
+});
+
+test('monthly planner family-driven selector can choose race-like sharpening work close to an event', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-02',
+    working_threshold_w: 365,
+    wellness: { ctl: 104, atl: 101 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'endurance / Z2 ride', training_load: 80, duration_s: 7200, summary: { short_label: 'Endurance support' }, zone_times: { Z2: 6200 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 128, duration_s: 6600, weighted_avg_watts: 350, summary: { short_label: '2x15 threshold' }, zone_times: { Z4: 2100 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 74, duration_s: 8400, summary: { short_label: 'Endurance' }, zone_times: { Z2: 6900 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen race-specific work with openers for the next event',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 8.5 },
+  });
+
+  const firstTwoWeeks = payload.weeks.slice(0, 2).flatMap((week) => week.workouts);
+  const raceSpecificWorkout = firstTwoWeeks.find((workout) => workout.category === 'race_like' || /race pace|stochastic|openers|points-race|pursuit/i.test(`${workout.label} ${workout.intervalLabel || ''}`));
+
+  assert.equal(Boolean(raceSpecificWorkout), true);
+});
+
+test('monthly planner family-driven selector uses scored catalog metadata instead of only direction-text branches', () => {
+  const source = require('node:fs').readFileSync(new URL('../lib/server/planner-data.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /function\s+scoreCatalogWorkout/);
+  assert.match(source, /function\s+selectCatalogWorkout/);
+  assert.match(source, /allowedObjectives/);
+  assert.match(source, /phaseTags/);
+  assert.match(source, /progressionTargets/);
+  assert.match(source, /antiRepetitionTags/);
+});
+
 test('monthly planner draft payload starts from the current week and respects the remaining weekly-hour cap', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-23',
