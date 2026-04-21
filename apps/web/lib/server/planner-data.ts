@@ -558,7 +558,7 @@ function freshnessSummary(form: number): string {
 }
 
 type PlannerWorkoutCategory = 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
-type PlannerWorkoutFamily = 'endurance' | 'recovery' | 'tempo' | 'sweetspot' | 'threshold_support' | 'vo2_support' | 'repeatability' | 'race_specific' | 'opener';
+type PlannerWorkoutFamily = 'endurance' | 'recovery' | 'tempo' | 'sweetspot' | 'threshold_support' | 'vo2_support' | 'repeatability' | 'race_specific' | 'opener' | 'sprint_neuromuscular' | 'standing_start';
 
 type WorkoutCatalogEntry = {
   id: string;
@@ -613,9 +613,9 @@ type CatalogSelection = {
 
 const SLOT_ALLOWED_FAMILIES: Record<WorkoutLibrarySlot, PlannerWorkoutFamily[]> = {
   support_primary: ['endurance', 'tempo', 'sweetspot', 'threshold_support', 'recovery'],
-  quality_primary: ['repeatability', 'threshold_support', 'race_specific', 'vo2_support'],
+  quality_primary: ['repeatability', 'threshold_support', 'race_specific', 'vo2_support', 'standing_start'],
   support_secondary: ['recovery', 'endurance', 'tempo', 'sweetspot', 'threshold_support'],
-  quality_secondary: ['threshold_support', 'repeatability', 'race_specific', 'vo2_support', 'opener', 'tempo', 'sweetspot'],
+  quality_secondary: ['threshold_support', 'repeatability', 'race_specific', 'vo2_support', 'opener', 'tempo', 'sweetspot', 'sprint_neuromuscular', 'standing_start'],
   long_endurance: ['endurance'],
   rest: [],
 };
@@ -653,6 +653,28 @@ const WORKOUT_CATALOG: WorkoutCatalogEntry[] = [
     phaseTags: ['specific', 'taper'],
     progressionTargets: ['freshness', 'race_tolerance'],
     antiRepetitionTags: ['openers', 'primer'],
+  },
+  {
+    id: 'sprint-primer',
+    family: 'sprint_neuromuscular',
+    label: 'Sprint primer',
+    preferenceTags: ['sprint', 'neuromuscular', 'track_speed'],
+    researchNotes: ['A short sprint-primer layer can sharpen neuromuscular speed and cadence without turning the session into a full glycolytic load.'],
+    allowedObjectives: ['race_specificity', 'taper'],
+    phaseTags: ['specific', 'taper'],
+    progressionTargets: ['race_tolerance', 'neuromuscular_readiness'],
+    antiRepetitionTags: ['sprint_primer', 'flying_200', 'neuromuscular'],
+  },
+  {
+    id: 'standing-start-torque',
+    family: 'standing_start',
+    label: 'Standing-start torque',
+    preferenceTags: ['standing_start', 'acceleration', 'track_specific'],
+    researchNotes: ['Standing-start torque work gives track-endurance riders a first-class acceleration and force-development option when the block needs gate speed and torque.'],
+    allowedObjectives: ['race_specificity'],
+    phaseTags: ['specific'],
+    progressionTargets: ['acceleration', 'race_tolerance'],
+    antiRepetitionTags: ['standing_start', 'gate_start', 'torque_start'],
   },
   {
     id: 'repeatability-30-15',
@@ -784,6 +806,8 @@ function requestedFocusTags(text: string) {
     race: /race|specific|stochastic|pursuit|points/.test(lowered),
     threshold: /threshold|durable power|over-under/.test(lowered),
     repeatability: /repeatability|30\/15|anaerobic/.test(lowered),
+    sprint: /sprint|neuromuscular|flying\s?200|top\s?speed|jump/.test(lowered),
+    standingStart: /standing.?start|gate\s?start|acceleration|torque/.test(lowered),
   };
 }
 
@@ -807,8 +831,8 @@ function scoreCatalogWorkout(entry: WorkoutCatalogEntry, context: CatalogSelecto
   const weekFocusFamilies: Record<CatalogSelectorContext['weekFocus'], PlannerWorkoutFamily[]> = {
     threshold_support: ['threshold_support', 'sweetspot', 'tempo'],
     repeatability: ['repeatability', 'vo2_support', 'race_specific'],
-    race_specificity: ['race_specific', 'opener', 'threshold_support'],
-    freshen: ['recovery', 'opener', 'threshold_support'],
+    race_specificity: ['race_specific', 'opener', 'standing_start', 'sprint_neuromuscular', 'threshold_support'],
+    freshen: ['recovery', 'opener', 'sprint_neuromuscular', 'threshold_support'],
   };
   if (weekFocusFamilies[context.weekFocus].includes(entry.family)) {
     score += 4;
@@ -828,7 +852,7 @@ function scoreCatalogWorkout(entry: WorkoutCatalogEntry, context: CatalogSelecto
   const progressionMatches = [
     context.weekFocus === 'repeatability' && entry.progressionTargets.includes('repeatability_density'),
     context.weekFocus === 'threshold_support' && entry.progressionTargets.includes('threshold_durability'),
-    context.weekFocus === 'race_specificity' && entry.progressionTargets.includes('race_tolerance'),
+    context.weekFocus === 'race_specificity' && (entry.progressionTargets.includes('race_tolerance') || entry.progressionTargets.includes('acceleration') || entry.progressionTargets.includes('neuromuscular_readiness')),
     context.objective === 'aerobic_support' && entry.progressionTargets.includes('aerobic_durability'),
   ].some(Boolean);
   if (progressionMatches) {
@@ -843,18 +867,41 @@ function scoreCatalogWorkout(entry: WorkoutCatalogEntry, context: CatalogSelecto
   if (requestedTags.threshold && entry.family === 'threshold_support') { score += 3; rationaleTags.push('requested_threshold'); }
   if (requestedTags.repeatability && entry.family === 'repeatability') { score += 3; rationaleTags.push('requested_repeatability'); }
   if (requestedTags.opener && (entry.family === 'recovery' || entry.family === 'opener')) { score += 4; rationaleTags.push('requested_openers'); }
+  if (requestedTags.sprint && entry.family === 'sprint_neuromuscular') { score += 6; rationaleTags.push('requested_sprint'); }
+  if (requestedTags.standingStart && entry.family === 'standing_start') { score += 7; rationaleTags.push('requested_standing_start'); }
 
   if (context.freshnessState === 'blocked' || context.freshnessState === 'constrained') {
     if (['vo2_support', 'repeatability', 'race_specific'].includes(entry.family)) score -= 5;
+    if (entry.family === 'standing_start') score -= 2;
+    if (entry.family === 'sprint_neuromuscular') score += 1;
     if (['endurance', 'recovery', 'tempo', 'sweetspot', 'threshold_support'].includes(entry.family)) score += 2;
     rationaleTags.push('freshness_adjusted');
-  } else if (context.freshnessState === 'fresh' && ['repeatability', 'vo2_support', 'race_specific'].includes(entry.family)) {
+  } else if (context.freshnessState === 'fresh' && ['repeatability', 'vo2_support', 'race_specific', 'standing_start', 'sprint_neuromuscular'].includes(entry.family)) {
     score += 1;
   }
 
   if (context.eventPressure === 'near' || context.eventPressure === 'taper') {
     if (entry.family === 'race_specific') { score += 4; rationaleTags.push('event_pressure_race'); }
     if (entry.family === 'recovery' && /openers/i.test(entry.label)) { score += 3; rationaleTags.push('event_pressure_openers'); }
+    if (entry.family === 'opener') { score += 4; rationaleTags.push('event_pressure_opener_family'); }
+    if (entry.family === 'sprint_neuromuscular') { score += 4; rationaleTags.push('event_pressure_sprint'); }
+    if (entry.family === 'standing_start') { score += 2; rationaleTags.push('event_pressure_start'); }
+  }
+
+  if (context.weekFocus === 'race_specificity' && entry.family === 'standing_start') {
+    score += 3;
+    rationaleTags.push('specific_start_fit');
+  }
+
+  if (context.weekFocus === 'freshen' && entry.family === 'sprint_neuromuscular') {
+    score += 2;
+    rationaleTags.push('freshen_speed_fit');
+  }
+
+  const specificityRequested = requestedTags.race || requestedTags.opener || requestedTags.sprint || requestedTags.standingStart;
+  if ((entry.family === 'sprint_neuromuscular' || entry.family === 'standing_start') && !specificityRequested && !['race_specificity', 'taper'].includes(context.objective)) {
+    score -= 8;
+    rationaleTags.push('specificity_guardrail');
   }
 
   const antiRepeatHit = entry.antiRepetitionTags.some((tag) => recentHints.includes(tag.replaceAll('_', ' ')) || recentHints.includes(tag));
@@ -873,6 +920,10 @@ function scoreCatalogWorkout(entry: WorkoutCatalogEntry, context: CatalogSelecto
   if (context.slot === 'quality_primary' && ['endurance', 'recovery', 'tempo'].includes(entry.family)) score -= 6;
   if (context.slot === 'quality_secondary' && context.isLighterWeek && entry.family === 'vo2_support') score -= 6;
   if (context.slot === 'quality_secondary' && context.weekFocus === 'repeatability' && entry.family === 'race_specific') score += 3;
+  if (context.slot === 'quality_primary' && entry.family === 'sprint_neuromuscular') score -= 2;
+  if (context.slot === 'quality_secondary' && context.weekFocus === 'race_specificity' && entry.family === 'standing_start') score += 3;
+  if (context.slot === 'quality_secondary' && context.weekFocus === 'freshen' && entry.family === 'sprint_neuromuscular') score += 3;
+  if (context.slot === 'quality_secondary' && context.weekFocus === 'freshen' && entry.family === 'standing_start') score -= 2;
 
   return { score, rationaleTags };
 }
@@ -904,6 +955,26 @@ function buildCatalogSelection(entry: WorkoutCatalogEntry, context: CatalogSelec
       label: 'Openers',
       category,
       intervalLabel: '3x1min progressive openers + flying efforts',
+      family,
+      rationaleTags,
+    };
+  }
+  if (family === 'sprint_neuromuscular') {
+    return {
+      label: 'Sprint primer',
+      category,
+      intervalLabel: context.weekFocus === 'freshen'
+        ? '6x8s sprint primer + fast-leg reset'
+        : '8x10s neuromuscular sprint set + rolling release',
+      family,
+      rationaleTags,
+    };
+  }
+  if (family === 'standing_start') {
+    return {
+      label: 'Standing-start torque',
+      category,
+      intervalLabel: '6x12s standing-start torque + seated launch resets',
       family,
       rationaleTags,
     };

@@ -756,6 +756,68 @@ test('monthly planner family-driven selector uses scored catalog metadata instea
   assert.match(source, /antiRepetitionTags/);
 });
 
+test('planner workout catalog includes opener, sprint-neuromuscular, and standing-start families with scored metadata', () => {
+  const source = require('node:fs').readFileSync(new URL('../lib/server/planner-data.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /family:\s+'opener'/);
+  assert.match(source, /family:\s+'sprint_neuromuscular'/);
+  assert.match(source, /family:\s+'standing_start'/);
+  assert.match(source, /progressionTargets:\s*\[[^\]]*'neuromuscular_readiness'/);
+  assert.match(source, /progressionTargets:\s*\[[^\]]*'acceleration'/);
+  assert.match(source, /antiRepetitionTags:\s*\[[^\]]*'standing_start'/);
+});
+
+test('monthly planner selector can surface sprint-primer or standing-start specificity when track sharpening calls for it', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-03',
+    working_threshold_w: 365,
+    wellness: { ctl: 105, atl: 100 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 132, duration_s: 6600, weighted_avg_watts: 352, summary: { short_label: '2x15 threshold' }, zone_times: { Z4: 2100 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'endurance / Z2 ride', training_load: 78, duration_s: 8400, summary: { short_label: 'Endurance' }, zone_times: { Z2: 7000 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 72, duration_s: 7200, summary: { short_label: 'Support endurance' }, zone_times: { Z2: 6000 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen track racing with standing-start acceleration and sprint primer work',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 8.5 },
+  });
+
+  const specificityWorkout = payload.weeks
+    .slice(0, 2)
+    .flatMap((week) => week.workouts)
+    .find((workout) => /standing-start|sprint primer|neuromuscular sprint|torque/i.test(`${workout.label} ${workout.intervalLabel || ''}`));
+
+  assert.equal(Boolean(specificityWorkout), true);
+});
+
+test('monthly planner selector keeps sprint and standing-start families out of generic aerobic-support months', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-28',
+    working_threshold_w: 365,
+    wellness: { ctl: 101, atl: 103 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'endurance / Z2 ride', training_load: 88, duration_s: 10800, summary: { short_label: 'Long endurance' }, zone_times: { Z2: 8600 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'endurance / Z2 ride', training_load: 74, duration_s: 8400, summary: { short_label: 'Support endurance' }, zone_times: { Z2: 6900 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'threshold / race-support ride', training_load: 120, duration_s: 6000, weighted_avg_watts: 340, summary: { short_label: 'Tempo support' }, zone_times: { Z4: 1200, Z3: 1800 } },
+    ],
+  }, {
+    objective: 'aerobic_support',
+    ambition: 'balanced',
+    currentDirection: 'Rebuild aerobic durability and tempo support for the next block',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+  });
+
+  const leakedSpecificity = payload.weeks
+    .flatMap((week) => week.workouts)
+    .find((workout) => /standing-start|sprint primer|neuromuscular sprint|torque/i.test(`${workout.label} ${workout.intervalLabel || ''}`));
+
+  assert.equal(Boolean(leakedSpecificity), false);
+});
+
 test('monthly planner draft payload starts from the current week and respects the remaining weekly-hour cap', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-23',
