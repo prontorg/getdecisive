@@ -6,6 +6,9 @@ import { normalizeMonthlyPlanRequestBody } from '../lib/server/monthly-plan-requ
 test('monthly planner draft route normalizes form values so unchecked boxes become false and selected fields persist', () => {
   const form = new FormData();
   form.set('objective', 'threshold_support');
+  form.set('selectedRecommendationSource', 'alternative');
+  form.set('selectedRecommendationTitle', 'Lean more threshold');
+  form.set('selectedRecommendationReason', 'Use this if you want the month anchored more clearly around threshold support and race support.');
   form.set('ambition', 'conservative');
   form.set('maxWeeklyHours', '9.5');
   form.set('restDay', 'Friday');
@@ -17,6 +20,9 @@ test('monthly planner draft route normalizes form values so unchecked boxes beco
   const normalized = normalizeMonthlyPlanRequestBody(form, '2026-04-16');
 
   assert.equal(normalized.objective, 'threshold_support');
+  assert.equal(normalized.selectedRecommendation?.source, 'alternative');
+  assert.equal(normalized.selectedRecommendation?.title, 'Lean more threshold');
+  assert.match(normalized.selectedRecommendation?.reason || '', /threshold support/i);
   assert.equal(normalized.ambition, 'conservative');
   assert.equal(normalized.mustFollow.maxWeeklyHours, 9.5);
   assert.equal(normalized.mustFollow.noDoubles, false);

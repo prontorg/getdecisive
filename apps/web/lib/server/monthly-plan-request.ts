@@ -23,14 +23,30 @@ export function normalizeMonthlyPlanRequestBody(
   parsed: ParsedMonthlyPlanBody,
   today?: string,
 ): Omit<MonthlyPlanInput, 'id' | 'createdAt' | 'updatedAt'> {
+  const objective = String(pickValue(parsed, 'objective') || 'repeatability') as MonthlyPlanInput['objective'];
+  const recommendationTitle = pickValue(parsed, 'selectedRecommendationTitle') ? String(pickValue(parsed, 'selectedRecommendationTitle')) : undefined;
+  const recommendationSource = pickValue(parsed, 'selectedRecommendationSource') ? String(pickValue(parsed, 'selectedRecommendationSource')) : undefined;
+  const recommendationReason = pickValue(parsed, 'selectedRecommendationReason') ? String(pickValue(parsed, 'selectedRecommendationReason')) : undefined;
+  const recommendationConfidence = pickValue(parsed, 'selectedRecommendationConfidence') ? String(pickValue(parsed, 'selectedRecommendationConfidence')) : undefined;
   return {
     monthStart: String(pickValue(parsed, 'monthStart') || (today || new Date().toISOString().slice(0, 10)).slice(0, 8) + '01'),
     sourceWindowDays: pickCheckbox(parsed, 'useLast28DaysOnly') ? 28 : 42,
     ignoreSickWeek: pickCheckbox(parsed, 'ignoreSickWeek'),
     ignoreVacationWeek: pickCheckbox(parsed, 'ignoreVacationWeek'),
     excludeNonPrimarySport: pickCheckbox(parsed, 'excludeNonPrimarySport'),
-    objective: String(pickValue(parsed, 'objective') || 'repeatability') as MonthlyPlanInput['objective'],
+    objective,
     ambition: String(pickValue(parsed, 'ambition') || 'balanced') as MonthlyPlanInput['ambition'],
+    selectedRecommendation: recommendationTitle
+      ? {
+          source: (recommendationSource === 'primary' || recommendationSource === 'alternative' || recommendationSource === 'manual' ? recommendationSource : 'manual') as 'primary' | 'alternative' | 'manual',
+          title: recommendationTitle,
+          objective,
+          reason: recommendationReason,
+          confidence: recommendationConfidence === 'low' || recommendationConfidence === 'medium' || recommendationConfidence === 'high'
+            ? recommendationConfidence
+            : undefined,
+        }
+      : undefined,
     successMarkers: pickAllValues(parsed, 'successMarkers').map(String),
     note: pickValue(parsed, 'note') ? String(pickValue(parsed, 'note')) : undefined,
     mustFollow: {

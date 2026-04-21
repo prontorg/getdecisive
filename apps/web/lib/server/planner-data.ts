@@ -192,6 +192,7 @@ export type CurrentWeekReplanPayload = {
   recommendedNextKeyDay: string;
   recommendedFocus: WeeklyDecisionPayload['focus'];
   recommendationText: string;
+  selectedDirectionSummary?: string;
   remainingWeekHours: number;
   remainingQualityBudget: number;
 };
@@ -1357,6 +1358,7 @@ export function buildCurrentWeekReplanPayload(
   const remainingWorkouts = (week?.workouts || []).filter((workout) => workout.date > today);
   const remainingDays = remainingWorkouts.map((workout) => workout.date);
   const recommendedNextKeyDay = remainingWorkouts.find((workout) => ['repeatability', 'threshold_support', 'race_like'].includes(workout.category))?.date || remainingWorkouts[0]?.date || today;
+  const selectedDirectionSummary = input?.currentDirection ? `Selected month direction: ${input.currentDirection}.` : undefined;
   return {
     liveWindowLabel: 'Live active week (today / tomorrow / completed work)',
     draftBridgeLabel: 'Draft bridge (remaining editable slots in this same week)',
@@ -1366,7 +1368,8 @@ export function buildCurrentWeekReplanPayload(
     remainingDays,
     recommendedNextKeyDay,
     recommendedFocus: decision.focus,
-    recommendationText: `${decision.focus.replace('_', ' ')} next. Best key day: ${recommendedNextKeyDay}.`,
+    recommendationText: `${selectedDirectionSummary ? `${selectedDirectionSummary} ` : ''}${decision.focus.replace('_', ' ')} next. Best key day: ${recommendedNextKeyDay}.`,
+    selectedDirectionSummary,
     remainingWeekHours: decision.remainingWeekHours,
     remainingQualityBudget: decision.remainingQualityBudget,
   };

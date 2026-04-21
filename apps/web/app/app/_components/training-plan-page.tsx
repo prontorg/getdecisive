@@ -256,6 +256,21 @@ export async function TrainingPlanPage({
   const recommendationPayload = buildPlanningRecommendationPayload(planner.live, currentDirection);
   const selectedObjectiveValue = latestInput?.objective || recommendationPayload.primary.objective;
   const selectedDirectionLabel = objectiveOptions.find((item) => item.value === selectedObjectiveValue)?.label || selectedObjectiveValue || 'No direction selected yet';
+  const selectedRecommendation = latestInput?.selectedRecommendation || (latestInput
+    ? {
+        source: 'manual' as const,
+        title: selectedDirectionLabel,
+        objective: selectedObjectiveValue as 'repeatability' | 'threshold_support' | 'race_specificity' | 'aerobic_support' | 'rebuild' | 'consistency' | 'taper',
+        reason: 'Builder inputs are saved, but this direction was not selected from the recommendation cards.',
+        confidence: undefined,
+      }
+    : undefined);
+  const selectedRecommendationReason = selectedRecommendation?.reason
+    || (selectedRecommendation?.source === 'primary'
+      ? recommendationPayload.primary.explanation
+      : recommendationPayload.alternatives.find((item) => item.objective === selectedRecommendation?.objective)?.reason)
+    || 'No recommendation rationale saved yet.';
+  const draftOriginLabel = latestDraft?.assumptions.selectedRecommendationTitle || selectedRecommendation?.title || selectedDirectionLabel;
   const workspaceStatusLabel = latestDraft
     ? 'Reviewing generated draft'
     : latestInput
@@ -461,6 +476,7 @@ export async function TrainingPlanPage({
                     <div className="chip-row planning-recommendation-chip-row">
                       <span className="chip">Objective: {recommendationPayload.primary.objective}</span>
                       <span className="chip">Current direction: {selectedDirectionLabel}</span>
+                      <span className="chip">Selected source: {selectedRecommendation?.source || 'waiting'}</span>
                     </div>
                   </div>
                   <div className="planning-recommendation-card">
@@ -482,6 +498,10 @@ export async function TrainingPlanPage({
                     <p>Keep the current build settings aligned with {recommendationPayload.primary.title.toLowerCase()}.</p>
                     <form action="/api/planner/month/draft" method="post" className="planning-recommendation-action">
                       <input type="hidden" name="objective" value={recommendationPayload.primary.objective} />
+                      <input type="hidden" name="selectedRecommendationSource" value="primary" />
+                      <input type="hidden" name="selectedRecommendationTitle" value={recommendationPayload.primary.title} />
+                      <input type="hidden" name="selectedRecommendationReason" value={recommendationPayload.primary.explanation} />
+                      <input type="hidden" name="selectedRecommendationConfidence" value={recommendationPayload.primary.confidence} />
                       <input type="hidden" name="ambition" value={latestInput?.ambition || 'balanced'} />
                       <input type="hidden" name="maxWeeklyHours" value={String(latestInput?.mustFollow.maxWeeklyHours || 10.5)} />
                       <input type="hidden" name="restDay" value={latestInput?.preferences.restDay || 'Saturday'} />
@@ -498,6 +518,9 @@ export async function TrainingPlanPage({
                       <p>{item.reason}</p>
                       <form action="/api/planner/month/draft" method="post" className="planning-recommendation-action">
                         <input type="hidden" name="objective" value={item.objective} />
+                        <input type="hidden" name="selectedRecommendationSource" value="alternative" />
+                        <input type="hidden" name="selectedRecommendationTitle" value={item.title} />
+                        <input type="hidden" name="selectedRecommendationReason" value={item.reason} />
                         <input type="hidden" name="ambition" value={item.objective === 'consistency' ? 'conservative' : latestInput?.ambition || 'balanced'} />
                         <input type="hidden" name="maxWeeklyHours" value={String(item.objective === 'consistency' ? Math.max(6, (latestInput?.mustFollow.maxWeeklyHours || 10.5) - 1) : latestInput?.mustFollow.maxWeeklyHours || 10.5)} />
                         <input type="hidden" name="restDay" value={latestInput?.preferences.restDay || 'Saturday'} />
@@ -544,7 +567,25 @@ export async function TrainingPlanPage({
                       <p>Pick rest and long-ride days so the order of work makes sense.</p>
                     </div>
                   </div>
+                  <div className="planning-workspace-guide-row planning-workspace-guide-row-3up">
+                    <div className="training-plan-guide-card">
+                      <strong>Selected plan direction</strong>
+                      <p>{selectedRecommendation?.title || selectedDirectionLabel}</p>
+                    </div>
+                    <div className="training-plan-guide-card">
+                      <strong>Why this was selected</strong>
+                      <p>{selectedRecommendationReason}</p>
+                    </div>
+                    <div className="training-plan-guide-card">
+                      <strong>Builder status</strong>
+                      <p>{selectedRecommendation ? `Using ${selectedRecommendation.source} recommendation as the default build anchor.` : 'No recommendation saved yet. Builder is using the current objective only.'}</p>
+                    </div>
+                  </div>
                   <div className="training-plan-direction-grid">
+                    <input type="hidden" name="selectedRecommendationSource" value={selectedRecommendation?.source || 'manual'} />
+                    <input type="hidden" name="selectedRecommendationTitle" value={selectedRecommendation?.title || selectedDirectionLabel} />
+                    <input type="hidden" name="selectedRecommendationReason" value={selectedRecommendationReason} />
+                    {selectedRecommendation?.confidence ? <input type="hidden" name="selectedRecommendationConfidence" value={selectedRecommendation.confidence} /> : null}
                     <label>
                       <span>Main objective</span>
                       <select name="objective" defaultValue={latestInput?.objective || 'repeatability'}>
@@ -657,6 +698,18 @@ export async function TrainingPlanPage({
                   <strong>3. Tidy the month</strong>
                   <p>Then move, lock, soften, or remove future workouts in the calendar before publishing.</p>
                 </div>
+                <div className="training-plan-guide-card">
+                  <strong>Draft built from</strong>
+                  <p>{draftOriginLabel}</p>
+                </div>
+                <div className="training-plan-guide-card">
+                  <strong>Why this direction</strong>
+                  <p>{latestDraft.assumptions.selectedRecommendationReason || selectedRecommendationReason}</p>
+                </div>
+                <div className="training-plan-guide-card">
+                  <strong>Selection confidence</strong>
+                  <p>{latestDraft.assumptions.selectedRecommendationConfidence || selectedRecommendation?.confidence || 'manual'}</p>
+                </div>
               </div>
               <div className="training-plan-calendar-toolbar">
                 <div className="status-item training-plan-week-decision-panel">
@@ -685,6 +738,7 @@ export async function TrainingPlanPage({
                   </div>
                   <p>{currentWeekBridge?.recommendationText || 'Waiting for a current-week bridge recommendation.'}</p>
                   <p>{currentWeekBridge?.recommendedNextKeyDay ? `Next key day ${currentWeekBridge.recommendedNextKeyDay}` : 'Next key day still resolving.'}</p>
+                  <p>{currentWeekBridge?.selectedDirectionSummary || `Draft built from ${draftOriginLabel}.`}</p>
                   <p className="muted">Only future bridge slots change. Completed work and the live today/tomorrow call stay fixed.</p>
                   <div className="button-row training-plan-action-pills">
                     <form action="/api/planner/month/replan" method="post">

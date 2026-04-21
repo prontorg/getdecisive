@@ -48,6 +48,13 @@ type MonthlyPlanInput = {
     | 'consistency'
     | 'taper';
   ambition: 'conservative' | 'balanced' | 'ambitious';
+  selectedRecommendation?: {
+    source: 'primary' | 'alternative' | 'manual';
+    title: string;
+    objective: MonthlyPlanInput['objective'];
+    reason?: string;
+    confidence?: 'low' | 'medium' | 'high';
+  };
   successMarkers: string[];
   note?: string;
   mustFollow: {
@@ -112,6 +119,10 @@ type MonthlyPlanDraft = {
     ctl?: number;
     atl?: number;
     form?: number;
+    selectedRecommendationTitle?: string;
+    selectedRecommendationObjective?: MonthlyPlanInput['objective'];
+    selectedRecommendationReason?: string;
+    selectedRecommendationConfidence?: 'low' | 'medium' | 'high';
     recentSummary: string[];
     availabilitySummary: string[];
     guardrailSummary: string[];

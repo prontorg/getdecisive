@@ -45,7 +45,13 @@ export async function POST(request: Request) {
     const savedDrafts = await saveMonthlyPlanDraft(userId, {
       monthStart: generated.monthStart,
       inputId: latestInput?.id || 'missing_input',
-      assumptions: generated.assumptions,
+      assumptions: {
+        ...generated.assumptions,
+        selectedRecommendationTitle: latestInput?.selectedRecommendation?.title,
+        selectedRecommendationObjective: latestInput?.selectedRecommendation?.objective,
+        selectedRecommendationReason: latestInput?.selectedRecommendation?.reason,
+        selectedRecommendationConfidence: latestInput?.selectedRecommendation?.confidence,
+      },
       weeks: generated.weeks.map((week) => ({
         id: `week_${week.weekIndex}`,
         weekIndex: week.weekIndex,

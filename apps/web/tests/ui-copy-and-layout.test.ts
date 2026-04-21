@@ -162,6 +162,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /moveDate/i);
   assert.match(source, /Active-week edits • draft bridge/i);
   assert.match(source, /currentWeekBridge\?\.draftBridgeLabel/i);
+  assert.match(source, /selectedDirectionSummary/i);
+  assert.match(source, /Draft built from/i);
+  assert.match(source, /Selection confidence/i);
   assert.match(source, /Only future bridge slots change\./i);
   assert.match(source, /training-plan-mini-facts/i);
   assert.match(source, /training-plan-mini-fact/i);
@@ -180,6 +183,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Planning workspace/i);
   assert.match(source, /Understand, decide, build, then review/i);
   assert.match(source, /Selected direction/i);
+  assert.match(source, /Selected source: \{selectedRecommendation\?\.source \|\| 'waiting'\}/i);
+  assert.match(source, /Selected plan direction/i);
+  assert.match(source, /Why this was selected/i);
+  assert.match(source, /selectedRecommendationReason/i);
+  assert.match(source, /selectedRecommendationTitle/i);
+  assert.match(source, /selectedRecommendationSource/i);
+  assert.match(source, /selectedRecommendationConfidence/i);
   assert.match(source, /Changed since last update/i);
   assert.match(source, /Step 4/i);
   assert.match(source, /What is true right now\?/i);

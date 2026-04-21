@@ -39,6 +39,13 @@ test('monthly plan inputs are stored newest-first and latest can be retrieved', 
       excludeNonPrimarySport: true,
       objective: 'threshold_support',
       ambition: 'conservative',
+      selectedRecommendation: {
+        source: 'alternative',
+        title: 'Lean more threshold',
+        objective: 'threshold_support',
+        reason: 'Threshold support still needs clearer reinforcement.',
+        confidence: 'high',
+      },
       successMarkers: ['Complete 4 consistent weeks'],
       mustFollow: { unavailableDates: ['2026-05-08'], noDoubles: true, noBackToBackHardDays: true },
       preferences: { restDay: 'Friday' },
@@ -47,6 +54,7 @@ test('monthly plan inputs are stored newest-first and latest can be retrieved', 
     const latest = await getLatestMonthlyPlanInput('user_1');
     assert.equal(latest?.monthStart, '2026-05-01');
     assert.equal(latest?.objective, 'threshold_support');
+    assert.equal(latest?.selectedRecommendation?.title, 'Lean more threshold');
   });
 });
 
