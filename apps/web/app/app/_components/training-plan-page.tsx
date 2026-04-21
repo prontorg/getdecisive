@@ -245,12 +245,6 @@ export async function TrainingPlanPage({
       : recommendationPayload.alternatives.find((item) => item.objective === selectedRecommendation?.objective)?.reason)
     || 'No recommendation rationale saved yet.';
   const draftOriginLabel = latestDraft?.assumptions.selectedRecommendationTitle || selectedRecommendation?.title || selectedDirectionLabel;
-  const workspaceStatusLabel = latestDraft
-    ? 'Reviewing generated draft'
-    : latestInput
-      ? 'Direction saved, ready to generate draft'
-      : 'Waiting for direction selection';
-  const changeSummary = activePlanning.summary?.reason || comparePayload.freshnessWarnings[0] || 'No major planning change detected yet.';
 
   return (
     <AppPageShell>
@@ -297,18 +291,17 @@ export async function TrainingPlanPage({
         <section className="training-plan-top-strip mt-18">
           <AppCard className="training-plan-card training-plan-card-flat">
             <div className="training-plan-quick-builder">
-              <div className="training-plan-quick-builder__header">
-                <div>
-                  <div className="kicker">Quick builder</div>
-                  <h3>Choose, tune, review</h3>
-                  <p>tap a direction, adjust only what matters, then build.</p>
+                <div className="training-plan-quick-builder__header">
+                  <div>
+                    <div className="kicker">Quick builder</div>
+                    <h3>Choose, tune, review</h3>
+                    <p>Pick a direction, then build.</p>
+                  </div>
+                  <div className="chip-row planning-recommendation-chip-row">
+                    <span className="chip">Draft: {draftStatusLabel}</span>
+                    <span className="chip">Now: {activePlanning.summary?.plannedToday || 'Pending'}</span>
+                  </div>
                 </div>
-                <div className="chip-row planning-recommendation-chip-row">
-                  <span className="chip">Status: {workspaceStatusLabel}</span>
-                  <span className="chip">Draft: {draftStatusLabel}</span>
-                  <span className="chip">Changed: {changeSummary}</span>
-                </div>
-              </div>
 
               <div className="training-plan-live-strip">
                 <div className="training-plan-live-strip__item">
@@ -381,29 +374,17 @@ export async function TrainingPlanPage({
           </div>
           {latestDraft ? (
             <>
-              <div className="training-plan-review-guide-grid">
-                <div className="training-plan-guide-card">
-                  <strong>1. Check the live week</strong>
-                  <p>Top-left explains what should happen now and what tomorrow likely becomes.</p>
-                </div>
-                <div className="training-plan-guide-card">
-                  <strong>2. Adjust the draft bridge</strong>
-                  <p>Use Repair, Cut load, Use freshness, Reduce, or Race-like only for the remaining editable part of this week.</p>
-                </div>
-                <div className="training-plan-guide-card">
-                  <strong>3. Tidy the month</strong>
-                  <p>Then move, lock, soften, or remove future workouts in the calendar before publishing.</p>
-                </div>
+              <div className="training-plan-review-guide-grid training-plan-review-guide-grid-compact">
                 <div className="training-plan-guide-card">
                   <strong>Draft built from</strong>
                   <p>{draftOriginLabel}</p>
                 </div>
                 <div className="training-plan-guide-card">
-                  <strong>Why this direction</strong>
+                  <strong>Why</strong>
                   <p>{latestDraft.assumptions.selectedRecommendationReason || selectedRecommendationReason}</p>
                 </div>
                 <div className="training-plan-guide-card">
-                  <strong>Selection confidence</strong>
+                  <strong>Confidence</strong>
                   <p>{latestDraft.assumptions.selectedRecommendationConfidence || selectedRecommendation?.confidence || 'manual'}</p>
                 </div>
               </div>
@@ -417,14 +398,13 @@ export async function TrainingPlanPage({
                     <span className="training-plan-mini-fact"><strong>Tomorrow</strong>{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
                     <span className="training-plan-mini-fact"><strong>Confidence</strong>{activePlanning.summary?.confidence || '—'}</span>
                   </div>
-                  <p>{activePlanning.summary?.reason || 'Waiting for a current planning decision.'}</p>
                   <p>{activePlanning.summary?.nextKeyDay ? `Next key day ${activePlanning.summary.nextKeyDay}` : 'Next key day still resolving.'}</p>
                   {activePlanning.summary?.risks?.length ? (
                     <p>Risk: {activePlanning.summary.risks[0]}</p>
                   ) : null}
                 </div>
                 <div className="status-item training-plan-week-decision-panel">
-                  <strong>Active-week edits • draft bridge</strong>
+                  <strong>Week controls</strong>
                   <p>{currentWeekBridge?.draftBridgeLabel || 'Remaining editable slots in this week are not available yet.'}</p>
                   <div className="training-plan-mini-facts">
                     <span className="training-plan-mini-fact"><strong>Days</strong>{currentWeekBridge?.remainingDays.length ? currentWeekBridge.remainingDays.join(', ') : 'None'}</span>
@@ -432,10 +412,7 @@ export async function TrainingPlanPage({
                     <span className="training-plan-mini-fact"><strong>Hours left</strong>{currentWeekBridge ? `${currentWeekBridge.remainingWeekHours.toFixed(1)} h` : '—'}</span>
                     <span className="training-plan-mini-fact"><strong>Key slots</strong>{String(currentWeekBridge?.remainingQualityBudget ?? '—')}</span>
                   </div>
-                  <p>{currentWeekBridge?.recommendationText || 'Waiting for a current-week bridge recommendation.'}</p>
-                  <p>{currentWeekBridge?.recommendedNextKeyDay ? `Next key day ${currentWeekBridge.recommendedNextKeyDay}` : 'Next key day still resolving.'}</p>
                   <p>{currentWeekBridge?.selectedDirectionSummary || `Draft built from ${draftOriginLabel}.`}</p>
-                  <p className="muted">Only future bridge slots change. Completed work and the live today/tomorrow call stay fixed.</p>
                   <div className="button-row training-plan-action-pills">
                     <form action="/api/planner/month/replan" method="post">
                       <input type="hidden" name="draftId" value={latestDraft.id} />
@@ -447,21 +424,26 @@ export async function TrainingPlanPage({
                       <input type="hidden" name="scenario" value="fatigued" />
                       <button type="submit">Cut load</button>
                     </form>
-                    <form action="/api/planner/month/replan" method="post">
-                      <input type="hidden" name="draftId" value={latestDraft.id} />
-                      <input type="hidden" name="scenario" value="fresher" />
-                      <button type="submit">Use freshness</button>
-                    </form>
-                    <form action="/api/planner/month/replan" method="post">
-                      <input type="hidden" name="draftId" value={latestDraft.id} />
-                      <input type="hidden" name="scenario" value="reduce_load" />
-                      <button type="submit">Reduce</button>
-                    </form>
-                    <form action="/api/planner/month/replan" method="post">
-                      <input type="hidden" name="draftId" value={latestDraft.id} />
-                      <input type="hidden" name="scenario" value="increase_specificity" />
-                      <button type="submit">Race-like</button>
-                    </form>
+                    <details className="training-plan-inline-panel training-plan-inline-panel-week-actions">
+                      <summary title="More week actions">⋯</summary>
+                      <div className="training-plan-inline-panel__content">
+                        <form action="/api/planner/month/replan" method="post">
+                          <input type="hidden" name="draftId" value={latestDraft.id} />
+                          <input type="hidden" name="scenario" value="fresher" />
+                          <button type="submit">Use freshness</button>
+                        </form>
+                        <form action="/api/planner/month/replan" method="post">
+                          <input type="hidden" name="draftId" value={latestDraft.id} />
+                          <input type="hidden" name="scenario" value="reduce_load" />
+                          <button type="submit">Reduce</button>
+                        </form>
+                        <form action="/api/planner/month/replan" method="post">
+                          <input type="hidden" name="draftId" value={latestDraft.id} />
+                          <input type="hidden" name="scenario" value="increase_specificity" />
+                          <button type="submit">Race-like</button>
+                        </form>
+                      </div>
+                    </details>
                   </div>
                 </div>
                 <div className="training-plan-calendar-toolbar__actions">
@@ -470,7 +452,6 @@ export async function TrainingPlanPage({
                   ) : (
                     <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
                   )}
-                  <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
                   <details className="training-plan-inline-panel">
                     <summary title="More month actions">⋯</summary>
                     <div className="training-plan-inline-panel__content">
@@ -478,6 +459,7 @@ export async function TrainingPlanPage({
                         <strong>Publish future draft</strong>
                         <p>Future weeks only. Live week stays runtime-backed.</p>
                       </div>
+                      <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
                       <form action="/api/planner/month/publish" method="post">
                         <input type="hidden" name="draftId" value={latestDraft.id} />
                         <button type="submit">Publish plan</button>

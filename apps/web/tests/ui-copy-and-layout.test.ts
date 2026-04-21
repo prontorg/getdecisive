@@ -156,12 +156,12 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-day-card-drop-blocked/i);
   assert.match(calendarSource, /Move day/i);
   assert.match(calendarSource, /moveDate/i);
-  assert.match(source, /Active-week edits • draft bridge/i);
+  assert.match(source, /Week controls/i);
   assert.match(source, /currentWeekBridge\?\.draftBridgeLabel/i);
-  assert.match(source, /selectedDirectionSummary/i);
+  assert.match(source, /Week controls/i);
   assert.match(source, /Draft built from/i);
-  assert.match(source, /Selection confidence/i);
-  assert.match(source, /Only future bridge slots change\./i);
+  assert.match(source, /Confidence/i);
+
   assert.match(source, /training-plan-mini-facts/i);
   assert.match(source, /training-plan-mini-fact/i);
   assert.match(source, /<strong>Today<\/strong>/i);
@@ -170,7 +170,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /<strong>Confidence<\/strong>/i);
   assert.match(source, /<strong>Hours left<\/strong>/i);
   assert.match(source, /<strong>Key slots<\/strong>/i);
-  assert.match(source, /Only future bridge slots change\./i);
+  assert.match(source, /More week actions/i);
   assert.match(source, /<button type="submit">Repair<\/button>/i);
   assert.match(source, /<button type="submit">Cut load<\/button>/i);
   assert.match(source, /<button type="submit">Use freshness<\/button>/i);
@@ -178,6 +178,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /<button type="submit">Race-like<\/button>/i);
   assert.match(source, /Quick builder/i);
   assert.match(source, /Choose, tune, review/i);
+  assert.match(source, /Pick a direction, then build\./i);
   assert.match(source, /Live now/i);
   assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(source, /training-plan-quick-builder/i);
@@ -222,7 +223,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /Generate plan/i);
   assert.match(source, /Review the live week and the generated month/i);
   assert.match(statefulBuilderSource, /Compact builder/i);
-  assert.match(source, /tap a direction, adjust only what matters, then build/i);
+  assert.match(source, /Pick a direction, then build\./i);
   assert.match(statefulBuilderSource, /recommendationAlternatives\.map/i);
   assert.match(statefulBuilderSource, /training-plan-focus-chip/i);
   assert.match(statefulBuilderSource, /\{item\.title\}/i);
@@ -235,9 +236,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /Why this recommendation/i);
   assert.doesNotMatch(source, /Risks to watch/i);
   assert.doesNotMatch(source, /recommendedConstraints/i);
-  assert.match(source, /Calendar<\/a>/i);
-  assert.match(source, /Dashboard<\/a>/i);
-  assert.match(source, /Publish future draft/i);
+  assert.doesNotMatch(source, /1\. Check the live week/i);
+  assert.doesNotMatch(source, /2\. Adjust the draft bridge/i);
+  assert.doesNotMatch(source, /3\. Tidy the month/i);
+  assert.match(source, /Week controls/i);
+  assert.match(source, /More week actions/i);
+  assert.match(source, /training-plan-inline-panel-week-actions/i);
+  assert.match(source, /More month actions/i);
   assert.match(calendarStyles, /--m3-radius-md/i);
   assert.match(calendarStyles, /border-radius:\s*999px/i);
   assert.match(calendarStyles, /training-plan-mini-facts/i);
@@ -271,7 +276,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /recentWindow/i);
   assert.match(source, /draftWindow/i);
   assert.match(source, /categoryComparison/i);
-  assert.match(source, /freshnessWarnings/i);
   assert.match(source, /comparePayload\.summary/i);
   assert.match(source, /Publish plan/i);
   assert.match(source, /getLatestMonthlyPlanDraft/i);

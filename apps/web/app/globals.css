@@ -678,6 +678,7 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-context-chip span { color: #d7e2f0; font-size: 13px; line-height: 1.4; }
 .training-plan-direction-grid { display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
 .training-plan-form-guide-grid, .training-plan-review-guide-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.training-plan-review-guide-grid-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .training-plan-guide-card {
   padding: 12px 14px;
   border-radius: 16px;
@@ -882,6 +883,9 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   padding-top:6px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
+.training-plan-inline-panel-week-actions { align-self: stretch; }
+.training-plan-inline-panel-week-actions summary { align-self: stretch; }
+.training-plan-inline-panel__content .button-link { justify-content: center; }
 .training-plan-inline-menu__content select,
 .training-plan-inline-menu__content input { margin-top:4px; padding: 7px 8px; font-size: 12px; }
 .training-plan-inline-menu__content button,
