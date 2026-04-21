@@ -51,12 +51,13 @@ test('login screen copy and auth-page header chrome match the latest product wor
 });
 
 test('training plan page uses the latest decisive monthly-planner framing and layout', async () => {
-  const [planPageSource, source, calendarSource, calendarStyles, calendarPageSource] = await Promise.all([
+  const [planPageSource, source, calendarSource, calendarStyles, calendarPageSource, statefulBuilderSource] = await Promise.all([
     readFile(planPagePath, 'utf8'),
     readFile(trainingPlanPagePath, 'utf8'),
     readFile(trainingPlanCalendarPath, 'utf8'),
     readFile(calendarStylesPath, 'utf8'),
     readFile(calendarPagePath, 'utf8'),
+    readFile(join(webRoot, 'app/app/_components/training-plan-stateful-builder-client.tsx'), 'utf8'),
   ]);
 
   assert.match(planPageSource, /mode=\"plan\"/i);
@@ -64,6 +65,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
   assert.match(source, /Live week first\. Future weeks stay editable\./i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
+  assert.match(source, /training-plan-stateful-builder-client/i);
+  assert.match(source, /<TrainingPlanStatefulBuilderClient/i);
   assert.match(source, /Quick builder/i);
   assert.match(source, /getActivePlanningContext/i);
   assert.match(source, /Live now/i);
@@ -75,15 +78,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-range-headline/i);
   assert.match(source, /formatRange/i);
   assert.match(source, /training-plan-live-strip/i);
-  assert.match(source, /training-plan-direction-grid/i);
-  assert.match(source, /Month direction/i);
+  assert.match(source, /training-plan-stateful-builder-client/i);
+  assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(source, /Live week first\. Future weeks stay editable\./i);
   assert.match(source, /Live week on top, editable month underneath\./i);
-  assert.match(source, /Generate plan/i);
-  assert.match(source, /select name=\"restDay\"/i);
-  assert.match(source, /select name=\"restDaysPerWeek\"/i);
-  assert.match(source, /Rest days \/ week/i);
-  assert.match(source, /select name=\"longRideDay\"/i);
+  assert.match(statefulBuilderSource, /Generate plan/i);
   assert.match(await readFile(join(webRoot, 'app/api/planner/month/draft/route.ts'), 'utf8'), /appRoutes\.plan\?notice=.*Draft generated|revalidatePath\(appRoutes\.calendar\)/i);
   assert.doesNotMatch(source, /Open full calendar/i);
   assert.match(source, /Review the live week and the generated month/i);
@@ -180,23 +179,42 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Quick builder/i);
   assert.match(source, /Choose, tune, review/i);
   assert.match(source, /Live now/i);
-  assert.match(source, /Month direction/i);
+  assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(source, /training-plan-quick-builder/i);
-  assert.match(source, /training-plan-focus-chip/i);
-  assert.match(source, /Recommended<\/span>/i);
-  assert.match(source, /selectedRecommendationReason/i);
-  assert.match(source, /selectedRecommendationTitle/i);
-  assert.match(source, /selectedRecommendationSource/i);
-  assert.match(source, /selectedRecommendationConfidence/i);
-  assert.match(source, /More options/i);
-  assert.match(source, /Month focus/i);
-  assert.match(source, /Generate plan/i);
+  assert.match(statefulBuilderSource, /training-plan-focus-chip/i);
+  assert.match(statefulBuilderSource, /Recommended<\/span>/i);
+  assert.match(statefulBuilderSource, /selectedRecommendationReason/i);
+  assert.match(statefulBuilderSource, /selectedRecommendationTitle/i);
+  assert.match(statefulBuilderSource, /selectedRecommendationSource/i);
+  assert.match(statefulBuilderSource, /selectedRecommendationConfidence/i);
+  assert.match(statefulBuilderSource, /<form action=\"\/api\/planner\/month\/draft\" method=\"post\" className=\"training-plan-stateful-builder-client\">/i);
+  assert.match(statefulBuilderSource, /type=\"hidden\" name=\"objective\" value=\{selectedFocusObjective\}/i);
+  assert.match(statefulBuilderSource, /name=\"objectiveVisible\" value=\{selectedFocusObjective\}/i);
+  assert.match(statefulBuilderSource, /name=\"maxWeeklyHours\"[^\n]*value=\{maxWeeklyHours\}/i);
+  assert.match(statefulBuilderSource, /name=\"restDay\" value=\{restDay\}/i);
+  assert.match(statefulBuilderSource, /name=\"restDaysPerWeek\" value=\{restDaysPerWeek\}/i);
+  assert.match(statefulBuilderSource, /name=\"longRideDay\" value=\{longRideDay\}/i);
+  assert.match(statefulBuilderSource, /name=\"note\"[^\n]*value=\{note\}/i);
+  assert.match(statefulBuilderSource, /name=\"successMarkers\" value=\{item\} checked=\{selectedSuccessMarkers\.includes\(item\)\}/i);
+  assert.match(statefulBuilderSource, /type=\"button\"/i);
+  assert.doesNotMatch(statefulBuilderSource, /className=\"training-plan-focus-chip-form\"/i);
+  assert.match(statefulBuilderSource, /More options/i);
+  assert.match(statefulBuilderSource, /Month focus/i);
+  assert.match(statefulBuilderSource, /name=\"restDay\"/i);
+  assert.match(statefulBuilderSource, /name=\"restDaysPerWeek\"/i);
+  assert.match(statefulBuilderSource, /Rest days \/ week/i);
+  assert.match(statefulBuilderSource, /name=\"longRideDay\"/i);
+  assert.match(statefulBuilderSource, /useState\(/i);
+  assert.match(statefulBuilderSource, /selectedFocusObjective/i);
+  assert.match(statefulBuilderSource, /setSelectedFocusObjective/i);
+  assert.match(statefulBuilderSource, /chooseRecommendation\(/i);
+  assert.match(statefulBuilderSource, /Generate plan/i);
   assert.match(source, /Review the live week and the generated month/i);
-  assert.match(source, /Compact builder/i);
+  assert.match(statefulBuilderSource, /Compact builder/i);
   assert.match(source, /tap a direction, adjust only what matters, then build/i);
-  assert.match(source, /recommendationPayload\.alternatives\.map/i);
-  assert.match(source, /training-plan-focus-chip/i);
-  assert.match(source, /\{item\.title\}/i);
+  assert.match(statefulBuilderSource, /recommendationAlternatives\.map/i);
+  assert.match(statefulBuilderSource, /training-plan-focus-chip/i);
+  assert.match(statefulBuilderSource, /\{item\.title\}/i);
   assert.doesNotMatch(source, /Understand, decide, build, then review/i);
   assert.doesNotMatch(source, /Use this first/i);
   assert.doesNotMatch(source, /Live, not guessed/i);
