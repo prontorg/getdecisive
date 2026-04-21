@@ -399,6 +399,99 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-grid-main { min-width: 0; }
 .training-plan-state-hero { position: relative; }
 .training-plan-top-strip { width: 100%; }
+.training-plan-quick-builder { display:grid; gap: 14px; }
+.training-plan-quick-builder__header {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.training-plan-quick-builder__header h3 { margin: 0; }
+.training-plan-quick-builder__header p { margin: 4px 0 0; color: var(--muted); }
+.training-plan-live-strip {
+  display:grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.training-plan-live-strip__item {
+  display:grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(122,167,255,0.1);
+  background: linear-gradient(180deg, rgba(17,24,37,0.82), rgba(12,18,27,0.72));
+}
+.training-plan-live-strip__item strong {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #9ec5ff;
+}
+.training-plan-live-strip__item span { color: #e8f0ff; font-size: 12px; line-height: 1.35; }
+.training-plan-builder-bar {
+  display:grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(122,167,255,0.12);
+  background: linear-gradient(180deg, rgba(15,22,34,0.68), rgba(12,18,27,0.52));
+}
+.training-plan-builder-bar-compact {
+  grid-template-columns: minmax(180px, 1.35fr) minmax(90px, .5fr) minmax(120px, .6fr) auto;
+  align-items:end;
+}
+.training-plan-builder-bar-compact > button { align-self: stretch; }
+.training-plan-focus-row { display:grid; gap: 8px; }
+.training-plan-focus-row__label { display:flex; justify-content:space-between; gap:8px; align-items:center; }
+.training-plan-focus-row__label strong { color: #eef4ff; }
+.training-plan-focus-row__label span { color: #9ec5ff; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.training-plan-focus-chip-row { display:flex; flex-wrap:wrap; gap: 8px; }
+.training-plan-focus-chip-form { display:inline-flex; }
+.training-plan-focus-chip {
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(122,167,255,0.14);
+  background: rgba(255,255,255,0.03);
+  color: #eef4ff;
+  cursor: pointer;
+}
+.training-plan-focus-chip span {
+  display:inline-flex;
+  align-items:center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #9ec5ff;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.training-plan-focus-chip-recommended {
+  border-color: rgba(122,167,255,0.28);
+  background: linear-gradient(180deg, rgba(15,82,186,0.22), rgba(18,24,35,0.9));
+}
+.training-plan-builder-advanced { grid-column: 1 / -1; }
+.training-plan-builder-advanced summary { cursor:pointer; color:#dce9ff; }
+.training-plan-builder-advanced__body {
+  display:grid;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(122,167,255,0.1);
+}
+.training-plan-quick-notes { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.training-plan-quick-note {
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(122,167,255,0.1);
+  background: rgba(255,255,255,0.025);
+}
+.training-plan-quick-note strong { display:block; color:#eef4ff; margin-bottom:4px; }
+.training-plan-quick-note p { margin:0; color:#c7d2e0; font-size:13px; line-height:1.4; }
 .planning-workspace-shell { display:grid; gap: 16px; }
 .planning-workspace-banner {
   display:grid;
@@ -912,7 +1005,7 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   .training-plan-category-grid,
   .dashboard-planning-grid,
   .dashboard-planning-subgrid,
-  .metrics-grid, .panel-grid-wide, .analysis-wide-grid, .md-metric-strip, .md-section-columns-wide, .md-section-columns-analysis, .training-plan-grid-top, .training-plan-grid-cards, .training-plan-grid-history, .training-plan-state-pills, .training-plan-month-grid, .training-plan-context-grid-fullwidth, .training-plan-mini-facts, .training-plan-calendar-toolbar, .training-plan-step-grid, .training-plan-form-guide-grid, .training-plan-review-guide-grid { grid-template-columns: 1fr; }
+  .metrics-grid, .panel-grid-wide, .analysis-wide-grid, .md-metric-strip, .md-section-columns-wide, .md-section-columns-analysis, .training-plan-grid-top, .training-plan-grid-cards, .training-plan-grid-history, .training-plan-state-pills, .training-plan-month-grid, .training-plan-context-grid-fullwidth, .training-plan-mini-facts, .training-plan-calendar-toolbar, .training-plan-step-grid, .training-plan-form-guide-grid, .training-plan-review-guide-grid, .training-plan-live-strip, .training-plan-quick-notes, .training-plan-builder-bar-compact { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .page-shell { padding: 16px 12px 40px; }

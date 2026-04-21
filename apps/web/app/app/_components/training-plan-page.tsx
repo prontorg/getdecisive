@@ -36,33 +36,6 @@ const successOptions = [
   'Arrive fresher for race demands',
 ] as const;
 
-const plannerSteps = [
-  {
-    key: 'understand',
-    number: '1',
-    title: 'Understand',
-    description: 'Check what is true today and what changed before planning.',
-  },
-  {
-    key: 'decide',
-    number: '2',
-    title: 'Decide',
-    description: 'See the recommended month direction and choose the focus.',
-  },
-  {
-    key: 'build',
-    number: '3',
-    title: 'Build',
-    description: 'Set the key constraints that shape the next 4 weeks.',
-  },
-  {
-    key: 'review',
-    number: '4',
-    title: 'Review',
-    description: 'Check the live week and tidy the generated draft.',
-  },
-] as const;
-
 function fmtHours(value: number) {
   return `${value.toFixed(1)} h`;
 }
@@ -278,6 +251,36 @@ export async function TrainingPlanPage({
       : 'Waiting for direction selection';
   const changeSummary = activePlanning.summary?.reason || comparePayload.freshnessWarnings[0] || 'No major planning change detected yet.';
 
+  function renderPlannerDefaults(overrides?: {
+    objective?: string;
+    source?: 'primary' | 'alternative' | 'manual';
+    title?: string;
+    reason?: string;
+    confidence?: string;
+    ambition?: string;
+    maxWeeklyHours?: number;
+  }) {
+    const successMarkers = latestInput?.successMarkers || [];
+    return (
+      <>
+        <input type="hidden" name="objective" value={overrides?.objective || latestInput?.objective || recommendationPayload.primary.objective} />
+        <input type="hidden" name="selectedRecommendationSource" value={overrides?.source || selectedRecommendation?.source || 'manual'} />
+        <input type="hidden" name="selectedRecommendationTitle" value={overrides?.title || selectedRecommendation?.title || selectedDirectionLabel} />
+        <input type="hidden" name="selectedRecommendationReason" value={overrides?.reason || selectedRecommendationReason} />
+        {(overrides?.confidence || selectedRecommendation?.confidence) ? <input type="hidden" name="selectedRecommendationConfidence" value={overrides?.confidence || selectedRecommendation?.confidence || ''} /> : null}
+        <input type="hidden" name="ambition" value={overrides?.ambition || latestInput?.ambition || 'balanced'} />
+        <input type="hidden" name="maxWeeklyHours" value={String(overrides?.maxWeeklyHours ?? latestInput?.mustFollow.maxWeeklyHours ?? 10.5)} />
+        <input type="hidden" name="restDay" value={latestInput?.preferences.restDay || 'Saturday'} />
+        <input type="hidden" name="restDaysPerWeek" value={String(latestInput?.preferences.restDaysPerWeek || 1)} />
+        <input type="hidden" name="longRideDay" value={latestInput?.preferences.longRideDay || 'Sunday'} />
+        {latestInput?.mustFollow.noDoubles ?? true ? <input type="hidden" name="noDoubles" value="on" /> : null}
+        {latestInput?.mustFollow.noBackToBackHardDays ?? true ? <input type="hidden" name="noBackToBackHardDays" value="on" /> : null}
+        {successMarkers.map((item) => <input key={item} type="hidden" name="successMarkers" value={item} />)}
+        {latestInput?.note ? <input type="hidden" name="note" value={latestInput.note} /> : null}
+      </>
+    );
+  }
+
   return (
     <AppPageShell>
       <AppHero
@@ -322,346 +325,176 @@ export async function TrainingPlanPage({
       {!isCalendarMode ? (
         <section className="training-plan-top-strip mt-18">
           <AppCard className="training-plan-card training-plan-card-flat">
-            <div className="planning-workspace-shell">
-              <div className="planning-workspace-banner">
+            <div className="training-plan-quick-builder">
+              <div className="training-plan-quick-builder__header">
                 <div>
-                  <div className="kicker">Planning workspace</div>
-                  <h3>Understand, decide, build, then review</h3>
-                  <p>The planner should show the live truth first, then the chosen direction, then the generated month.</p>
+                  <div className="kicker">Quick builder</div>
+                  <h3>Choose, tune, review</h3>
+                  <p>tap a direction, adjust only what matters, then build.</p>
                 </div>
-                <div className="planning-workspace-banner__chips">
-                  <div className="planning-workspace-chip">
-                    <strong>Status</strong>
-                    <span>{workspaceStatusLabel}</span>
+                <div className="chip-row planning-recommendation-chip-row">
+                  <span className="chip">Status: {workspaceStatusLabel}</span>
+                  <span className="chip">Draft: {draftStatusLabel}</span>
+                  <span className="chip">Changed: {changeSummary}</span>
+                </div>
+              </div>
+
+              <div className="training-plan-live-strip">
+                <div className="training-plan-live-strip__item">
+                  <strong>Live now</strong>
+                  <span>{activePlanning.summary?.plannedToday || 'Planning refresh pending'}</span>
+                </div>
+                <div className="training-plan-live-strip__item">
+                  <strong>Tomorrow</strong>
+                  <span>{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
+                </div>
+                <div className="training-plan-live-strip__item">
+                  <strong>Freshness</strong>
+                  <span>{contextPayload.currentState.freshnessSummary}</span>
+                </div>
+                <div className="training-plan-live-strip__item">
+                  <strong>Key slot</strong>
+                  <span>{activePlanning.summary?.nextKeyDay || 'Still resolving'}</span>
+                </div>
+                <div className="training-plan-live-strip__item">
+                  <strong>Updated</strong>
+                  <span>{liveSyncStamp}</span>
+                </div>
+              </div>
+
+              <div className="training-plan-builder-bar">
+                <div className="training-plan-focus-row">
+                  <div className="training-plan-focus-row__label">
+                    <strong>Month direction</strong>
+                    <span>Recommended</span>
                   </div>
-                  <div className="planning-workspace-chip">
-                    <strong>Selected direction</strong>
-                    <span>{selectedDirectionLabel}</span>
-                  </div>
-                  <div className="planning-workspace-chip">
-                    <strong>Draft state</strong>
-                    <span>{draftStatusLabel}</span>
-                  </div>
-                  <div className="planning-workspace-chip planning-workspace-chip-warning">
-                    <strong>Changed since last update</strong>
-                    <span>{changeSummary}</span>
+                  <div className="training-plan-focus-chip-row">
+                    <form action="/api/planner/month/draft" method="post" className="training-plan-focus-chip-form">
+                      {renderPlannerDefaults({
+                        objective: recommendationPayload.primary.objective,
+                        source: 'primary',
+                        title: recommendationPayload.primary.title,
+                        reason: recommendationPayload.primary.explanation,
+                        confidence: recommendationPayload.primary.confidence,
+                      })}
+                      <button type="submit" className="training-plan-focus-chip training-plan-focus-chip-recommended">
+                        <span>Recommended</span>
+                        {recommendationPayload.primary.title}
+                      </button>
+                    </form>
+                    {recommendationPayload.alternatives.map((item) => (
+                      <form key={item.objective} action="/api/planner/month/draft" method="post" className="training-plan-focus-chip-form">
+                        {renderPlannerDefaults({
+                          objective: item.objective,
+                          source: 'alternative',
+                          title: item.title,
+                          reason: item.reason,
+                          ambition: item.objective === 'consistency' ? 'conservative' : latestInput?.ambition || 'balanced',
+                          maxWeeklyHours: item.objective === 'consistency' ? Math.max(6, (latestInput?.mustFollow.maxWeeklyHours || 10.5) - 1) : latestInput?.mustFollow.maxWeeklyHours || 10.5,
+                        })}
+                        <button type="submit" className="training-plan-focus-chip">
+                          {item.title}
+                        </button>
+                      </form>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              <nav className="planning-workspace-step-nav" aria-label="Planning workspace steps">
-                {plannerSteps.map((step) => (
-                  <a key={step.key} href={`#${step.key}`} className="planning-workspace-step-nav__item">
-                    <span className="planning-workspace-step-nav__number">{step.number}</span>
-                    <span className="planning-workspace-step-nav__body">
-                      <strong>{step.title}</strong>
-                      <span>{step.description}</span>
-                    </span>
-                  </a>
-                ))}
-              </nav>
+              <form action="/api/planner/month/draft" method="post" className="training-plan-builder-bar training-plan-builder-bar-compact">
+                <input type="hidden" name="selectedRecommendationSource" value={selectedRecommendation?.source || 'manual'} />
+                <input type="hidden" name="selectedRecommendationTitle" value={selectedRecommendation?.title || selectedDirectionLabel} />
+                <input type="hidden" name="selectedRecommendationReason" value={selectedRecommendationReason} />
+                {selectedRecommendation?.confidence ? <input type="hidden" name="selectedRecommendationConfidence" value={selectedRecommendation.confidence} /> : null}
+                <label>
+                  <span>Month focus</span>
+                  <select name="objective" defaultValue={latestInput?.objective || 'repeatability'}>
+                    {objectiveOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Hours</span>
+                  <input name="maxWeeklyHours" type="number" min="4" max="20" step="0.5" defaultValue={latestInput?.mustFollow.maxWeeklyHours || 10.5} />
+                </label>
+                <label>
+                  <span>Rest day</span>
+                  <select name="restDay" defaultValue={latestInput?.preferences.restDay || 'Saturday'}>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
+                  </select>
+                </label>
+                <button type="submit">Generate plan</button>
 
-              <section id="understand" className="planning-workspace-section">
-                <div className="planning-workspace-section__header">
-                  <span className="training-plan-step-pill">Step 1</span>
-                  <div>
-                    <div className="kicker">Understand</div>
-                    <h3>What is true right now?</h3>
-                    <p>Use this to confirm the live truth before changing the month direction.</p>
-                  </div>
-                </div>
-                <div className="planning-workspace-guide-row">
-                  <div className="training-plan-guide-card">
-                    <strong>Use this first</strong>
-                    <p>Check whether today, tomorrow, freshness, and the key risk match reality.</p>
-                  </div>
-                  <div className="training-plan-guide-card">
-                    <strong>Live, not guessed</strong>
-                    <p>This section should reflect the current sync state and active planning runtime.</p>
-                  </div>
-                  <div className="training-plan-guide-card">
-                    <strong>If it looks wrong</strong>
-                    <p>Fix the live context first. Do not build a month on bad current-state assumptions.</p>
-                  </div>
-                </div>
-                <div className="training-plan-context-grid training-plan-context-grid-compact training-plan-context-grid-fullwidth">
-                  {activePlanning.summary ? (
-                    <>
-                      <div className="training-plan-context-chip">
-                        <strong>Week intention</strong>
-                        <span>{activePlanning.summary.weekIntention}</span>
+                <details className="training-plan-builder-advanced">
+                  <summary>More options</summary>
+                  <div className="training-plan-builder-advanced__body">
+                    <div className="training-plan-quick-notes">
+                      <div className="training-plan-quick-note">
+                        <strong>Compact builder</strong>
+                        <p>{selectedRecommendation?.title || selectedDirectionLabel}</p>
                       </div>
-                      <div className="training-plan-context-chip">
-                        <strong>Planned today</strong>
-                        <span>{activePlanning.summary.plannedToday}</span>
+                      <div className="training-plan-quick-note">
+                        <strong>Why</strong>
+                        <p>{selectedRecommendationReason}</p>
                       </div>
-                      <div className="training-plan-context-chip training-plan-context-chip-strong">
-                        <strong>Actually today</strong>
-                        <span>{activePlanning.summary.actualToday}</span>
+                    </div>
+                    <div className="training-plan-direction-grid">
+                      <label>
+                        <span>Ambition</span>
+                        <select name="ambition" defaultValue={latestInput?.ambition || 'balanced'}>
+                          <option value="conservative">Conservative</option>
+                          <option value="balanced">Balanced</option>
+                          <option value="ambitious">Ambitious</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Rest days / week</span>
+                        <select name="restDaysPerWeek" defaultValue={String(latestInput?.preferences.restDaysPerWeek || 1)}>
+                          <option value="0">0</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Long ride</span>
+                        <select name="longRideDay" defaultValue={latestInput?.preferences.longRideDay || 'Sunday'}>
+                          <option value="Monday">Monday</option>
+                          <option value="Tuesday">Tuesday</option>
+                          <option value="Wednesday">Wednesday</option>
+                          <option value="Thursday">Thursday</option>
+                          <option value="Friday">Friday</option>
+                          <option value="Saturday">Saturday</option>
+                          <option value="Sunday">Sunday</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div className="training-plan-inline-flags">
+                      <label className="training-plan-compact-check"><input name="noDoubles" type="checkbox" defaultChecked={latestInput?.mustFollow.noDoubles ?? true} /> <span>No doubles</span></label>
+                      <label className="training-plan-compact-check"><input name="noBackToBackHardDays" type="checkbox" defaultChecked={latestInput?.mustFollow.noBackToBackHardDays ?? true} /> <span>Hard spacing</span></label>
+                    </div>
+                    <fieldset className="training-plan-success-fieldset">
+                      <legend>Success</legend>
+                      <div className="chip-row">
+                        {successOptions.map((item) => (
+                          <label key={item} className="chip">
+                            <input type="checkbox" name="successMarkers" value={item} defaultChecked={latestInput?.successMarkers.includes(item)} /> {item}
+                          </label>
+                        ))}
                       </div>
-                      <div className="training-plan-context-chip">
-                        <strong>Planned tomorrow</strong>
-                        <span>{activePlanning.summary.plannedTomorrow}</span>
-                      </div>
-                      <div className="training-plan-context-chip">
-                        <strong>Tomorrow likely</strong>
-                        <span>{activePlanning.summary.likelyTomorrow}</span>
-                      </div>
-                      <div className="training-plan-context-chip">
-                        <strong>Confidence</strong>
-                        <span>{activePlanning.summary.confidence || 'Planning refresh pending'}</span>
-                      </div>
-                      <div className="training-plan-context-chip">
-                        <strong>Next key day</strong>
-                        <span>{activePlanning.summary.nextKeyDay || 'Protect the next quality slot once freshness allows.'}</span>
-                      </div>
-                      <div className="training-plan-context-chip training-plan-context-chip-warning">
-                        <strong>Why this is the call</strong>
-                        <span>{activePlanning.summary.reason}</span>
-                      </div>
-                    </>
-                  ) : null}
-                  <div className="training-plan-context-chip training-plan-context-chip-emphasis">
-                    <strong>Last updated</strong>
-                    <span>{liveSyncStamp}</span>
-                  </div>
-                  <div className="training-plan-context-chip">
-                    <strong>Goal</strong>
-                    <span>{contextPayload.goalEvent.title}{contextPayload.goalEvent.date ? ` • ${contextPayload.goalEvent.date}` : ''}</span>
-                  </div>
-                  <div className="training-plan-context-chip">
-                    <strong>State</strong>
-                    <span>CTL {contextPayload.currentState.ctl} • ATL {contextPayload.currentState.atl} • Form {contextPayload.currentState.form >= 0 ? '+' : ''}{contextPayload.currentState.form}</span>
-                  </div>
-                  <div className="training-plan-context-chip">
-                    <strong>Freshness</strong>
-                    <span>{contextPayload.currentState.freshnessSummary}</span>
-                  </div>
-                  <div className="training-plan-context-chip">
-                    <strong>Recent</strong>
-                    <span>{contextPayload.recentHistory.repeatablePattern}</span>
-                  </div>
-                  <div className="training-plan-context-chip">
-                    <strong>Availability</strong>
-                    <span>{contextPayload.availability.summary.join(' ')}</span>
-                  </div>
-                  <div className="training-plan-context-chip">
-                    <strong>Guardrails</strong>
-                    <span>{contextPayload.guardrails.summary.join(' ')}</span>
-                  </div>
-                  <div className="training-plan-context-chip training-plan-context-chip-warning">
-                    <strong>Freshness risk</strong>
-                    <span>{comparePayload.freshnessWarnings[0] || 'No major freshness risk visible from the current recent-vs-planned comparison.'}</span>
-                  </div>
-                </div>
-              </section>
-
-              <section id="decide" className="planning-workspace-section">
-                <div className="planning-workspace-section__header">
-                  <span className="training-plan-step-pill">Step 2</span>
-                  <div>
-                    <div className="kicker">Decide</div>
-                    <h3>AI recommendation: what should this month become?</h3>
-                    <p>Start from the recommended direction, then choose whether to accept it or lean the month another way.</p>
-                  </div>
-                </div>
-                <div className="planning-recommendation-grid">
-                  <div className="planning-recommendation-card planning-recommendation-card-primary">
-                    <div className="planning-recommendation-card__topline">
-                      <strong>Recommended now</strong>
-                      <span className="planning-recommendation-confidence">Confidence {recommendationPayload.primary.confidence}</span>
-                    </div>
-                    <h4>{recommendationPayload.primary.title}</h4>
-                    <p>{recommendationPayload.primary.explanation}</p>
-                    <div className="chip-row planning-recommendation-chip-row">
-                      <span className="chip">Objective: {recommendationPayload.primary.objective}</span>
-                      <span className="chip">Current direction: {selectedDirectionLabel}</span>
-                      <span className="chip">Selected source: {selectedRecommendation?.source || 'waiting'}</span>
-                    </div>
-                  </div>
-                  <div className="planning-recommendation-card">
-                    <strong>Why this recommendation</strong>
-                    <ul className="list planning-recommendation-list">
-                      {recommendationPayload.rationaleBullets.map((item) => <li key={item}>{item}</li>)}
-                    </ul>
-                  </div>
-                  <div className="planning-recommendation-card">
-                    <strong>Risks to watch</strong>
-                    <ul className="list planning-recommendation-list">
-                      {recommendationPayload.riskFlags.map((item) => <li key={item}>{item}</li>)}
-                    </ul>
-                  </div>
-                </div>
-                <div className="planning-workspace-guide-row planning-workspace-guide-row-3up">
-                  <div className="training-plan-guide-card">
-                    <strong>Accept recommendation</strong>
-                    <p>Keep the current build settings aligned with {recommendationPayload.primary.title.toLowerCase()}.</p>
-                    <form action="/api/planner/month/draft" method="post" className="planning-recommendation-action">
-                      <input type="hidden" name="objective" value={recommendationPayload.primary.objective} />
-                      <input type="hidden" name="selectedRecommendationSource" value="primary" />
-                      <input type="hidden" name="selectedRecommendationTitle" value={recommendationPayload.primary.title} />
-                      <input type="hidden" name="selectedRecommendationReason" value={recommendationPayload.primary.explanation} />
-                      <input type="hidden" name="selectedRecommendationConfidence" value={recommendationPayload.primary.confidence} />
-                      <input type="hidden" name="ambition" value={latestInput?.ambition || 'balanced'} />
-                      <input type="hidden" name="maxWeeklyHours" value={String(latestInput?.mustFollow.maxWeeklyHours || 10.5)} />
-                      <input type="hidden" name="restDay" value={latestInput?.preferences.restDay || 'Saturday'} />
-                      <input type="hidden" name="restDaysPerWeek" value={String(latestInput?.preferences.restDaysPerWeek || 1)} />
-                      <input type="hidden" name="longRideDay" value={latestInput?.preferences.longRideDay || 'Sunday'} />
-                      {latestInput?.mustFollow.noDoubles ?? true ? <input type="hidden" name="noDoubles" value="on" /> : null}
-                      {latestInput?.mustFollow.noBackToBackHardDays ?? true ? <input type="hidden" name="noBackToBackHardDays" value="on" /> : null}
-                      <button type="submit">Use recommendation</button>
-                    </form>
-                  </div>
-                  {recommendationPayload.alternatives.map((item) => (
-                    <div key={item.objective} className="training-plan-guide-card">
-                      <strong>{item.title}</strong>
-                      <p>{item.reason}</p>
-                      <form action="/api/planner/month/draft" method="post" className="planning-recommendation-action">
-                        <input type="hidden" name="objective" value={item.objective} />
-                        <input type="hidden" name="selectedRecommendationSource" value="alternative" />
-                        <input type="hidden" name="selectedRecommendationTitle" value={item.title} />
-                        <input type="hidden" name="selectedRecommendationReason" value={item.reason} />
-                        <input type="hidden" name="ambition" value={item.objective === 'consistency' ? 'conservative' : latestInput?.ambition || 'balanced'} />
-                        <input type="hidden" name="maxWeeklyHours" value={String(item.objective === 'consistency' ? Math.max(6, (latestInput?.mustFollow.maxWeeklyHours || 10.5) - 1) : latestInput?.mustFollow.maxWeeklyHours || 10.5)} />
-                        <input type="hidden" name="restDay" value={latestInput?.preferences.restDay || 'Saturday'} />
-                        <input type="hidden" name="restDaysPerWeek" value={String(latestInput?.preferences.restDaysPerWeek || 1)} />
-                        <input type="hidden" name="longRideDay" value={latestInput?.preferences.longRideDay || 'Sunday'} />
-                        {latestInput?.mustFollow.noDoubles ?? true ? <input type="hidden" name="noDoubles" value="on" /> : null}
-                        {latestInput?.mustFollow.noBackToBackHardDays ?? true ? <input type="hidden" name="noBackToBackHardDays" value="on" /> : null}
-                        <button type="submit">Select {item.title}</button>
-                      </form>
-                    </div>
-                  ))}
-                </div>
-                <div className="planning-workspace-guide-row planning-workspace-guide-row-3up">
-                  {recommendationPayload.recommendedConstraints.map((item) => (
-                    <div key={item} className="training-plan-guide-card">
-                      <strong>Constraint</strong>
-                      <p>{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section id="build" className="planning-workspace-section">
-                <form action="/api/planner/month/draft" method="post" className="training-plan-step-section training-plan-inline-layout__form training-plan-inline-layout__form-fullwidth planning-workspace-build-form">
-                  <div className="planning-workspace-section__header">
-                    <span className="training-plan-step-pill">Step 3</span>
-                    <div>
-                      <div className="kicker">Build</div>
-                      <h3>Set the key constraints and build the draft</h3>
-                      <p>Keep the visible controls to the small set that should shape the next 4 weeks.</p>
-                    </div>
-                  </div>
-                  <div className="training-plan-form-guide-grid">
-                    <div className="training-plan-guide-card">
-                      <strong>Main aim</strong>
-                      <p>Choose the performance focus that should lead the next 4 weeks.</p>
-                    </div>
-                    <div className="training-plan-guide-card">
-                      <strong>Limits</strong>
-                      <p>Set hours and hard-day guardrails so the draft stays realistic.</p>
-                    </div>
-                    <div className="training-plan-guide-card">
-                      <strong>Week shape</strong>
-                      <p>Pick rest and long-ride days so the order of work makes sense.</p>
-                    </div>
-                  </div>
-                  <div className="planning-workspace-guide-row planning-workspace-guide-row-3up">
-                    <div className="training-plan-guide-card">
-                      <strong>Selected plan direction</strong>
-                      <p>{selectedRecommendation?.title || selectedDirectionLabel}</p>
-                    </div>
-                    <div className="training-plan-guide-card">
-                      <strong>Why this was selected</strong>
-                      <p>{selectedRecommendationReason}</p>
-                    </div>
-                    <div className="training-plan-guide-card">
-                      <strong>Builder status</strong>
-                      <p>{selectedRecommendation ? `Using ${selectedRecommendation.source} recommendation as the default build anchor.` : 'No recommendation saved yet. Builder is using the current objective only.'}</p>
-                    </div>
-                  </div>
-                  <div className="training-plan-direction-grid">
-                    <input type="hidden" name="selectedRecommendationSource" value={selectedRecommendation?.source || 'manual'} />
-                    <input type="hidden" name="selectedRecommendationTitle" value={selectedRecommendation?.title || selectedDirectionLabel} />
-                    <input type="hidden" name="selectedRecommendationReason" value={selectedRecommendationReason} />
-                    {selectedRecommendation?.confidence ? <input type="hidden" name="selectedRecommendationConfidence" value={selectedRecommendation.confidence} /> : null}
+                    </fieldset>
                     <label>
-                      <span>Main objective</span>
-                      <select name="objective" defaultValue={latestInput?.objective || 'repeatability'}>
-                        {objectiveOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                      </select>
-                    </label>
-                    <label>
-                      <span>Ambition</span>
-                      <select name="ambition" defaultValue={latestInput?.ambition || 'balanced'}>
-                        <option value="conservative">Conservative</option>
-                        <option value="balanced">Balanced</option>
-                        <option value="ambitious">Ambitious</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Max weekly hours</span>
-                      <input name="maxWeeklyHours" type="number" min="4" max="20" step="0.5" defaultValue={latestInput?.mustFollow.maxWeeklyHours || 10.5} />
-                    </label>
-                    <label>
-                      <span>Rest day</span>
-                      <select name="restDay" defaultValue={latestInput?.preferences.restDay || 'Saturday'}>
-                        <option value="Monday">Monday</option>
-                        <option value="Tuesday">Tuesday</option>
-                        <option value="Wednesday">Wednesday</option>
-                        <option value="Thursday">Thursday</option>
-                        <option value="Friday">Friday</option>
-                        <option value="Saturday">Saturday</option>
-                        <option value="Sunday">Sunday</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Rest days per week</span>
-                      <select name="restDaysPerWeek" defaultValue={String(latestInput?.preferences.restDaysPerWeek || 1)}>
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Long ride day</span>
-                      <select name="longRideDay" defaultValue={latestInput?.preferences.longRideDay || 'Sunday'}>
-                        <option value="Monday">Monday</option>
-                        <option value="Tuesday">Tuesday</option>
-                        <option value="Wednesday">Wednesday</option>
-                        <option value="Thursday">Thursday</option>
-                        <option value="Friday">Friday</option>
-                        <option value="Saturday">Saturday</option>
-                        <option value="Sunday">Sunday</option>
-                      </select>
+                      <span>Note</span>
+                      <textarea name="note" rows={2} defaultValue={latestInput?.note || ''} />
                     </label>
                   </div>
-                  <div className="training-plan-inline-flags">
-                    <label className="training-plan-compact-check"><input name="noDoubles" type="checkbox" defaultChecked={latestInput?.mustFollow.noDoubles ?? true} /> <span>No doubles</span></label>
-                    <label className="training-plan-compact-check"><input name="noBackToBackHardDays" type="checkbox" defaultChecked={latestInput?.mustFollow.noBackToBackHardDays ?? true} /> <span>No back-to-back hard days</span></label>
-                  </div>
-                  <fieldset className="training-plan-success-fieldset">
-                    <legend>Success this month looks like</legend>
-                    <div className="chip-row">
-                      {successOptions.map((item) => (
-                        <label key={item} className="chip">
-                          <input type="checkbox" name="successMarkers" value={item} defaultChecked={latestInput?.successMarkers.includes(item)} /> {item}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                  <label>
-                    <span>Anything special?</span>
-                    <textarea name="note" rows={2} defaultValue={latestInput?.note || ''} />
-                  </label>
-                  <div className="button-row training-plan-top-strip__actions">
-                    <button type="submit">Generate draft</button>
-                    <p className="training-plan-inline-help">This saves your inputs, builds the next 4 weeks, and refreshes the review section below.</p>
-                  </div>
-                </form>
-              </section>
+                </details>
+              </form>
             </div>
           </AppCard>
         </section>
