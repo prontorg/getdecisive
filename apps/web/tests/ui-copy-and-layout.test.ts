@@ -124,10 +124,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /training-plan-week-summary-card/i);
   assert.match(calendarSource, /calendarRows/i);
   assert.match(calendarSource, /rowIndexByWeekIndex/i);
-  assert.match(calendarStyles, /\.training-plan-month-grid \{[^}]*grid-auto-rows:\s*124px/i);
-  assert.match(calendarStyles, /\.training-plan-week-summary-card \{[^}]*height:\s*124px/i);
-  assert.match(calendarStyles, /\.training-plan-week-summary-column \{[^}]*grid-auto-rows:\s*124px/i);
-  assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*background:\s*linear-gradient\(180deg, rgba\(12,15,21,0\.62\), rgba\(10,13,19,0\.56\)\)/i);
+  assert.match(calendarStyles, /--calendar-row-height:\s*clamp\(138px, 16vw, 176px\)/i);
+  assert.match(calendarStyles, /\.training-plan-month-grid \{[^}]*grid-auto-rows:\s*var\(--calendar-row-height\)/i);
+  assert.match(calendarStyles, /\.training-plan-week-summary-card \{[^}]*height:\s*var\(--calendar-row-height\)/i);
+  assert.match(calendarStyles, /\.training-plan-week-summary-column \{[^}]*grid-auto-rows:\s*var\(--calendar-row-height\)/i);
+  assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*background:\s*linear-gradient\(180deg, rgba\(12,15,21,0\.74\), rgba\(10,13,19,0\.62\)\)/i);
   assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*border-color:\s*rgba\(120,134,156,0\.06\)/i);
   assert.match(calendarStyles, /\.rest-day-subtle \.training-plan-day-card__header strong \{[^}]*color:\s*#d7e2f0/i);
   assert.match(calendarStyles, /\.rest-day-subtle \.training-plan-day-card__summary \{[^}]*color:\s*#9aa9bb/i);

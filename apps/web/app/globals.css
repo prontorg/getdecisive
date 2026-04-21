@@ -13,6 +13,7 @@
   --m3-radius-sm: 18px;
   --m3-radius-md: 24px;
   --m3-radius-lg: 28px;
+  --calendar-row-height: clamp(138px, 16vw, 176px);
 }
 
 * { box-sizing: border-box; }
@@ -487,29 +488,36 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-pill span:last-child { color: var(--muted); font-size: 11px; }
 .training-plan-review-meta { display:grid; grid-template-columns: minmax(0, .6fr) minmax(0, 1.4fr); gap: 12px; margin-top: 14px; }
 .training-plan-month-status { padding-block: 10px; }
-.training-plan-month-grid { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap:6px; margin-top:8px; grid-auto-rows: 124px; }
+.training-plan-month-grid {
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap:8px;
+  margin-top:10px;
+  grid-auto-rows: var(--calendar-row-height);
+}
 .training-plan-day-card {
-  padding: 6px;
+  padding: 8px;
   border-radius: var(--m3-radius-sm);
-  border: 1px solid rgba(122,167,255,0.08);
-  background: linear-gradient(180deg, rgba(13,18,28,0.96), rgba(10,14,22,0.94));
-  min-height: 124px;
-  height: 124px;
+  border: 1px solid rgba(122,167,255,0.12);
+  background: linear-gradient(180deg, rgba(18,26,40,0.98), rgba(10,14,22,0.94));
+  min-height: var(--calendar-row-height);
+  height: var(--calendar-row-height);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 12px 26px rgba(3,8,20,.18), inset 0 1px 0 rgba(255,255,255,.025);
 }
 .training-plan-day-card-empty { opacity: .45; }
 .rest-day-subtle {
-  background: linear-gradient(180deg, rgba(12,15,21,0.62), rgba(10,13,19,0.56));
+  background: linear-gradient(180deg, rgba(12,15,21,0.74), rgba(10,13,19,0.62));
   border-color: rgba(120,134,156,0.06);
 }
 .rest-day-subtle .training-plan-day-card__header strong { color: #d7e2f0; }
 .rest-day-subtle .training-plan-day-card__summary { color: #9aa9bb; }
-.training-plan-day-card__header { display:flex; justify-content:space-between; gap:4px; align-items:center; font-size:10px; }
-.training-plan-day-card__header strong { font-size: 11px; color: #eef4ff; }
+.training-plan-day-card__header { display:flex; justify-content:space-between; gap:6px; align-items:center; font-size:10px; }
+.training-plan-day-card__header strong { font-size: 11px; color: #f7fbff; }
 .training-plan-day-card__header span, .training-plan-day-card__summary { color: var(--muted); font-size: 10px; }
-.training-plan-day-card__summary { margin: 1px 0 5px; }
+.training-plan-day-card__summary { margin: 2px 0 6px; }
 .training-plan-day-card__drop-hint { margin: 0 0 5px; font-size: 9px; line-height: 1.2; }
 .training-plan-day-card__drop-hint-safe { color: #9ec5ff; }
 .training-plan-day-card__drop-hint-warning { color: #ffcf85; }
@@ -517,19 +525,20 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-day-card-drop-safe { border-color: rgba(122,167,255,0.24); box-shadow: inset 0 0 0 1px rgba(122,167,255,0.16); }
 .training-plan-day-card-drop-warning { border-color: rgba(245,158,11,0.34); box-shadow: inset 0 0 0 1px rgba(245,158,11,0.14); }
 .training-plan-day-card-drop-blocked { border-color: rgba(239,68,68,0.4); box-shadow: inset 0 0 0 1px rgba(239,68,68,0.16); }
-.training-plan-day-card__sessions { display:grid; gap:4px; flex: 1; align-content: start; overflow:auto; padding-right: 2px; }
+.training-plan-day-card__sessions { display:grid; gap:5px; flex: 1; align-content: start; overflow:hidden; }
 .training-plan-session-card {
-  padding: 5px 6px;
-  border-radius: 9px;
-  border: 1px solid var(--session-border, rgba(122,167,255,0.14));
-  background: linear-gradient(180deg, var(--session-bg, rgba(18,28,43,0.82)), rgba(11,16,24,0.92));
+  padding: 6px 7px;
+  border-radius: 12px;
+  border: 1px solid var(--session-border, rgba(122,167,255,0.16));
+  background: linear-gradient(180deg, var(--session-bg, rgba(22,33,50,0.88)), rgba(12,17,27,0.96));
   transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
 }
 .training-plan-session-card-completed { opacity: .66; filter: saturate(.55); }
 .training-plan-session-card-busy { opacity: .75; }
 .training-plan-session-card__row { display:flex; justify-content:space-between; gap:4px; align-items:flex-start; }
 .training-plan-session-card__label { color:#eef4ff; font-size:11px; line-height:1.2; max-width: 16ch; }
-.training-plan-session-card__subhead { margin-top: 3px; color: #cdd8e8; font-size: 9px; line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.training-plan-session-card__subhead { margin-top: 3px; color: #cdd8e8; font-size: 9px; line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .92; }
 .training-plan-session-card__actions { display:flex; align-items:flex-start; gap:4px; margin-left:auto; }
 .training-plan-session-card__quick-actions {
   display:flex;
@@ -632,19 +641,20 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-category-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .training-plan-week-summary-column {
   display:grid;
-  gap: 6px;
+  gap: 8px;
   align-content:start;
-  grid-auto-rows: 124px;
+  grid-auto-rows: var(--calendar-row-height);
 }
 .training-plan-week-summary-card {
-  min-height: 124px;
-  height: 124px;
+  min-height: var(--calendar-row-height);
+  height: var(--calendar-row-height);
   padding: 0;
   border-radius: var(--m3-radius-sm);
-  border: 1px solid rgba(122,167,255,0.12);
-  background: linear-gradient(180deg, rgba(16,23,34,0.92), rgba(12,18,27,0.88));
+  border: 1px solid rgba(122,167,255,0.14);
+  background: linear-gradient(180deg, rgba(17,24,37,0.96), rgba(12,18,27,0.9));
+  box-shadow: 0 12px 26px rgba(3,8,20,.16), inset 0 1px 0 rgba(255,255,255,.025);
 }
-.training-plan-week-summary-card__inner { min-height: 124px; height: 124px; padding: 10px 12px; display: grid; grid-template-rows: auto auto auto 1fr; }
+.training-plan-week-summary-card__inner { min-height: var(--calendar-row-height); height: var(--calendar-row-height); padding: 12px 13px; display: grid; grid-template-rows: auto auto auto 1fr; }
 .training-plan-week-summary-card__kicker { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #9ec5ff; margin-bottom: 4px; }
 .training-plan-week-summary-card strong { display:block; color:#eef4ff; margin-bottom: 4px; font-size: 13px; }
 .training-plan-week-summary-card p { margin: 0; font-size: 11px; color: #d7e2f0; }
