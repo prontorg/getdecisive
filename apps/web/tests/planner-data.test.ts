@@ -458,6 +458,64 @@ test('monthly planner draft payload uses training-needs and block-decision logic
   assert.match(firstWeek.rationale.mainAim, /goals, current figures, and recent history|current figures, and recent history/i);
 });
 
+test('monthly planner workout selection gives repeatability weeks a sharper bridge session once threshold is already stable', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-01',
+    working_threshold_w: 365,
+    wellness: { ctl: 104, atl: 108 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 142, duration_s: 7200, weighted_avg_watts: 360, summary: { short_label: '3x15 threshold' }, zone_times: { Z4: 2500 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 140, duration_s: 7000, weighted_avg_watts: 356, summary: { short_label: '2x16 threshold' }, zone_times: { Z4: 2400 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 128, duration_s: 5400, summary: { short_label: '30/15 set' }, zone_times: { Z5: 900 } },
+      { activity_id: '4', start_date_local: '2026-04-13T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 126, duration_s: 5100, summary: { short_label: '2x8x30/15' }, zone_times: { Z5: 840 } },
+      { activity_id: '5', start_date_local: '2026-04-12T09:00:00', session_type: 'endurance / Z2 ride', training_load: 92, duration_s: 12600, summary: { short_label: 'Long endurance' }, zone_times: { Z2: 9800 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build repeatability into race speed',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 11 },
+  });
+
+  const repeatabilityWeek = payload.weeks[1]!;
+  const repeatabilityAnchor = repeatabilityWeek.workouts.find((workout) => workout.category === 'repeatability');
+  const raceBridge = repeatabilityWeek.workouts.find((workout) => workout.category === 'race_like');
+
+  assert.equal(repeatabilityWeek.weekTypeLabel, 'Repeatability week');
+  assert.equal(repeatabilityAnchor?.label, 'Repeatability density set');
+  assert.match(repeatabilityAnchor?.intervalLabel || '', /30\/15/i);
+  assert.equal(raceBridge?.label, 'Race-pace bridge');
+  assert.match(raceBridge?.intervalLabel || '', /jump|race pace|stochastic/i);
+});
+
+test('monthly planner workout selection gives lighter weeks an opener-style recovery session instead of another generic endurance filler', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-12',
+    working_threshold_w: 365,
+    wellness: { ctl: 102, atl: 107 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 7000, weighted_avg_watts: 357, summary: { short_label: '3x12 threshold' }, zone_times: { Z4: 2300 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 126, duration_s: 5400, summary: { short_label: '30/15 set' }, zone_times: { Z5: 900 } },
+      { activity_id: '3', start_date_local: '2026-04-16T09:00:00', session_type: 'endurance / Z2 ride', training_load: 82, duration_s: 10800, summary: { short_label: 'Endurance' }, zone_times: { Z2: 8200 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen race-specificity while staying fresh enough to execute',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 9.5 },
+  });
+
+  const lighterWeek = payload.weeks[3]!;
+  const recoveryPrimer = lighterWeek.workouts.find((workout) => workout.category === 'recovery');
+
+  assert.equal(lighterWeek.weekTypeLabel, 'Lighter week');
+  assert.equal(recoveryPrimer?.label, 'Recovery + openers');
+  assert.match(recoveryPrimer?.intervalLabel || '', /openers/i);
+  assert.equal(lighterWeek.workouts.filter((workout) => workout.category === 'endurance').length >= 1, true);
+});
+
 test('monthly planner draft payload starts from the current week and respects the remaining weekly-hour cap', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-23',
