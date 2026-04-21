@@ -66,9 +66,9 @@ export default async function AccountPage({
       {tab === 'profile' ? (
         <section className="panel-grid panel-grid-wide">
           <AppCard>
-            <div className="kicker">User settings</div>
-            <h2>User settings</h2>
-            <p>Keep your athlete profile and Intervals connection current here.</p>
+            <div className="kicker">Profile</div>
+            <h2>Athlete profile</h2>
+            <p>Keep profile and Intervals connection current.</p>
             <div className="form-grid">
               <label>
                 <span>Display name</span>
@@ -133,7 +133,7 @@ export default async function AccountPage({
 
           <AppCard>
             <div className="kicker">Current account</div>
-            <h2>Access summary</h2>
+            <h2>Account summary</h2>
             <div className="status-list compact-status-list">
               <div className="status-item"><strong>Display name</strong><p>{user.displayName}</p></div>
               <div className="status-item"><strong>Email</strong><p>{user.email}</p></div>
@@ -148,8 +148,8 @@ export default async function AccountPage({
         <section className="panel-grid">
           <AppCard>
             <div className="kicker">User management</div>
-            <h2>Add athlete / coach accounts</h2>
-            <p>Add athletes is admin-only. Each managed user can then be linked to their own Intervals athlete.</p>
+            <h2>Add accounts</h2>
+            <p>Create athlete or coach accounts, then link Intervals.</p>
             <form className="form-grid" action="/api/admin/users/save" method="post">
               <label>
                 <span>Display name</span>
@@ -244,8 +244,8 @@ export default async function AccountPage({
         <section className="panel-grid">
           <AppCard>
             <div className="kicker">Access model</div>
-            <h2>Invite-only signup</h2>
-            <p>Invite creation remains admin-only.</p>
+            <h2>Invites</h2>
+            <p>Admin-only signup control.</p>
             <div className="status-list">
               <div className="status-item"><strong>Invites in store</strong><p>{state.invites.length}</p></div>
               <div className="status-item"><strong>Used invites</strong><p>{state.invites.reduce((sum, invite) => sum + invite.usedCount, 0)}</p></div>

@@ -59,7 +59,7 @@ export default async function DashboardPage() {
       <AppHero
         eyebrow="Training Dashboard"
         title="Training Dashboard"
-        description={<>{'Live dashboard overview with current load, active weekly direction, what should happen next, and the last activity context.'}<br />{liveSyncStamp}</>}
+        description={<>{'Live load, week call, and latest activity.'}<br />{liveSyncStamp}</>}
       />
       {activePlanning.summary ? (
         <section className="dashboard-planning-stack">
@@ -67,8 +67,8 @@ export default async function DashboardPage() {
             <div className="kicker">Planning</div>
             <div className="dashboard-planning-card__header">
               <div>
-                <h2>Week intention</h2>
-                <p className="muted">The live runtime call leads today and tomorrow. The editable draft should follow that call, not replace it.</p>
+                <h2>Week call</h2>
+                <p className="muted">Live runtime leads. The draft follows.</p>
               </div>
               <div className="dashboard-planning-actions">
                 <a href={appRoutes.plan} className="button-link">Open plan</a>

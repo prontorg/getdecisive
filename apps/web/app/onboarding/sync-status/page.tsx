@@ -40,7 +40,7 @@ export default async function SyncStatusPage() {
       <section className="hero">
         <div className="hero-copy">
           <div className="kicker">Onboarding status</div>
-          <h1>Preparing {user.displayName}'s training view</h1>
+          <h1>Preparing {user.displayName}</h1>
           <p>{onboarding.statusMessage}</p>
           <div className="chip-row">
             <span className="chip">Progress {onboarding.progressPct}%</span>
@@ -64,12 +64,12 @@ export default async function SyncStatusPage() {
           </div>
         </section>
         <section className="card">
-          <div className="kicker">Access rule</div>
-          <h2>{isReady ? 'Dashboard unlocked' : 'App locked until sync is ready'}</h2>
+          <div className="kicker">Access</div>
+          <h2>{isReady ? 'Dashboard unlocked' : 'Waiting for sync'}</h2>
           <p>
             {isReady
-              ? 'The user can now enter the platform dashboard shell.'
-              : 'This matches the approved rule: no app entry until Intervals onboarding and initial processing are complete.'}
+              ? 'You can enter the dashboard now.'
+              : 'App entry stays locked until Intervals onboarding finishes.'}
           </p>
           <div className="status-list compact-status-list" style={{ marginTop: 16 }}>
             <div className="status-item"><strong>Sync health</strong><p>{syncHealth.healthLabel}</p></div>
@@ -79,7 +79,7 @@ export default async function SyncStatusPage() {
             {syncHealth.latestJobUpdatedAt ? <div className="status-item"><strong>Latest worker update</strong><p>{syncHealth.latestJobUpdatedAt}</p></div> : null}
             {syncHealth.failureReason ? <div className="status-item"><strong>Failure reason</strong><p>{syncHealth.failureReason}</p></div> : null}
           </div>
-          {!isReady ? <p className="muted" style={{ marginTop: 12 }}>If this stalls, resave the Intervals connection to restart the user-scoped sync worker.</p> : null}
+          {!isReady ? <p className="muted" style={{ marginTop: 12 }}>If this stalls, resave the connection to restart sync.</p> : null}
           <div className="button-row">
             {isReady ? <Link href={appRoutes.dashboard} className="button-link">Open dashboard</Link> : null}
             <Link href={appRoutes.onboardingIntervals} className="button-link button-secondary">Edit connection</Link>

@@ -86,7 +86,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-step-card-draft/i);
   assert.doesNotMatch(source, /Go to style guide/i);
   assert.match(source, /Open race calendar/i);
-  assert.match(source, /Generate next month/i);
+  assert.match(statefulBuilderSource, /Generate next month/i);
   assert.doesNotMatch(source, /appRoutes\.styleGuide/i);
   assert.match(source, /appRoutes\.planRaces/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
@@ -220,8 +220,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /<button type="submit">Reduce<\/button>/i);
   assert.doesNotMatch(source, /<button type="submit">Race-like<\/button>/i);
   assert.match(source, /Quick builder/i);
-  assert.match(source, /Choose, tune, review/i);
-  assert.match(source, /Pick a direction, then build\./i);
+  assert.match(source, /Pick a direction\. Set the key limits\. Build\./i);
   assert.match(source, /Live now/i);
   assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(source, /training-plan-quick-builder/i);
@@ -268,7 +267,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /Generate next month/i);
   assert.match(source, /Generated month/i);
   assert.match(statefulBuilderSource, /Compact builder/i);
-  assert.match(source, /Pick a direction, then build\./i);
+  assert.match(source, /Pick a direction\. Set the key limits\. Build\./i);
   assert.match(statefulBuilderSource, /recommendationAlternatives\.map/i);
   assert.match(statefulBuilderSource, /training-plan-focus-chip/i);
   assert.match(statefulBuilderSource, /\{item\.title\}/i);
@@ -375,7 +374,7 @@ test('dashboard pages keep the shared page hero shell and current dashboard embe
   assert.match(pageSource, /title="Training Dashboard"/i);
   assert.match(pageSource, /getActivePlanningContext/i);
   assert.match(pageSource, /Planning/i);
-  assert.match(pageSource, /Week intention/i);
+  assert.match(pageSource, /Week call/i);
   assert.match(pageSource, /Planned today/i);
   assert.match(pageSource, /Actually today/i);
   assert.match(pageSource, /Planned tomorrow/i);
@@ -467,9 +466,8 @@ test('configuration pages expose athlete configuration and admin-only user manag
   assert.doesNotMatch(account, /tab === 'intervals'/i);
   assert.match(account, /Intervals connection/i);
   assert.match(account, /Display name/i);
+  assert.match(account, /Athlete profile/i);
   assert.match(account, /Update password/i);
-  assert.match(account, /Invite-only signup/i);
-  assert.match(account, /User management/i);
   assert.match(account, /Invites/i);
   assert.match(account, /tab === 'invites'/i);
   assert.match(account, /tab=\$\{entry\.id\}|id: 'invites'/i);
@@ -487,7 +485,7 @@ test('configuration pages expose athlete configuration and admin-only user manag
   assert.match(syncStatusSource, /getSyncHealthSummary/i);
   assert.match(syncStatusSource, /Latest worker update/i);
   assert.match(syncStatusSource, /Open configuration/i);
-  assert.match(syncStatusSource, /resave the Intervals connection to restart the user-scoped sync worker/i);
+  assert.match(syncStatusSource, /resave the connection to restart sync/i);
   assert.match(syncHealthSource, /deriveSyncHealthLabel/i);
   assert.match(syncHealthSource, /Sync failed|Sync running|Sync queued|Waiting for first snapshot/i);
   assert.match(syncHealthSource, /Last snapshot/i);

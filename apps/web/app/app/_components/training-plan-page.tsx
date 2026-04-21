@@ -258,7 +258,7 @@ const draftStatusLabel = latestDraft
         <section className="training-plan-top-strip mt-18">
           <div className="training-plan-step-grid">
             <AppCard className="training-plan-step-card training-plan-step-card-status">
-              <div className="kicker">Step 1</div>
+              <div className="kicker">Status quo</div>
               <h3>Status quo</h3>
               <p>{contextPayload.recentHistory.loadSummary}</p>
               <div className="training-plan-mini-facts">
@@ -270,7 +270,7 @@ const draftStatusLabel = latestDraft
             </AppCard>
 
             <AppCard className="training-plan-step-card training-plan-step-card-goals">
-              <div className="kicker">Step 2</div>
+              <div className="kicker">Goals and races</div>
               <h3>Goals and races</h3>
               <p>{draftOriginLabel}</p>
               <div className="training-plan-mini-facts">
@@ -287,12 +287,9 @@ const draftStatusLabel = latestDraft
             <div className="training-plan-quick-builder">
                 <div className="training-plan-quick-builder__header">
                   <div>
-                    <div className="kicker">Step 3</div>
                     <div className="kicker">Quick builder</div>
                     <h3>Parameters</h3>
-                    <p>Choose, tune, review</p>
-                    <p>Pick a direction, then build.</p>
-                    <p>Set a few parameters, then Generate next month.</p>
+                    <p>Pick a direction. Set the key limits. Build.</p>
                   </div>
                   <div className="chip-row planning-recommendation-chip-row">
                     <span className="chip">Draft: {draftStatusLabel}</span>
@@ -361,7 +358,6 @@ const draftStatusLabel = latestDraft
         <AppCard className="training-plan-card training-plan-card-fullwidth training-plan-step-card training-plan-step-card-draft">
               <div className="planning-workspace-section__header planning-workspace-section__header-review">
                 <div>
-                  <span className="training-plan-step-pill">Step 4</span>
                   <div className="kicker">Draft next month</div>
                   <h2>Generated month</h2>
                   {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
