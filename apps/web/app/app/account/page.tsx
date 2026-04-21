@@ -6,6 +6,7 @@ import { appRoutes } from '../../../lib/routes';
 import { getAuthenticatedAppContext } from '../../../lib/server/app-context';
 import { getLatestIntervalsConnectionRecord, listManagedUsersRecord } from '../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../lib/server/session';
+import { getSyncHealthSummary } from '../../../lib/server/sync-health';
 
 export default async function AccountPage({
   searchParams,
@@ -19,6 +20,7 @@ export default async function AccountPage({
 
   const { user, onboarding, state, isAdmin } = await getAuthenticatedAppContext(userId);
   const intervalsConnection = await getLatestIntervalsConnectionRecord(userId);
+  const syncHealth = await getSyncHealthSummary(userId, { connection: intervalsConnection, onboarding });
   const managedUsers = isAdmin ? await listManagedUsersRecord() : [];
 
   const tabs = [
@@ -35,9 +37,9 @@ export default async function AccountPage({
           <>
             <strong>{user.displayName}</strong>
             <br />
-            <span className="muted">Status: {intervalsConnection ? intervalsConnection.syncStatus : 'not connected'}</span>
+            <span className="muted">Status: {syncHealth.healthLabel}</span>
             <br />
-            <span className="muted">Athlete ID: {intervalsConnection?.externalAthleteId || '—'}</span>
+            <span className="muted">Athlete ID: {syncHealth.athleteIdLabel}</span>
           </>
         )}
       />
@@ -75,8 +77,16 @@ export default async function AccountPage({
               </label>
             </div>
             <div className="status-list compact-status-list" style={{ marginTop: 16 }}>
-              <div className="status-item"><strong>Current status</strong><p>{intervalsConnection ? intervalsConnection.syncStatus : 'not connected'}</p></div>
-              <div className="status-item"><strong>Athlete ID</strong><p>{intervalsConnection?.externalAthleteId || '—'}</p></div>
+              <div className="status-item"><strong>Sync health</strong><p>{syncHealth.healthLabel}</p></div>
+              <div className="status-item"><strong>Worker</strong><p>{syncHealth.jobLabel}</p></div>
+              <div className="status-item"><strong>Last snapshot</strong><p>{syncHealth.snapshotLabel}</p></div>
+              <div className="status-item"><strong>Athlete ID</strong><p>{syncHealth.athleteIdLabel}</p></div>
+              <div className="status-item"><strong>Onboarding</strong><p>{onboarding.state}</p></div>
+              <div className="status-item"><strong>Connection state</strong><p>{syncHealth.connectionState}</p></div>
+              {syncHealth.failureReason ? <div className="status-item"><strong>Failure reason</strong><p>{syncHealth.failureReason}</p></div> : null}
+            </div>
+            <div className="button-row" style={{ marginTop: 12 }}>
+              <Link href={appRoutes.onboardingSync} className="button-link button-secondary">Open sync status</Link>
             </div>
             <form className="form-grid" action="/api/onboarding/intervals-connect" method="post" style={{ marginTop: 16 }}>
               <input type="hidden" name="redirectTo" value={`${appRoutes.account}?tab=profile`} />
@@ -91,6 +101,7 @@ export default async function AccountPage({
               <div className="button-row">
                 <button type="submit">Save Intervals connection</button>
               </div>
+              <p className="muted">Saving credentials here retriggers the user-scoped Intervals sync and updates the sync status page.</p>
             </form>
           </AppCard>
 

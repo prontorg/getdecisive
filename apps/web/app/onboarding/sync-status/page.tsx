@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { appRoutes } from '../../../lib/routes';
-import { getDerivedOnboardingStatusRecord, getUserByIdRecord } from '../../../lib/server/auth-store';
+import { getDerivedOnboardingStatusRecord, getLatestIntervalsConnectionRecord, getUserByIdRecord } from '../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../lib/server/session';
+import { getSyncHealthSummary } from '../../../lib/server/sync-health';
 
 const steps = [
   { label: 'Invite accepted', state: 'account_created' },
@@ -21,13 +22,15 @@ export default async function SyncStatusPage() {
   const userId = await getSessionUserId();
   if (!userId) redirect(appRoutes.login);
 
-  const [onboarding, user] = await Promise.all([
+  const [onboarding, user, connection] = await Promise.all([
     getDerivedOnboardingStatusRecord(userId),
     getUserByIdRecord(userId),
+    getLatestIntervalsConnectionRecord(userId),
   ]);
 
   if (!onboarding || !user) redirect(appRoutes.login);
 
+  const syncHealth = await getSyncHealthSummary(userId, { connection, onboarding });
   const currentIndex = stateOrder.get(onboarding.state) ?? 0;
   const isReady = onboarding.state === 'ready';
 
@@ -68,9 +71,19 @@ export default async function SyncStatusPage() {
               ? 'The user can now enter the platform dashboard shell.'
               : 'This matches the approved rule: no app entry until Intervals onboarding and initial processing are complete.'}
           </p>
+          <div className="status-list compact-status-list" style={{ marginTop: 16 }}>
+            <div className="status-item"><strong>Sync health</strong><p>{syncHealth.healthLabel}</p></div>
+            <div className="status-item"><strong>Worker</strong><p>{syncHealth.jobLabel}</p></div>
+            <div className="status-item"><strong>Last snapshot</strong><p>{syncHealth.snapshotLabel}</p></div>
+            <div className="status-item"><strong>Athlete ID</strong><p>{syncHealth.athleteIdLabel}</p></div>
+            {syncHealth.latestJobUpdatedAt ? <div className="status-item"><strong>Latest worker update</strong><p>{syncHealth.latestJobUpdatedAt}</p></div> : null}
+            {syncHealth.failureReason ? <div className="status-item"><strong>Failure reason</strong><p>{syncHealth.failureReason}</p></div> : null}
+          </div>
+          {!isReady ? <p className="muted" style={{ marginTop: 12 }}>If this stalls, resave the Intervals connection to restart the user-scoped sync worker.</p> : null}
           <div className="button-row">
             {isReady ? <Link href={appRoutes.dashboard} className="button-link">Open dashboard</Link> : null}
             <Link href={appRoutes.onboardingIntervals} className="button-link button-secondary">Edit connection</Link>
+            <Link href={`${appRoutes.account}?tab=profile`} className="button-link button-secondary">Open configuration</Link>
           </div>
         </section>
       </section>

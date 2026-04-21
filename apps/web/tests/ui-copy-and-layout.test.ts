@@ -14,6 +14,7 @@ const calendarStylesPath = join(webRoot, 'app/globals.css');
 const calendarPagePath = join(webRoot, 'app/app/calendar/page.tsx');
 const accountPagePath = join(webRoot, 'app/app/account/page.tsx');
 const adminPagePath = join(webRoot, 'app/app/admin/page.tsx');
+const syncStatusPagePath = join(webRoot, 'app/onboarding/sync-status/page.tsx');
 const dashboardPagePath = join(webRoot, 'app/app/dashboard/page.tsx');
 const appLiveRefreshPath = join(webRoot, 'app/app/_components/app-live-refresh.tsx');
 const deviceLocationSyncPath = join(webRoot, 'app/app/_components/device-location-sync.tsx');
@@ -276,12 +277,14 @@ test('middleware protects app pages and sends logged-out users to login by defau
 });
 
 test('configuration pages expose athlete configuration and admin-only user management subtab structure', async () => {
-  const [header, account, admin, intervalsConnectPanel, workoutsPage] = await Promise.all([
+  const [header, account, admin, intervalsConnectPanel, workoutsPage, syncStatusSource, syncHealthSource] = await Promise.all([
     readFile(headerPath, 'utf8'),
     readFile(accountPagePath, 'utf8'),
     readFile(adminPagePath, 'utf8'),
     readFile(intervalsConnectPanelPath, 'utf8'),
     readFile(workoutsPagePath, 'utf8'),
+    readFile(syncStatusPagePath, 'utf8'),
+    readFile(join(webRoot, 'lib/server/sync-health.ts'), 'utf8'),
   ]);
 
   assert.doesNotMatch(header, /label: 'Configuration'/i);
@@ -305,6 +308,20 @@ test('configuration pages expose athlete configuration and admin-only user manag
   assert.doesNotMatch(account, /Onboarding:/i);
   assert.doesNotMatch(account, /Connection label/i);
   assert.match(account, /Athlete ID/i);
+  assert.match(account, /getSyncHealthSummary/i);
+  assert.match(account, /Sync health/i);
+  assert.match(account, /Last snapshot/i);
+  assert.match(account, /Failure reason/i);
+  assert.match(account, /Open sync status/i);
+  assert.match(account, /Saving credentials here retriggers the user-scoped Intervals sync/i);
+  assert.match(syncStatusSource, /getSyncHealthSummary/i);
+  assert.match(syncStatusSource, /Latest worker update/i);
+  assert.match(syncStatusSource, /Open configuration/i);
+  assert.match(syncStatusSource, /resave the Intervals connection to restart the user-scoped sync worker/i);
+  assert.match(syncHealthSource, /deriveSyncHealthLabel/i);
+  assert.match(syncHealthSource, /Sync failed|Sync running|Sync queued|Waiting for first snapshot/i);
+  assert.match(syncHealthSource, /Last snapshot/i);
+  assert.match(syncHealthSource, /Last worker update/i);
   assert.match(admin, /redirect\(\`\$\{appRoutes\.account\}\?tab=user-management\`\)/i);
   assert.doesNotMatch(intervalsConnectPanel, /dev scaffold flow/i);
   assert.doesNotMatch(intervalsConnectPanel, /api_key=demo-key/i);
