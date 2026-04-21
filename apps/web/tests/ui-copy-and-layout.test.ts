@@ -142,6 +142,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /currentWeekBridge\?\.draftBridgeLabel/i);
   assert.match(source, /These actions rewrite only the remaining draft bridge for this week/i);
   assert.match(source, /Planning refresh pending/i);
+  assert.match(source, /Remaining week budget:/i);
+  assert.match(source, /Remaining key slots:/i);
+  assert.match(source, /Recommended next key day:/i);
+  assert.match(source, /Draft slots already in play:/i);
+  assert.match(source, /Completed this week:/i);
   assert.match(source, /Confidence/i);
   assert.match(source, /Next key day/i);
   assert.match(source, /Risk:/i);
@@ -150,6 +155,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /spend extra freshness/i);
   assert.match(source, /make bridge more race-like/i);
   assert.match(source, /\/api\/planner\/month\/replan/i);
+  assert.match(calendarSource, /moveFeedback/i);
+  assert.match(calendarSource, /successNotice/i);
+  assert.match(calendarSource, /Calendar move blocked/i);
+  assert.match(calendarSource, /Calendar move applied/i);
+  assert.match(calendarSource, /Requested day:/i);
+  assert.match(calendarSource, /Use suggested day/i);
+  assert.match(calendarSource, /payload\?\.code === 'move_conflict'/i);
   assert.match(source, /Use suggested day/i);
   assert.match(source, /moveConflictReason/i);
   assert.match(source, /moveConflictSuggestedDate/i);

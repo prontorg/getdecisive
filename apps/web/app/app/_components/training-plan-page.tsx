@@ -459,6 +459,10 @@ export async function TrainingPlanPage({
                   <p>{currentWeekBridge?.remainingDays.length ? `Editable remaining days: ${currentWeekBridge.remainingDays.join(', ')}` : 'No remaining editable days in this week.'}</p>
                   <p>{currentWeekBridge?.missedSessions.length ? `Missed draft slots detected: ${currentWeekBridge.missedSessions.length}` : 'No missed draft slots detected in this week so far.'}</p>
                   <p>{currentWeekBridge?.recommendationText || 'Waiting for a current-week bridge recommendation.'}</p>
+                  <p>Remaining week budget: {currentWeekBridge ? `${currentWeekBridge.remainingWeekHours.toFixed(1)} h` : '—'} • Remaining key slots: {currentWeekBridge?.remainingQualityBudget ?? '—'}</p>
+                  <p>{currentWeekBridge?.recommendedNextKeyDay ? `Recommended next key day: ${currentWeekBridge.recommendedNextKeyDay}` : 'Recommended next key day is still being resolved.'}</p>
+                  <p>{currentWeekBridge?.plannedSoFar.length ? `Draft slots already in play: ${currentWeekBridge.plannedSoFar.join(' | ')}` : 'No draft slots have landed earlier in this week.'}</p>
+                  <p>{currentWeekBridge?.completedSoFar.length ? `Completed this week: ${currentWeekBridge.completedSoFar.join(' | ')}` : 'No completed work has been imported into this week yet.'}</p>
                   <p>These actions rewrite only the remaining draft bridge for this week. Completed work and the live today / tomorrow call stay runtime-backed.</p>
                   <div className="button-row">
                     <form action="/api/planner/month/replan" method="post">

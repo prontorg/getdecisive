@@ -3,6 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+type MoveFeedback = {
+  workoutId: string;
+  requestedDate: string;
+  reason: string;
+  suggestedDate?: string | null;
+};
+
 type Workout = {
   id: string;
   date: string;
@@ -68,6 +75,8 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
   const router = useRouter();
   const [draggingWorkoutId, setDraggingWorkoutId] = useState<string | null>(null);
   const [busyDate, setBusyDate] = useState<string | null>(null);
+  const [moveFeedback, setMoveFeedback] = useState<MoveFeedback | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const calendarDays = useMemo(() => {
     const dates = new Set<string>();
@@ -125,14 +134,35 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
   async function moveWorkout(workoutId: string, moveDate: string) {
     if (!workoutId || !moveDate) return;
     setBusyDate(moveDate);
+    setSuccessNotice(null);
     try {
       const response = await fetch('/api/planner/month/workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ draftId, workoutId, action: 'move_day', moveDate }),
       });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        if (response.status === 409 && payload?.code === 'move_conflict') {
+          setMoveFeedback({
+            workoutId,
+            requestedDate: moveDate,
+            reason: payload?.error || 'Move rejected by conflict checks.',
+            suggestedDate: payload?.suggestedDate || null,
+          });
+          return;
+        }
+        setMoveFeedback({
+          workoutId,
+          requestedDate: moveDate,
+          reason: payload?.error || 'Move failed. Try again.',
+          suggestedDate: null,
+        });
+        return;
+      }
+      setMoveFeedback(null);
+      setSuccessNotice(payload?.notice || `Workout moved to ${moveDate}`);
       router.refresh();
-      if (!response.ok) return;
     } finally {
       setBusyDate(null);
       setDraggingWorkoutId(null);
@@ -141,6 +171,34 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
 
   return (
     <div className="training-plan-review-layout">
+      <div>
+        {(successNotice || moveFeedback) ? (
+          <div className="status-list compact-status-list" style={{ marginBottom: 12 }}>
+            {successNotice ? (
+              <div className="status-item">
+                <strong>Calendar move applied</strong>
+                <p>{successNotice}</p>
+              </div>
+            ) : null}
+            {moveFeedback ? (
+              <div className="status-item">
+                <strong>Calendar move blocked</strong>
+                <p>{moveFeedback.reason}</p>
+                <p>Requested day: {moveFeedback.requestedDate}</p>
+                {moveFeedback.suggestedDate ? (
+                  <div className="button-row" style={{ marginTop: 8 }}>
+                    <button type="button" onClick={() => moveWorkout(moveFeedback.workoutId, moveFeedback.suggestedDate || '')}>Use suggested day {moveFeedback.suggestedDate}</button>
+                    <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
+                  </div>
+                ) : (
+                  <div className="button-row" style={{ marginTop: 8 }}>
+                    <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       <div className="training-plan-month-grid">
         {calendarDays.map((date) => {
           const dayData = workoutsByDate.get(date) || { completed: [], planned: [], weekIndex: undefined };
@@ -236,6 +294,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
             </div>
           );
         })}
+      </div>
       </div>
 
       <aside className="training-plan-week-summary-column">
