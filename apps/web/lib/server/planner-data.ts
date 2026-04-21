@@ -115,6 +115,11 @@ export type MonthlyPlannerContextPayload = {
   goalEvent: { title: string; date?: string; currentDirection?: string };
   currentState: { ctl: number; atl: number; form: number; freshnessSummary: string; phase: string };
   recentHistory: { loadSummary: string; keySessions: string[]; repeatablePattern: string; caution: string };
+  statusQuo: {
+    recentFocus: string[];
+    eventProximity: string;
+    mainImplication: string;
+  };
   availability: { summary: string[] };
   guardrails: { summary: string[] };
   toggles: {
@@ -822,7 +827,29 @@ export function buildMonthlyPlannerContextPayload(
   const keySessions = rows.slice(0, 4).map((row) => latestWorkoutLine(row));
   const repeatabilityHits = rows.filter((row) => classifyRecentRow(row) === 'repeatability').length;
   const thresholdHits = rows.filter((row) => classifyRecentRow(row) === 'threshold_support').length;
+  const raceLikeHits = rows.filter((row) => classifyRecentRow(row) === 'race_like').length;
   const volumeHours = rows.reduce((acc, row) => acc + Number(row.duration_s || 0), 0) / 3600;
+  const today = live?.today || todayIso();
+  const daysToGoal = live?.goal_race_date
+    ? Math.round((new Date(`${live.goal_race_date}T00:00:00Z`).getTime() - new Date(`${today}T00:00:00Z`).getTime()) / 86400000)
+    : null;
+  const eventProximity = daysToGoal === null
+    ? 'No primary event detected in the live data yet.'
+    : daysToGoal < 0
+      ? 'Primary event date has passed in the live data.'
+      : `${daysToGoal} days to the primary event.`;
+  const recentFocus = [
+    `Repeatability sessions: ${repeatabilityHits}`,
+    `Threshold sessions: ${thresholdHits}`,
+    `Race-like sessions: ${raceLikeHits}`,
+  ];
+  const mainImplication = form <= -18
+    ? 'Freshness should shape the opening month build more than adding extra density.'
+    : daysToGoal !== null && daysToGoal <= 35
+      ? 'The month should tilt toward race specificity as the event gets closer.'
+      : repeatabilityHits < thresholdHits
+        ? 'The month should lift repeatability so threshold support becomes more usable under pressure.'
+        : 'The month can keep building support without overloading the first week.';
 
   return {
     goalEvent: {
@@ -848,6 +875,11 @@ export function buildMonthlyPlannerContextPayload(
       caution: form <= -18
         ? 'Recent load is already high enough that the opening week should protect freshness.'
         : 'Freshness is not blocking a normal build opening week yet.',
+    },
+    statusQuo: {
+      recentFocus,
+      eventProximity,
+      mainImplication,
     },
     availability: {
       summary: [

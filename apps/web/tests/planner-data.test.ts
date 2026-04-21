@@ -200,7 +200,7 @@ test('goal and adaptation payloads explain safe read-only behavior', () => {
   assert.match(adaptation.userFacingExplanation, /read-only toward Intervals/i);
 });
 
-test('monthly planner context payload exposes trust-building assumptions', () => {
+test('monthly planner context payload exposes trust-building assumptions and compact status-quo facts', () => {
   const payload = buildMonthlyPlannerContextPayload({
     today: '2026-04-13',
     goal_race_date: '2026-05-12',
@@ -217,6 +217,9 @@ test('monthly planner context payload exposes trust-building assumptions', () =>
   assert.match(payload.currentState.freshnessSummary, /Freshness is/i);
   assert.equal(payload.recentHistory.keySessions.length > 0, true);
   assert.equal(payload.guardrails.summary.some((item) => /back-to-back hard days/i.test(item)), true);
+  assert.match(payload.statusQuo.mainImplication, /month|build|specificity|freshness|repeatability/i);
+  assert.match(payload.statusQuo.eventProximity, /event|days/i);
+  assert.equal(payload.statusQuo.recentFocus.length >= 2, true);
 });
 
 test('monthly planner draft payload keeps week 4 lighter, respects max weekly hours, and starts from the current week while accounting for current-week completed work', () => {

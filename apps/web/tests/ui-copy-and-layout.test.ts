@@ -51,13 +51,14 @@ test('login screen copy and auth-page header chrome match the latest product wor
 });
 
 test('training plan page uses the latest decisive monthly-planner framing and layout', async () => {
-  const [planPageSource, source, calendarSource, calendarStyles, calendarPageSource, statefulBuilderSource] = await Promise.all([
+  const [planPageSource, source, calendarSource, calendarStyles, calendarPageSource, statefulBuilderSource, planRacesPageSource] = await Promise.all([
     readFile(planPagePath, 'utf8'),
     readFile(trainingPlanPagePath, 'utf8'),
     readFile(trainingPlanCalendarPath, 'utf8'),
     readFile(calendarStylesPath, 'utf8'),
     readFile(calendarPagePath, 'utf8'),
     readFile(join(webRoot, 'app/app/_components/training-plan-stateful-builder-client.tsx'), 'utf8'),
+    readFile(join(webRoot, 'app/app/plan/races/page.tsx'), 'utf8'),
   ]);
 
   assert.match(planPageSource, /mode=\"plan\"/i);
@@ -66,6 +67,17 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Goals and races/i);
   assert.match(source, /Parameters/i);
   assert.match(source, /Draft next month/i);
+  assert.match(source, /contextPayload\.statusQuo/i);
+  assert.match(source, /Main implication/i);
+  assert.match(source, /Event proximity/i);
+  assert.match(source, /Upcoming races/i);
+  assert.match(source, /planEvents/i);
+  assert.match(planRacesPageSource, /<form/i);
+  assert.match(planRacesPageSource, /title=\"Race title\"|name=\"title\"/i);
+  assert.match(planRacesPageSource, /name=\"date\"/i);
+  assert.match(planRacesPageSource, /name=\"type\"/i);
+  assert.match(planRacesPageSource, /name=\"priority\"/i);
+  assert.match(planRacesPageSource, /\/api\/planner\/month\/events/i);
   assert.match(source, /training-plan-step-card/i);
   assert.match(source, /training-plan-step-card-status/i);
   assert.match(source, /training-plan-step-card-goals/i);

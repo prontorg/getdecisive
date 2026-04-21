@@ -12,7 +12,7 @@ import {
   getAuthorizedPlannerLiveContext,
   replaceCurrentWeekWithRuntime,
 } from '../../../lib/server/planner-data';
-import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, saveMonthlyPlanDraft } from '../../../lib/server/planner-customization';
+import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, saveMonthlyPlanDraft, listPlanningEvents } from '../../../lib/server/planner-customization';
 import { getLatestIntervalsConnectionRecord } from '../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../lib/server/session';
 import { getLatestSnapshotForUser } from '../../../lib/server/sync-store';
@@ -80,6 +80,7 @@ export async function TrainingPlanPage({
   const planner = await getAuthorizedPlannerLiveContext(userId);
   if (!planner) redirect(appRoutes.onboardingSync);
   const activePlanning = await getActivePlanningContext(userId);
+  const planEvents = await listPlanningEvents(userId);
   const latestConnection = await getLatestIntervalsConnectionRecord(userId);
   const latestSnapshot = latestConnection ? await getLatestSnapshotForUser(userId, latestConnection.id) : null;
   const liveSyncStamp = formatLiveSyncStamp(latestSnapshot?.capturedAt || null);
@@ -296,7 +297,9 @@ export async function TrainingPlanPage({
               <p>{contextPayload.recentHistory.loadSummary}</p>
               <div className="training-plan-mini-facts">
                 <span className="training-plan-mini-fact"><strong>Freshness</strong>{contextPayload.currentState.freshnessSummary}</span>
-                <span className="training-plan-mini-fact"><strong>Main implication</strong>{contextPayload.recentHistory.repeatablePattern}</span>
+                <span className="training-plan-mini-fact"><strong>Main implication</strong>{contextPayload.statusQuo.mainImplication}</span>
+                <span className="training-plan-mini-fact"><strong>Event proximity</strong>{contextPayload.statusQuo.eventProximity}</span>
+                <span className="training-plan-mini-fact"><strong>Recent focus</strong>{contextPayload.statusQuo.recentFocus.join(' • ')}</span>
               </div>
             </AppCard>
 
@@ -304,6 +307,10 @@ export async function TrainingPlanPage({
               <div className="kicker">Step 2</div>
               <h3>Goals and races</h3>
               <p>{draftOriginLabel}</p>
+              <div className="training-plan-mini-facts">
+                <span className="training-plan-mini-fact"><strong>Upcoming races</strong>{planEvents.length ? String(planEvents.length) : '0'}</span>
+                <span className="training-plan-mini-fact"><strong>Next event</strong>{planEvents[0] ? `${planEvents[0].title} • ${planEvents[0].date}` : 'No events added yet'}</span>
+              </div>
               <div className="training-plan-top-strip__actions">
                 <a href={appRoutes.planRaces} className="button-secondary button-link">Open race calendar</a>
                 <a href={appRoutes.styleGuide} className="button-secondary button-link">Go to style guide</a>
