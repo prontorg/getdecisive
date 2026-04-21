@@ -567,7 +567,44 @@ type PlannerIntervalContext = {
   enduranceNeedsSupport?: boolean;
   taper?: boolean;
   weekIndex?: number;
+  prefersVo2Support?: boolean;
+  recentIntervalHints?: string[];
 };
+
+const WORKOUT_CATALOG = [
+  {
+    id: 'repeatability-30-15',
+    family: 'repeatability',
+    label: 'Repeatability density set',
+    preferenceTags: ['track_endurance', 'micro_intervals'],
+    researchNotes: ['Short-interval repeatability work supports severe-intensity repeatability and race-specific tolerance.'],
+    allowedObjectives: ['repeatability', 'race_specificity'],
+  },
+  {
+    id: 'vo2-5x4',
+    family: 'vo2_support',
+    label: 'VO2 support',
+    preferenceTags: ['vo2_support', 'aerobic_power'],
+    researchNotes: ['Classic 4-5 min VO2 support intervals remain a robust aerobic-power option in trained endurance athletes.'],
+    allowedObjectives: ['repeatability', 'race_specificity', 'threshold_support'],
+  },
+  {
+    id: 'threshold-over-under',
+    family: 'threshold_support',
+    label: 'Threshold support',
+    preferenceTags: ['threshold', 'race_support'],
+    researchNotes: ['Threshold and over-under work support durable race pace and lactate clearance.'],
+    allowedObjectives: ['threshold_support', 'repeatability', 'race_specificity'],
+  },
+  {
+    id: 'race-like-points',
+    family: 'race_specific',
+    label: 'Race-like session',
+    preferenceTags: ['points_race', 'stochastic'],
+    researchNotes: ['Race-like stochastic work should sharpen event-specific tolerance closer to competition.'],
+    allowedObjectives: ['race_specificity', 'repeatability'],
+  },
+] as const;
 
 function plannedIntervalLabel(
   category: PlannerWorkoutCategory,
@@ -581,6 +618,8 @@ function plannedIntervalLabel(
   const repeatOff = Math.round(threshold * 0.55);
   const weekIndex = Number(context?.weekIndex || 0);
   if (category === 'repeatability') {
+    const recentHints = (context?.recentIntervalHints || []).join(' ').toLowerCase();
+    if (/3x10x30\/15/.test(recentHints)) return `2x8x30/15 @ ${repeatOn}w/${repeatOff}w`;
     if (weekIndex >= 2) return `2x10x40/20 @ ${repeatOn}w/${repeatOff}w`;
     if (index >= 3) return `2x10x40/20 @ ${repeatOn}w/${repeatOff}w`;
     if (index === 2 || weekIndex === 1) return `2x8x30/15 @ ${repeatOn}w/${repeatOff}w`;
@@ -663,6 +702,13 @@ function selectWorkoutFromLibrary(args: {
         intervalLabel: weekFocus === 'repeatability'
           ? 'race pace jumps + 4x2min stochastic bridge'
           : plannedIntervalLabel('race_like', index, context),
+      };
+    }
+    if (context.prefersVo2Support && (weekFocus === 'repeatability' || weekFocus === 'threshold_support') && !isLighterWeek) {
+      return {
+        label: 'VO2 support',
+        category: 'repeatability',
+        intervalLabel: '5x4min max aerobic support @ 390-410w',
       };
     }
     return {
@@ -1484,7 +1530,21 @@ export function buildMonthlyPlannerDraftPayload(
     const qualityOneMinutes = Math.min(qualitySessionCap, Math.max(70, Math.round(targetHours * 60 * qualityOneShare)));
     const qualityTwoMinutes = Math.min(qualitySessionCap, Math.max(75, Math.round(targetHours * 60 * qualityTwoShare)));
     const recoveryMinutes = noBackToBack ? (taper ? 50 : 60) : Math.min(isLighterWeek ? 65 : 70, Math.max(45, Math.round(targetHours * 60 * 0.1)));
-    const intervalContext = { workingThreshold: Number(live?.working_threshold_w || 365), repeatabilityDensityLow, thresholdNeedsSupport, raceSpecificityBias, enduranceNeedsSupport, taper, weekIndex: index };
+    const recentIntervalHints = (recentRows || [])
+      .slice(0, 8)
+      .map((row) => ((row.summary as { structure_label?: string; short_label?: string } | undefined)?.structure_label || row.summary?.short_label || row.session_type || row.name || '').trim())
+      .filter(Boolean);
+    const intervalContext = {
+      workingThreshold: Number(live?.working_threshold_w || 365),
+      repeatabilityDensityLow,
+      thresholdNeedsSupport,
+      raceSpecificityBias,
+      enduranceNeedsSupport,
+      taper,
+      weekIndex: index,
+      prefersVo2Support: /\bvo2\b|max aerobic|aerobic power/i.test(currentDirection),
+      recentIntervalHints,
+    };
     const supportWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,
       slot: 'support_primary',

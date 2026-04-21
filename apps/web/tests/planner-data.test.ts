@@ -574,6 +574,65 @@ test('monthly planner race-like weeks choose track-specific subtype variants ins
   assert.equal(uniqueRaceLikeSessions.some((label) => /points|stochastic|pursuit|race pace/i.test(label)), true);
 });
 
+test('monthly planner exposes a workout catalog with VO2 support, preference tags, and research hooks', () => {
+  const source = require('node:fs').readFileSync(new URL('../lib/server/planner-data.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /family:\s*'vo2_support'/);
+  assert.match(source, /preferenceTags/);
+  assert.match(source, /researchNotes/);
+  assert.match(source, /allowedObjectives/);
+});
+
+test('monthly planner can select a VO2 support workout family when the direction explicitly asks for VO2 support', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-12',
+    working_threshold_w: 365,
+    wellness: { ctl: 103, atl: 107 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 7000, weighted_avg_watts: 357, summary: { short_label: '3x12 threshold' }, zone_times: { Z4: 2300 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'endurance / Z2 ride', training_load: 82, duration_s: 10800, summary: { short_label: 'Endurance' }, zone_times: { Z2: 8200 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 86, duration_s: 9600, summary: { short_label: 'Support endurance' }, zone_times: { Z2: 7600 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Add VO2 support without losing threshold support',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10.5 },
+  });
+
+  const vo2LikeWorkout = payload.weeks
+    .flatMap((week) => week.workouts)
+    .find((workout) => /vo2|4x4|5x4|aerobic power/i.test(workout.label) || /4x4|5x4|max aerobic|vo2/i.test(workout.intervalLabel || ''));
+
+  assert.equal(Boolean(vo2LikeWorkout), true);
+});
+
+test('monthly planner avoids repeating a just-done recent live interval subtype when another relevant subtype is available', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-10',
+    working_threshold_w: 365,
+    wellness: { ctl: 105, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 128, duration_s: 5400, summary: { short_label: '3x10x30/15' }, zone_times: { Z5: 920 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 7000, weighted_avg_watts: 357, summary: { short_label: '3x12 threshold' }, zone_times: { Z4: 2300 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 86, duration_s: 9600, summary: { short_label: 'Support endurance' }, zone_times: { Z2: 7600 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build repeatability into decisive track speed',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10.5 },
+  });
+
+  const firstRepeatability = payload.weeks
+    .flatMap((week) => week.workouts)
+    .find((workout) => workout.category === 'repeatability');
+
+  assert.notEqual(firstRepeatability?.intervalLabel, '3x10x30/15 @ 402w/201w');
+});
+
 test('monthly planner draft payload starts from the current week and respects the remaining weekly-hour cap', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-23',
