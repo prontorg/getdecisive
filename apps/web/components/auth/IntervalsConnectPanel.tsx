@@ -4,18 +4,18 @@ export function IntervalsConnectPanel({ error }: { error?: string }) {
       <div className="kicker">Mandatory in v1</div>
       <h2>Connect Intervals with guided credentials</h2>
       <p>
-        This uses a dev scaffold flow now: athlete ID plus a pasted credential payload. Later this will
-        move to the production-safe credentials path.
+        Intervals is mandatory in v1. Paste your athlete ID and current credential payload here to start
+        a real sync for this account.
       </p>
       {error ? <p className="notice error">{error}</p> : null}
       <form className="form-grid" action="/api/onboarding/intervals-connect" method="post" style={{ marginTop: 16 }}>
         <label>
           <span>Athlete ID</span>
-          <input name="athleteId" type="text" placeholder="17634020" defaultValue="17634020" required />
+          <input name="athleteId" type="text" placeholder="17634020" required />
         </label>
         <label>
           <span>Credential / API key</span>
-          <textarea name="credentialPayload" placeholder="Paste guided credential info here" rows={5} required defaultValue="api_key=demo-key" />
+          <textarea name="credentialPayload" placeholder="Paste guided credential info here" rows={5} required />
         </label>
         <label>
           <span>Connection label</span>

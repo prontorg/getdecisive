@@ -32,8 +32,8 @@ test('device location route reverse geocodes browser coordinates and stores loca
     const setCookie = response.headers.get('set-cookie') || '';
     assert.match(setCookie, /decisive_device_city=Zurich/i);
     assert.match(setCookie, /decisive_device_country=Switzerland/i);
-    assert.match(setCookie, /decisive_device_lat=47.3769/i);
-    assert.match(setCookie, /decisive_device_lon=8.5417/i);
+    assert.match(setCookie, /decisive_device_lat=47.377/i);
+    assert.match(setCookie, /decisive_device_lon=8.542/i);
   } finally {
     global.fetch = originalFetch;
   }

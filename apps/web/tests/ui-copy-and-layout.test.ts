@@ -18,6 +18,8 @@ const dashboardPagePath = join(webRoot, 'app/app/dashboard/page.tsx');
 const appLiveRefreshPath = join(webRoot, 'app/app/_components/app-live-refresh.tsx');
 const deviceLocationSyncPath = join(webRoot, 'app/app/_components/device-location-sync.tsx');
 const middlewarePath = join(webRoot, 'middleware.ts');
+const intervalsConnectPanelPath = join(webRoot, 'components/auth/IntervalsConnectPanel.tsx');
+const workoutsPagePath = join(webRoot, 'app/app/workouts/page.tsx');
 const dashboardScriptPath = '/root/.hermes/profiles/profdecisive/scripts/intervals_dashboard.py';
 
 test('login screen copy and auth-page header chrome match the latest product wording', async () => {
@@ -274,10 +276,12 @@ test('middleware protects app pages and sends logged-out users to login by defau
 });
 
 test('configuration pages expose athlete configuration and admin-only user management subtab structure', async () => {
-  const [header, account, admin] = await Promise.all([
+  const [header, account, admin, intervalsConnectPanel, workoutsPage] = await Promise.all([
     readFile(headerPath, 'utf8'),
     readFile(accountPagePath, 'utf8'),
     readFile(adminPagePath, 'utf8'),
+    readFile(intervalsConnectPanelPath, 'utf8'),
+    readFile(workoutsPagePath, 'utf8'),
   ]);
 
   assert.doesNotMatch(header, /label: 'Configuration'/i);
@@ -302,4 +306,9 @@ test('configuration pages expose athlete configuration and admin-only user manag
   assert.doesNotMatch(account, /Connection label/i);
   assert.match(account, /Athlete ID/i);
   assert.match(admin, /redirect\(\`\$\{appRoutes\.account\}\?tab=user-management\`\)/i);
+  assert.doesNotMatch(intervalsConnectPanel, /dev scaffold flow/i);
+  assert.doesNotMatch(intervalsConnectPanel, /api_key=demo-key/i);
+  assert.match(intervalsConnectPanel, /Intervals is mandatory in v1/i);
+  assert.match(workoutsPage, /redirect\(appRoutes\.plan\)/i);
+  assert.doesNotMatch(workoutsPage, /Workout export scaffold/i);
 });
