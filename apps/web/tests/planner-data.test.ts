@@ -275,6 +275,38 @@ test('monthly planner draft payload subtracts planning-event hours from the affe
   assert.match(payload.weeks[1]?.rationale.protected || '', /event|race|travel/i);
 });
 
+test('monthly planner duration distribution keeps endurance longest without bloating quality sessions as weekly hours rise', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 130, duration_s: 7200, summary: { short_label: '30/15 set' } },
+      { activity_id: '2', start_date_local: '2026-04-14T09:00:00', session_type: 'threshold / race-support ride', training_load: 145, duration_s: 9000, summary: { short_label: '2x15 threshold' } },
+      { activity_id: '3', start_date_local: '2026-04-13T09:00:00', session_type: 'endurance / Z2 ride', training_load: 95, duration_s: 14400, summary: { short_label: 'Endurance' } },
+      { activity_id: '4', start_date_local: '2026-04-12T09:00:00', session_type: 'endurance / Z2 ride', training_load: 88, duration_s: 12600, summary: { short_label: 'Long endurance' } },
+      { activity_id: '5', start_date_local: '2026-04-11T09:00:00', session_type: 'threshold / race-support ride', training_load: 120, duration_s: 7200, summary: { short_label: 'Tempo support' } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'ambitious',
+    currentDirection: 'Raise repeatability for track racing',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 14 },
+  });
+
+  const targetWeek = payload.weeks[1]!;
+  const enduranceDurations = targetWeek.workouts.filter((workout) => workout.category === 'endurance').map((workout) => Number(workout.durationMinutes || 0));
+  const qualityDurations = targetWeek.workouts.filter((workout) => workout.category === 'repeatability' || workout.category === 'threshold_support' || workout.category === 'race_like').map((workout) => Number(workout.durationMinutes || 0));
+  const supportEndurance = targetWeek.workouts.find((workout) => workout.label === 'Support endurance');
+  const longEndurance = targetWeek.workouts.find((workout) => workout.label === 'Long endurance support');
+
+  assert.equal(targetWeek.targetHours >= 7, true);
+  assert.equal(Math.max(...enduranceDurations) > Math.max(...qualityDurations), true);
+  assert.equal(Math.max(...qualityDurations) <= 95, true);
+  assert.equal(Number(supportEndurance?.durationMinutes || 0) <= 105, true);
+  assert.equal(Number(longEndurance?.durationMinutes || 0) >= Number(supportEndurance?.durationMinutes || 0) + 70, true);
+});
+
 test('monthly planner draft payload applies selected rest day, configurable rest-day count, and disabled back-to-back guardrail without dropping sessions', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-16',

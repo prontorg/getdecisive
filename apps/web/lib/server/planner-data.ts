@@ -1244,11 +1244,12 @@ export function buildMonthlyPlannerDraftPayload(
     const remainingWeeklyCap = isCurrentWeek ? Math.max(0, Number((weeklyCap - completedThisWeekHours - eventHours).toFixed(1))) : Math.max(0, Number((weeklyCap - eventHours).toFixed(1)));
     const targetHours = Number(Math.max(0, Math.min(remainingWeeklyCap, Number((rawWeekHours * remainingFraction).toFixed(1)))).toFixed(1));
     const targetLoad = Math.round(targetHours * (index === 3 ? 42 : hardTwo === 'race_like' ? 52 : 50));
-    const longMinutes = Math.min(index === 3 ? 120 : enduranceNeedsSupport ? 210 : 180, Math.max(90, Math.round(targetHours * 60 * (enduranceNeedsSupport ? 0.38 : 0.34))));
-    const supportMinutes = Math.min(135, Math.max(60, Math.round(targetHours * 60 * 0.18)));
-    const qualityOneMinutes = Math.min(repeatabilityDensityLow ? 100 : 95, Math.max(70, Math.round(targetHours * 60 * 0.14)));
-    const qualityTwoMinutes = Math.min(thresholdNeedsSupport ? 100 : 95, Math.max(75, Math.round(targetHours * 60 * 0.15)));
-    const recoveryMinutes = noBackToBack ? (taper ? 50 : 60) : Math.min(75, Math.max(45, Math.round(targetHours * 60 * 0.12)));
+    const qualitySessionCap = hardTwo === 'race_like' ? 90 : 95;
+    const longMinutes = Math.min(index === 3 ? 120 : enduranceNeedsSupport ? 210 : 180, Math.max(index === 3 ? 90 : targetHours >= 9.5 ? 150 : 120, Math.round(targetHours * 60 * (enduranceNeedsSupport ? 0.34 : 0.3))));
+    const supportMinutes = Math.min(105, Math.max(60, Math.round(targetHours * 60 * 0.14)));
+    const qualityOneMinutes = Math.min(qualitySessionCap, Math.max(70, Math.round(targetHours * 60 * 0.12)));
+    const qualityTwoMinutes = Math.min(qualitySessionCap, Math.max(75, Math.round(targetHours * 60 * 0.13)));
+    const recoveryMinutes = noBackToBack ? (taper ? 50 : 60) : Math.min(70, Math.max(45, Math.round(targetHours * 60 * 0.1)));
     const intervalContext = { workingThreshold: Number(live?.working_threshold_w || 365), repeatabilityDensityLow, thresholdNeedsSupport, raceSpecificityBias, enduranceNeedsSupport, taper };
     const supportCategory = 'endurance' as const;
     const supportLabel = 'Support endurance';
