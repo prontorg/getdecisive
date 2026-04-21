@@ -2,11 +2,20 @@
 
 import { useMemo, useState } from 'react';
 
+import {
+  applyManualObjectiveOverride,
+  buildBuilderSubmitPayload,
+  selectAlternativeRecommendation,
+  selectPrimaryRecommendation,
+  type BuilderFormState,
+  type RecommendationAlternative,
+  type RecommendationPrimary,
+  type RecommendationSource,
+} from './training-plan-stateful-builder-state';
+
 type ObjectiveOption = { value: string; label: string };
-type RecommendationAlternative = { title: string; objective: string; reason: string };
-type RecommendationPrimary = { title: string; objective: string; confidence: string; explanation: string };
 type RecommendationSelection = {
-  source: 'primary' | 'alternative' | 'manual';
+  source: RecommendationSource;
   title: string;
   objective: string;
   reason?: string;
@@ -43,7 +52,7 @@ export function TrainingPlanStatefulBuilderClient({
 }) {
   const initialObjective = initialSelection?.objective || initialValues.objective || recommendationPrimary.objective;
   const [selectedFocusObjective, setSelectedFocusObjective] = useState(initialObjective);
-  const [selectedRecommendationSource, setSelectedRecommendationSource] = useState<RecommendationSelection['source']>(initialSelection?.source || 'manual');
+  const [selectedRecommendationSource, setSelectedRecommendationSource] = useState<RecommendationSource>(initialSelection?.source || 'manual');
   const [selectedRecommendationTitle, setSelectedRecommendationTitle] = useState(initialSelection?.title || objectiveOptions.find((item) => item.value === initialObjective)?.label || initialObjective);
   const [selectedRecommendationReason, setSelectedRecommendationReason] = useState(initialSelection?.reason || recommendationPrimary.explanation);
   const [selectedRecommendationConfidence, setSelectedRecommendationConfidence] = useState(initialSelection?.confidence || recommendationPrimary.confidence || '');
@@ -56,6 +65,25 @@ export function TrainingPlanStatefulBuilderClient({
   const [noBackToBackHardDays, setNoBackToBackHardDays] = useState(initialValues.noBackToBackHardDays);
   const [note, setNote] = useState(initialValues.note);
   const [selectedSuccessMarkers, setSelectedSuccessMarkers] = useState<string[]>(initialValues.successMarkers);
+
+  const builderState: BuilderFormState = {
+    objective: selectedFocusObjective,
+    recommendationSource: selectedRecommendationSource,
+    recommendationTitle: selectedRecommendationTitle,
+    recommendationReason: selectedRecommendationReason,
+    recommendationConfidence: selectedRecommendationConfidence,
+    ambition,
+    maxWeeklyHours,
+    restDay,
+    restDaysPerWeek,
+    longRideDay,
+    noDoubles,
+    noBackToBackHardDays,
+    successMarkers: selectedSuccessMarkers,
+    note,
+  };
+
+  const submitPayload = buildBuilderSubmitPayload(builderState);
 
   const selectedSummary = useMemo(() => {
     if (selectedRecommendationSource === 'primary') return recommendationPrimary.title;
@@ -70,11 +98,21 @@ export function TrainingPlanStatefulBuilderClient({
   }
 
   function chooseRecommendation(selection: RecommendationSelection) {
-    setSelectedFocusObjective(selection.objective);
-    setSelectedRecommendationSource(selection.source);
-    setSelectedRecommendationTitle(selection.title);
-    setSelectedRecommendationReason(selection.reason || '');
-    setSelectedRecommendationConfidence(selection.confidence || '');
+    const nextState = selection.source === 'primary'
+      ? selectPrimaryRecommendation(builderState, recommendationPrimary)
+      : selection.source === 'alternative'
+        ? selectAlternativeRecommendation(builderState, {
+            title: selection.title,
+            objective: selection.objective,
+            reason: selection.reason || '',
+          })
+        : applyManualObjectiveOverride(builderState, selection.objective, selection.title);
+
+    setSelectedFocusObjective(nextState.objective);
+    setSelectedRecommendationSource(nextState.recommendationSource);
+    setSelectedRecommendationTitle(nextState.recommendationTitle);
+    setSelectedRecommendationReason(nextState.recommendationReason);
+    setSelectedRecommendationConfidence(nextState.recommendationConfidence);
   }
 
   function toggleSuccessMarker(marker: string, checked: boolean) {
@@ -83,11 +121,11 @@ export function TrainingPlanStatefulBuilderClient({
 
   return (
     <form action="/api/planner/month/draft" method="post" className="training-plan-stateful-builder-client">
-      <input type="hidden" name="objective" value={selectedFocusObjective} />
-      <input type="hidden" name="selectedRecommendationSource" value={selectedRecommendationSource} />
-      <input type="hidden" name="selectedRecommendationTitle" value={selectedRecommendationTitle} />
-      <input type="hidden" name="selectedRecommendationReason" value={selectedRecommendationReason} />
-      {selectedRecommendationConfidence ? <input type="hidden" name="selectedRecommendationConfidence" value={selectedRecommendationConfidence} /> : null}
+      <input type="hidden" name="objective" value={submitPayload.objective} />
+      <input type="hidden" name="selectedRecommendationSource" value={submitPayload.selectedRecommendationSource} />
+      <input type="hidden" name="selectedRecommendationTitle" value={submitPayload.selectedRecommendationTitle} />
+      <input type="hidden" name="selectedRecommendationReason" value={submitPayload.selectedRecommendationReason} />
+      {submitPayload.selectedRecommendationConfidence ? <input type="hidden" name="selectedRecommendationConfidence" value={submitPayload.selectedRecommendationConfidence} /> : null}
 
       <div className="training-plan-builder-bar">
         <div className="training-plan-focus-row">
@@ -136,12 +174,13 @@ export function TrainingPlanStatefulBuilderClient({
           <span>Month focus</span>
           <select name="objectiveVisible" value={selectedFocusObjective} onChange={(event) => {
             const objective = event.target.value;
-            setSelectedFocusObjective(objective);
             const objectiveLabel = objectiveOptions.find((item) => item.value === objective)?.label || objective;
-            setSelectedRecommendationSource('manual');
-            setSelectedRecommendationTitle(objectiveLabel);
-            setSelectedRecommendationReason('Builder inputs are saved, but this direction was not selected from the recommendation chips.');
-            setSelectedRecommendationConfidence('');
+            const nextState = applyManualObjectiveOverride(builderState, objective, objectiveLabel);
+            setSelectedFocusObjective(nextState.objective);
+            setSelectedRecommendationSource(nextState.recommendationSource);
+            setSelectedRecommendationTitle(nextState.recommendationTitle);
+            setSelectedRecommendationReason(nextState.recommendationReason);
+            setSelectedRecommendationConfidence(nextState.recommendationConfidence);
           }}>
             {objectiveOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>

@@ -188,7 +188,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /selectedRecommendationSource/i);
   assert.match(statefulBuilderSource, /selectedRecommendationConfidence/i);
   assert.match(statefulBuilderSource, /<form action=\"\/api\/planner\/month\/draft\" method=\"post\" className=\"training-plan-stateful-builder-client\">/i);
-  assert.match(statefulBuilderSource, /type=\"hidden\" name=\"objective\" value=\{selectedFocusObjective\}/i);
+  assert.match(statefulBuilderSource, /type=\"hidden\" name=\"objective\" value=\{submitPayload\.objective\}/i);
   assert.match(statefulBuilderSource, /name=\"objectiveVisible\" value=\{selectedFocusObjective\}/i);
   assert.match(statefulBuilderSource, /name=\"maxWeeklyHours\"[^\n]*value=\{maxWeeklyHours\}/i);
   assert.match(statefulBuilderSource, /name=\"restDay\" value=\{restDay\}/i);
@@ -212,7 +212,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /useState\(/i);
   assert.match(statefulBuilderSource, /selectedFocusObjective/i);
   assert.match(statefulBuilderSource, /setSelectedFocusObjective/i);
-  assert.match(statefulBuilderSource, /chooseRecommendation\(/i);
+  assert.match(statefulBuilderSource, /buildBuilderSubmitPayload\(builderState\)/i);
+  assert.match(statefulBuilderSource, /selectAlternativeRecommendation\(builderState/i);
+  assert.match(statefulBuilderSource, /selectPrimaryRecommendation\(builderState/i);
+  assert.match(statefulBuilderSource, /applyManualObjectiveOverride/i);
+  assert.match(statefulBuilderSource, /buildBuilderSubmitPayload/i);
+  assert.match(statefulBuilderSource, /selectAlternativeRecommendation/i);
+  assert.match(statefulBuilderSource, /selectPrimaryRecommendation/i);
   assert.match(statefulBuilderSource, /Generate plan/i);
   assert.match(source, /Review the live week and the generated month/i);
   assert.match(statefulBuilderSource, /Compact builder/i);
