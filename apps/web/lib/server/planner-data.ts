@@ -559,6 +559,18 @@ function freshnessSummary(form: number): string {
 
 type PlannerWorkoutCategory = 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
 
+type WorkoutCatalogEntry = {
+  id: string;
+  family: 'endurance' | 'recovery' | 'tempo' | 'sweetspot' | 'threshold_support' | 'vo2_support' | 'repeatability' | 'race_specific' | 'opener';
+  label: string;
+  preferenceTags: string[];
+  researchNotes: string[];
+  allowedObjectives: string[];
+  phaseTags: string[];
+  progressionTargets: string[];
+  antiRepetitionTags: string[];
+};
+
 type PlannerIntervalContext = {
   workingThreshold?: number;
   repeatabilityDensityLow?: boolean;
@@ -569,9 +581,10 @@ type PlannerIntervalContext = {
   weekIndex?: number;
   prefersVo2Support?: boolean;
   recentIntervalHints?: string[];
+  requestedFocusText?: string;
 };
 
-const WORKOUT_CATALOG = [
+const WORKOUT_CATALOG: WorkoutCatalogEntry[] = [
   {
     id: 'repeatability-30-15',
     family: 'repeatability',
@@ -579,6 +592,9 @@ const WORKOUT_CATALOG = [
     preferenceTags: ['track_endurance', 'micro_intervals'],
     researchNotes: ['Short-interval repeatability work supports severe-intensity repeatability and race-specific tolerance.'],
     allowedObjectives: ['repeatability', 'race_specificity'],
+    phaseTags: ['build', 'specific'],
+    progressionTargets: ['repeatability_density', 'anaerobic_repeatability'],
+    antiRepetitionTags: ['30_15', 'micro_interval'],
   },
   {
     id: 'vo2-5x4',
@@ -587,6 +603,31 @@ const WORKOUT_CATALOG = [
     preferenceTags: ['vo2_support', 'aerobic_power'],
     researchNotes: ['Classic 4-5 min VO2 support intervals remain a robust aerobic-power option in trained endurance athletes.'],
     allowedObjectives: ['repeatability', 'race_specificity', 'threshold_support'],
+    phaseTags: ['build', 'specific'],
+    progressionTargets: ['vo2max', 'aerobic_power'],
+    antiRepetitionTags: ['5x4', 'vo2_block'],
+  },
+  {
+    id: 'tempo-steady',
+    family: 'tempo',
+    label: 'Tempo support',
+    preferenceTags: ['tempo', 'durability'],
+    researchNotes: ['Tempo work can support aerobic durability and sub-threshold repeatability between harder blocks.'],
+    allowedObjectives: ['aerobic_support', 'consistency', 'threshold_support'],
+    phaseTags: ['base', 'build'],
+    progressionTargets: ['subthreshold_durability'],
+    antiRepetitionTags: ['tempo'],
+  },
+  {
+    id: 'sweetspot-classic',
+    family: 'sweetspot',
+    label: 'Sweetspot support',
+    preferenceTags: ['sweetspot', 'durable_power'],
+    researchNotes: ['Sweetspot work can bridge endurance and threshold support when fatigue cost must stay controlled.'],
+    allowedObjectives: ['threshold_support', 'consistency', 'aerobic_support'],
+    phaseTags: ['base', 'build'],
+    progressionTargets: ['durable_threshold'],
+    antiRepetitionTags: ['sweetspot'],
   },
   {
     id: 'threshold-over-under',
@@ -595,6 +636,9 @@ const WORKOUT_CATALOG = [
     preferenceTags: ['threshold', 'race_support'],
     researchNotes: ['Threshold and over-under work support durable race pace and lactate clearance.'],
     allowedObjectives: ['threshold_support', 'repeatability', 'race_specificity'],
+    phaseTags: ['build', 'specific'],
+    progressionTargets: ['threshold_durability'],
+    antiRepetitionTags: ['threshold', 'over_under'],
   },
   {
     id: 'race-like-points',
@@ -603,8 +647,11 @@ const WORKOUT_CATALOG = [
     preferenceTags: ['points_race', 'stochastic'],
     researchNotes: ['Race-like stochastic work should sharpen event-specific tolerance closer to competition.'],
     allowedObjectives: ['race_specificity', 'repeatability'],
+    phaseTags: ['specific', 'taper'],
+    progressionTargets: ['race_tolerance'],
+    antiRepetitionTags: ['race_like', 'stochastic'],
   },
-] as const;
+];
 
 function plannedIntervalLabel(
   category: PlannerWorkoutCategory,
@@ -702,6 +749,20 @@ function selectWorkoutFromLibrary(args: {
         intervalLabel: weekFocus === 'repeatability'
           ? 'race pace jumps + 4x2min stochastic bridge'
           : plannedIntervalLabel('race_like', index, context),
+      };
+    }
+    if (/sweetspot/i.test((context.recentIntervalHints || []).join(' ')) === false && /sweetspot/i.test(String((context as { requestedFocusText?: string }).requestedFocusText || '')) && !isLighterWeek) {
+      return {
+        label: 'Sweetspot support',
+        category: 'threshold_support',
+        intervalLabel: '3x15min sweetspot @ 320-340w',
+      };
+    }
+    if (/tempo/i.test(String((context as { requestedFocusText?: string }).requestedFocusText || '')) && !isLighterWeek) {
+      return {
+        label: 'Tempo support',
+        category: 'endurance',
+        intervalLabel: '2x20min tempo @ 290-315w',
       };
     }
     if (context.prefersVo2Support && (weekFocus === 'repeatability' || weekFocus === 'threshold_support') && !isLighterWeek) {
@@ -1544,6 +1605,7 @@ export function buildMonthlyPlannerDraftPayload(
       weekIndex: index,
       prefersVo2Support: /\bvo2\b|max aerobic|aerobic power/i.test(currentDirection),
       recentIntervalHints,
+      requestedFocusText: currentDirection,
     };
     const supportWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,

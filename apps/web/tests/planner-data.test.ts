@@ -574,13 +574,27 @@ test('monthly planner race-like weeks choose track-specific subtype variants ins
   assert.equal(uniqueRaceLikeSessions.some((label) => /points|stochastic|pursuit|race pace/i.test(label)), true);
 });
 
-test('monthly planner exposes a workout catalog with VO2 support, preference tags, and research hooks', () => {
+test('monthly planner exposes a workout catalog with VO2 support, tempo, sweetspot, preference tags, and research hooks', () => {
   const source = require('node:fs').readFileSync(new URL('../lib/server/planner-data.ts', import.meta.url), 'utf8');
 
   assert.match(source, /family:\s*'vo2_support'/);
+  assert.match(source, /family:\s*'tempo'/);
+  assert.match(source, /family:\s*'sweetspot'/);
   assert.match(source, /preferenceTags/);
   assert.match(source, /researchNotes/);
   assert.match(source, /allowedObjectives/);
+  assert.match(source, /phaseTags/);
+  assert.match(source, /progressionTargets/);
+  assert.match(source, /antiRepetitionTags/);
+});
+
+test('monthly planner can expose tempo and sweetspot families as distinct seasonal options in the catalog model', () => {
+  const source = require('node:fs').readFileSync(new URL('../lib/server/planner-data.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /id:\s*'tempo-/);
+  assert.match(source, /id:\s*'sweetspot-/);
+  assert.match(source, /family:\s*'tempo'/);
+  assert.match(source, /family:\s*'sweetspot'/);
 });
 
 test('monthly planner can select a VO2 support workout family when the direction explicitly asks for VO2 support', () => {
@@ -631,6 +645,56 @@ test('monthly planner avoids repeating a just-done recent live interval subtype 
     .find((workout) => workout.category === 'repeatability');
 
   assert.notEqual(firstRepeatability?.intervalLabel, '3x10x30/15 @ 402w/201w');
+});
+
+test('monthly planner can select tempo support when the direction explicitly asks for tempo durability work', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-20',
+    working_threshold_w: 365,
+    wellness: { ctl: 101, atl: 104 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'endurance / Z2 ride', training_load: 84, duration_s: 12600, summary: { short_label: 'Long endurance' }, zone_times: { Z2: 9800 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 132, duration_s: 6600, weighted_avg_watts: 352, summary: { short_label: '2x15 threshold' }, zone_times: { Z4: 2100 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 78, duration_s: 9000, summary: { short_label: 'Endurance support' }, zone_times: { Z2: 7200 } },
+    ],
+  }, {
+    objective: 'aerobic_support',
+    ambition: 'balanced',
+    currentDirection: 'Build tempo durability and aerobic support',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+  });
+
+  const tempoWorkout = payload.weeks
+    .flatMap((week) => week.workouts)
+    .find((workout) => /tempo/i.test(workout.label) || /tempo/i.test(workout.intervalLabel || ''));
+
+  assert.equal(Boolean(tempoWorkout), true);
+});
+
+test('monthly planner can select sweetspot support when the direction explicitly asks for sweetspot progression', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-20',
+    working_threshold_w: 365,
+    wellness: { ctl: 102, atl: 106 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'endurance / Z2 ride', training_load: 86, duration_s: 10800, summary: { short_label: 'Endurance' }, zone_times: { Z2: 8400 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 134, duration_s: 6900, weighted_avg_watts: 354, summary: { short_label: '3x12 threshold' }, zone_times: { Z4: 2200 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 76, duration_s: 9000, summary: { short_label: 'Support endurance' }, zone_times: { Z2: 7000 } },
+    ],
+  }, {
+    objective: 'threshold_support',
+    ambition: 'balanced',
+    currentDirection: 'Use sweetspot progression to lift durable power',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+  });
+
+  const sweetspotWorkout = payload.weeks
+    .flatMap((week) => week.workouts)
+    .find((workout) => /sweetspot/i.test(workout.label) || /sweetspot/i.test(workout.intervalLabel || ''));
+
+  assert.equal(Boolean(sweetspotWorkout), true);
 });
 
 test('monthly planner draft payload starts from the current week and respects the remaining weekly-hour cap', () => {
