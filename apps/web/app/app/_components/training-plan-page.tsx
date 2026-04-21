@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 
 import { appRoutes } from '../../../lib/routes';
 import {
-  buildCurrentWeekReplanPayload,
   buildGoalPayload,
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
@@ -181,50 +180,18 @@ export async function TrainingPlanPage({
   const heroDescription = isCalendarMode
     ? 'Live week first. Future weeks stay editable.'
     : 'Live week first. Future weeks stay editable.';
-  const reviewsIntro = isCalendarMode
-    ? 'Live week on top, editable month underneath.'
-    : 'Live week on top, editable month underneath.';
   const nextFourWeekRange = latestDraft?.weeks?.length
     ? formatRange(latestDraft.weeks[0]!.workouts[0]!.date, latestDraft.weeks[latestDraft.weeks.length - 1]!.workouts[latestDraft.weeks[latestDraft.weeks.length - 1]!.workouts.length - 1]!.date)
     : null;
   const displayedWeeks = latestDraft?.weeks
     ? replaceCurrentWeekWithRuntime({
-      weeks: latestDraft.weeks,
-      today,
-      cycle: activePlanning.cycle,
-      live: planner.live,
-    })
+        weeks: latestDraft.weeks,
+        today,
+        cycle: activePlanning.cycle,
+        live: planner.live,
+      })
     : null;
-  const currentWeekBridge = latestDraft
-    ? buildCurrentWeekReplanPayload(planner.live, {
-      monthStart: latestDraft.monthStart,
-      objective: latestInput?.objective || 'repeatability',
-      ambition: latestInput?.ambition || 'balanced',
-      assumptions: {
-        ctl: latestDraft.assumptions.ctl || 0,
-        atl: latestDraft.assumptions.atl || 0,
-        form: latestDraft.assumptions.form || 0,
-        recentSummary: latestDraft.assumptions.recentSummary,
-        availabilitySummary: latestDraft.assumptions.availabilitySummary,
-        guardrailSummary: latestDraft.assumptions.guardrailSummary,
-      },
-      weeks: latestDraft.weeks,
-    }, latestInput ? {
-      objective: latestInput.objective,
-      ambition: latestInput.ambition,
-      currentDirection,
-      mustFollow: {
-        noBackToBackHardDays: latestInput.mustFollow.noBackToBackHardDays,
-        maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours,
-      },
-      preferences: {
-        restDay: latestInput.preferences.restDay,
-        restDaysPerWeek: latestInput.preferences.restDaysPerWeek,
-        longRideDay: latestInput.preferences.longRideDay,
-      },
-    } : undefined)
-    : null;
-  const draftStatusLabel = latestDraft
+const draftStatusLabel = latestDraft
     ? latestDraft.publishState === 'published'
       ? 'Draft saved and locally published'
       : 'Draft saved locally and still editable'
@@ -241,11 +208,6 @@ export async function TrainingPlanPage({
         confidence: undefined,
       }
     : undefined);
-  const selectedRecommendationReason = selectedRecommendation?.reason
-    || (selectedRecommendation?.source === 'primary'
-      ? recommendationPayload.primary.explanation
-      : recommendationPayload.alternatives.find((item) => item.objective === selectedRecommendation?.objective)?.reason)
-    || 'No recommendation rationale saved yet.';
   const draftOriginLabel = latestDraft?.assumptions.selectedRecommendationTitle || selectedRecommendation?.title || selectedDirectionLabel;
 
   return (
@@ -395,122 +357,41 @@ export async function TrainingPlanPage({
 
       <section id="review" className="training-plan-review-stack mt-18">
         <AppCard className="training-plan-card training-plan-card-fullwidth training-plan-step-card training-plan-step-card-draft">
-          <div className="planning-workspace-section__header planning-workspace-section__header-review">
-            <div>
-              <span className="training-plan-step-pill">Step 4</span>
-              <div className="kicker">Draft next month</div>
-              <h2>Review the live week and the generated month</h2>
-              {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
-              {latestDraft ? <p>{reviewsIntro}</p> : null}
-            </div>
-            {latestDraft ? null : null}
-          </div>
-          {latestDraft ? (
-            <>
-              <div className="training-plan-review-guide-grid training-plan-review-guide-grid-compact">
-                <div className="training-plan-guide-card">
-                  <strong>Draft built from</strong>
-                  <p>{draftOriginLabel}</p>
+              <div className="planning-workspace-section__header planning-workspace-section__header-review">
+                <div>
+                  <span className="training-plan-step-pill">Step 4</span>
+                  <div className="kicker">Draft next month</div>
+                  <h2>Generated month</h2>
+                  {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
                 </div>
-                <div className="training-plan-guide-card">
-                  <strong>Why</strong>
-                  <p>{latestDraft.assumptions.selectedRecommendationReason || selectedRecommendationReason}</p>
-                </div>
-                <div className="training-plan-guide-card">
-                  <strong>Confidence</strong>
-                  <p>{latestDraft.assumptions.selectedRecommendationConfidence || selectedRecommendation?.confidence || 'manual'}</p>
-                </div>
+                {latestDraft ? null : null}
               </div>
-              <div className="training-plan-calendar-toolbar">
-                <div className="status-item training-plan-week-decision-panel">
-                  <strong>Active week • live runtime</strong>
-                  <p>{activePlanning.summary?.weekIntention || 'Planning refresh pending'}</p>
-                  <div className="training-plan-week-decision-grid training-plan-mini-facts">
-                    <span className="training-plan-mini-fact"><strong>Planned today</strong>{activePlanning.summary?.plannedToday || '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Do today</strong>{activePlanning.summary?.actualToday || '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Planned tomorrow</strong>{activePlanning.summary?.plannedTomorrow || '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Tomorrow if today lands</strong>{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
-                  </div>
-                  <div className="training-plan-week-decision-callout">
-                    <strong>What should actually happen</strong>
-                    <p>{activePlanning.summary?.reason || 'Daily decision rationale is still resolving.'}</p>
-                  </div>
-                  <div className="training-plan-mini-facts">
-                    <span className="training-plan-mini-fact"><strong>Confidence</strong>{activePlanning.summary?.confidence || '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Next key day</strong>{activePlanning.summary?.nextKeyDay || 'Still resolving'}</span>
-                  </div>
-                  {activePlanning.summary?.risks?.length ? (
-                    <p>Risk: {activePlanning.summary.risks[0]}</p>
-                  ) : null}
-                </div>
-                <div className="status-item training-plan-week-decision-panel">
-                  <strong>Week controls</strong>
-                  <p>{currentWeekBridge?.draftBridgeLabel || 'Remaining editable slots in this week are not available yet.'}</p>
-                  <div className="training-plan-mini-facts">
-                    <span className="training-plan-mini-fact"><strong>Days</strong>{currentWeekBridge?.remainingDays.length ? currentWeekBridge.remainingDays.join(', ') : 'None'}</span>
-                    <span className="training-plan-mini-fact"><strong>Missed</strong>{String(currentWeekBridge?.missedSessions.length || 0)}</span>
-                    <span className="training-plan-mini-fact"><strong>Hours left</strong>{currentWeekBridge ? `${currentWeekBridge.remainingWeekHours.toFixed(1)} h` : '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Key slots</strong>{String(currentWeekBridge?.remainingQualityBudget ?? '—')}</span>
-                  </div>
-                  <p>{currentWeekBridge?.selectedDirectionSummary || `Draft built from ${draftOriginLabel}.`}</p>
-                  <div className="button-row training-plan-action-pills">
-                    <form action="/api/planner/month/replan" method="post">
-                      <input type="hidden" name="draftId" value={latestDraft.id} />
-                      <input type="hidden" name="scenario" value="missed_session" />
-                      <button type="submit">Repair</button>
-                    </form>
-                    <form action="/api/planner/month/replan" method="post">
-                      <input type="hidden" name="draftId" value={latestDraft.id} />
-                      <input type="hidden" name="scenario" value="fatigued" />
-                      <button type="submit">Cut load</button>
-                    </form>
-                    <details className="training-plan-inline-panel training-plan-inline-panel-week-actions">
-                      <summary title="More week actions">⋯</summary>
+              {latestDraft ? (
+                <>
+                  <TrainingPlanCalendar draftId={latestDraft.id} weeks={(displayedWeeks || latestDraft.weeks) as any} today={planner.live?.today || ''} planEvents={planEvents} />
+                  <div className="training-plan-top-strip__actions mt-18">
+                    {!isCalendarMode ? (
+                      <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
+                    ) : (
+                      <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
+                    )}
+                    <details className="training-plan-inline-panel">
+                      <summary title="More month actions">⋯</summary>
                       <div className="training-plan-inline-panel__content">
-                        <form action="/api/planner/month/replan" method="post">
+                        <div className="training-plan-calendar-publish-copy">
+                          <strong>Publish future draft</strong>
+                          <p>Future weeks only. Live week stays runtime-backed.</p>
+                        </div>
+                        <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
+                        <form action="/api/planner/month/publish" method="post">
                           <input type="hidden" name="draftId" value={latestDraft.id} />
-                          <input type="hidden" name="scenario" value="fresher" />
-                          <button type="submit">Use freshness</button>
-                        </form>
-                        <form action="/api/planner/month/replan" method="post">
-                          <input type="hidden" name="draftId" value={latestDraft.id} />
-                          <input type="hidden" name="scenario" value="reduce_load" />
-                          <button type="submit">Reduce</button>
-                        </form>
-                        <form action="/api/planner/month/replan" method="post">
-                          <input type="hidden" name="draftId" value={latestDraft.id} />
-                          <input type="hidden" name="scenario" value="increase_specificity" />
-                          <button type="submit">Race-like</button>
+                          <button type="submit">Publish plan</button>
                         </form>
                       </div>
                     </details>
                   </div>
-                </div>
-                <div className="training-plan-calendar-toolbar__actions">
-                  {!isCalendarMode ? (
-                    <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
-                  ) : (
-                    <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
-                  )}
-                  <details className="training-plan-inline-panel">
-                    <summary title="More month actions">⋯</summary>
-                    <div className="training-plan-inline-panel__content">
-                      <div className="training-plan-calendar-publish-copy">
-                        <strong>Publish future draft</strong>
-                        <p>Future weeks only. Live week stays runtime-backed.</p>
-                      </div>
-                      <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
-                      <form action="/api/planner/month/publish" method="post">
-                        <input type="hidden" name="draftId" value={latestDraft.id} />
-                        <button type="submit">Publish plan</button>
-                      </form>
-                    </div>
-                  </details>
-                </div>
-              </div>
-              <TrainingPlanCalendar draftId={latestDraft.id} weeks={(displayedWeeks || latestDraft.weeks) as any} today={planner.live?.today || ''} planEvents={planEvents} />
-              <details className="training-plan-compare-panel">
-                <summary>Month details</summary>
+                  <details className="training-plan-compare-panel">
+<summary>Month details</summary>
                 <div className="training-plan-comparison-grid training-plan-comparison-grid-compact">
                   <div className="status-item">
                     <strong>{comparePayload.recentWindow.label}</strong>

@@ -307,6 +307,34 @@ test('monthly planner duration distribution keeps endurance longest without bloa
   assert.equal(Number(longEndurance?.durationMinutes || 0) >= Number(supportEndurance?.durationMinutes || 0) + 70, true);
 });
 
+test('monthly planner duration distribution stays phase-specific for race-like and lighter weeks', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 130, duration_s: 7200, summary: { short_label: '30/15 set' } },
+      { activity_id: '2', start_date_local: '2026-04-14T09:00:00', session_type: 'threshold / race-support ride', training_load: 145, duration_s: 9000, summary: { short_label: '2x15 threshold' } },
+      { activity_id: '3', start_date_local: '2026-04-13T09:00:00', session_type: 'endurance / Z2 ride', training_load: 95, duration_s: 14400, summary: { short_label: 'Endurance' } },
+      { activity_id: '4', start_date_local: '2026-04-12T09:00:00', session_type: 'race simulation / points race', training_load: 122, duration_s: 6300, summary: { short_label: 'Race sim' } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'ambitious',
+    currentDirection: 'Increase race-like specificity for track racing',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 12 },
+  });
+
+  const raceWeek = payload.weeks[1]!;
+  const lighterWeek = payload.weeks[3]!;
+  const raceLikeWorkout = raceWeek.workouts.find((workout) => workout.category === 'race_like');
+  const lighterLongEndurance = lighterWeek.workouts.find((workout) => workout.label === 'Endurance support');
+
+  assert.equal(Number(raceLikeWorkout?.durationMinutes || 0) <= 90, true);
+  assert.equal(raceWeek.workouts.filter((workout) => workout.category === 'endurance').every((workout) => Number(workout.durationMinutes || 0) <= 150), true);
+  assert.equal(Number(lighterLongEndurance?.durationMinutes || 0) <= 120, true);
+});
+
 test('monthly planner draft payload applies selected rest day, configurable rest-day count, and disabled back-to-back guardrail without dropping sessions', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-16',
