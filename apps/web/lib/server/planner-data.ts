@@ -148,8 +148,11 @@ export type MonthlyPlannerDraftPayload = {
     weekIndex: 1 | 2 | 3 | 4;
     label: string;
     intent: string;
+    weekTypeLabel?: string;
     targetHours: number;
     targetLoad: number;
+    availableHours?: number;
+    eventHours?: number;
     longSessionDay?: string;
     completedThisWeek?: Array<{
       date: string;
@@ -1288,6 +1291,13 @@ export function buildMonthlyPlannerDraftPayload(
       [restOffset, extraRestOffset, (restOffset + 4) % 7, (restOffset + 5) % 7],
     );
 
+    const weekTypeLabel = index === 3
+      ? 'Lighter week'
+      : objective === 'race_specificity'
+        ? 'Race-like week'
+        : objective === 'threshold_support' || hardOne === 'threshold_support'
+          ? 'Threshold week'
+          : 'Repeatability week';
     const intent = index === 3
       ? 'Lighter week.'
       : objective === 'race_specificity'
@@ -1300,8 +1310,11 @@ export function buildMonthlyPlannerDraftPayload(
       weekIndex: (index + 1) as 1 | 2 | 3 | 4,
       label,
       intent,
+      weekTypeLabel,
       targetHours,
       targetLoad,
+      availableHours: remainingWeeklyCap,
+      eventHours,
       longSessionDay: preferredLongRideDay.slice(0, 1).toUpperCase() + preferredLongRideDay.slice(1),
       completedThisWeek: index === 0 ? completedThisWeek : [],
       rationale: {

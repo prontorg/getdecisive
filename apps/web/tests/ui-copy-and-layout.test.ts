@@ -149,6 +149,14 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(plannerDataSource, /visibleWeekWorkouts/i);
   assert.match(calendarSource, /completedThisWeek/i);
   assert.match(calendarSource, /rest-day-subtle/i);
+  assert.match(calendarSource, /weekSummaryLabel/i);
+  assert.match(calendarSource, /week\.weekTypeLabel/i);
+  assert.match(calendarSource, /week\.availableHours/i);
+  assert.match(calendarSource, /week\.eventHours/i);
+  assert.match(calendarSource, /availableHoursLabel/i);
+  assert.match(calendarSource, /eventAdjustedHoursLabel/i);
+  assert.match(calendarSource, /after .* h events/i);
+  assert.match(calendarSource, /h available/i);
   assert.match(calendarSource, /training-plan-week-summary-column/i);
   assert.match(calendarSource, /training-plan-week-summary-card/i);
   assert.match(calendarSource, /calendarRows/i);

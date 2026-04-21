@@ -36,11 +36,18 @@ type Week = {
   weekIndex: 1 | 2 | 3 | 4;
   label: string;
   intent?: string;
+  weekTypeLabel?: string;
   targetHours: number;
   targetLoad: number;
+  availableHours?: number;
+  eventHours?: number;
   completedThisWeek?: Workout[];
   workouts: Workout[];
 };
+
+function weekSummaryLabel(week: Week) {
+  return week.weekTypeLabel || week.intent?.replace(/\.$/, '') || 'Repeatable week';
+}
 
 function shortCategoryLabel(category: Workout['category']) {
   switch (category) {
@@ -424,13 +431,20 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
           const completedLoad = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
           const plannedLoad = week.workouts.reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
           const latestHistory = (week.completedThisWeek || []).slice(-1)[0];
+          const summaryLabel = weekSummaryLabel(week);
+          const availableHoursLabel = typeof week.availableHours === 'number'
+            ? `${week.availableHours.toFixed(1)} h available`
+            : `${week.targetHours.toFixed(1)} h available`;
+          const eventAdjustedHoursLabel = typeof week.eventHours === 'number' && week.eventHours > 0
+            ? `${availableHoursLabel} after ${week.eventHours.toFixed(1)} h events`
+            : availableHoursLabel;
           return (
             <div key={week.id} className="training-plan-week-summary-card" style={rowIndexByWeekIndex.get(week.weekIndex) ? { gridRow: rowIndexByWeekIndex.get(week.weekIndex) } : undefined}>
               <div className="training-plan-week-summary-card__inner">
                 <div className="training-plan-week-summary-card__kicker">W{week.weekIndex}</div>
                 <strong>{week.label}</strong>
-                <p>{week.targetHours.toFixed(1)} h • L{week.targetLoad}</p>
-                <p>{week.intent || 'Repeatable track-endurance week'}</p>
+                <p>{summaryLabel} • {week.targetHours.toFixed(1)} h • L{week.targetLoad}</p>
+                <p>{eventAdjustedHoursLabel}</p>
                 <p>{latestHistory ? `History: ${latestHistory.label}` : `Next ${(plannedMinutes / 60).toFixed(1)} h • L${plannedLoad}`}</p>
                 <p>{latestHistory ? `${(completedMinutes / 60).toFixed(1)} h done • L${completedLoad}` : `${plannedMinutes ? `${(plannedMinutes / 60).toFixed(1)} h planned • L${plannedLoad}` : 'Fresher week / lower cost'}`}</p>
               </div>

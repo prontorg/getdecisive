@@ -59,8 +59,11 @@ export async function POST(request: Request) {
         weekIndex: week.weekIndex,
         label: week.label,
         intent: week.intent,
+        weekTypeLabel: week.weekTypeLabel,
         targetHours: week.targetHours,
         targetLoad: week.targetLoad,
+        availableHours: week.availableHours,
+        eventHours: week.eventHours,
         longSessionDay: week.longSessionDay,
         completedThisWeek: (week.completedThisWeek || []).map((workout, index) => ({
           id: `cw_${week.weekIndex}_${index + 1}`,

@@ -249,6 +249,9 @@ test('monthly planner draft payload keeps week 4 lighter, respects max weekly ho
   assert.equal(payload.weeks[0]?.completedThisWeek?.length, 3);
   assert.equal(payload.weeks[0]?.workouts.some((workout) => workout.category === 'rest'), true);
   assert.equal(payload.weeks[0]?.workouts.some((workout) => workout.category === 'endurance'), true);
+  assert.equal(payload.weeks[0]?.weekTypeLabel, 'Repeatability week');
+  assert.equal(typeof payload.weeks[0]?.availableHours, 'number');
+  assert.equal(payload.weeks[0]?.eventHours, 0);
 });
 
 test('monthly planner draft payload subtracts planning-event hours from the affected week budget', () => {
@@ -272,6 +275,9 @@ test('monthly planner draft payload subtracts planning-event hours from the affe
   });
 
   assert.equal(payload.weeks[1]?.targetHours, 6);
+  assert.equal(payload.weeks[1]?.availableHours, 6);
+  assert.equal(payload.weeks[1]?.eventHours, 4);
+  assert.equal(payload.weeks[1]?.weekTypeLabel, 'Repeatability week');
   assert.match(payload.weeks[1]?.rationale.protected || '', /event|race|travel/i);
 });
 

@@ -95,8 +95,11 @@ type MonthlyPlanWeek = {
   weekIndex: 1 | 2 | 3 | 4;
   label: string;
   intent: string;
+  weekTypeLabel?: string;
   targetHours: number;
   targetLoad: number;
+  availableHours?: number;
+  eventHours?: number;
   longSessionDay?: string;
   completedThisWeek?: MonthlyPlanWorkout[];
   rationale: {
