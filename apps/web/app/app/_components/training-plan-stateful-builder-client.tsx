@@ -63,6 +63,12 @@ export function TrainingPlanStatefulBuilderClient({
     return alt?.title || selectedRecommendationTitle;
   }, [recommendationAlternatives, recommendationPrimary.title, selectedFocusObjective, selectedRecommendationSource, selectedRecommendationTitle]);
 
+  const primaryChipPressed = selectedFocusObjective === recommendationPrimary.objective ? 'true' : 'false';
+
+  function altChipPressed(objective: string) {
+    return selectedRecommendationSource === 'alternative' && selectedFocusObjective === objective ? 'true' : 'false';
+  }
+
   function chooseRecommendation(selection: RecommendationSelection) {
     setSelectedFocusObjective(selection.objective);
     setSelectedRecommendationSource(selection.source);
@@ -92,7 +98,8 @@ export function TrainingPlanStatefulBuilderClient({
           <div className="training-plan-focus-chip-row">
             <button
               type="button"
-              className="training-plan-focus-chip training-plan-focus-chip-recommended"
+              aria-pressed={primaryChipPressed}
+              className={`training-plan-focus-chip training-plan-focus-chip-recommended ${primaryChipPressed === 'true' ? 'training-plan-focus-chip-selected' : ''}`}
               onClick={() => chooseRecommendation({
                 source: 'primary',
                 title: recommendationPrimary.title,
@@ -108,7 +115,8 @@ export function TrainingPlanStatefulBuilderClient({
               <button
                 key={item.objective}
                 type="button"
-                className="training-plan-focus-chip"
+                aria-pressed={altChipPressed(item.objective)}
+                className={`training-plan-focus-chip ${altChipPressed(item.objective) === 'true' ? 'training-plan-focus-chip-selected' : ''}`}
                 onClick={() => chooseRecommendation({
                   source: 'alternative',
                   title: item.title,

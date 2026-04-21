@@ -197,6 +197,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /name=\"note\"[^\n]*value=\{note\}/i);
   assert.match(statefulBuilderSource, /name=\"successMarkers\" value=\{item\} checked=\{selectedSuccessMarkers\.includes\(item\)\}/i);
   assert.match(statefulBuilderSource, /type=\"button\"/i);
+  assert.match(statefulBuilderSource, /aria-pressed=\{primaryChipPressed\}/i);
+  assert.match(statefulBuilderSource, /aria-pressed=\{altChipPressed\(item\.objective\)\}/i);
+  assert.match(statefulBuilderSource, /training-plan-focus-chip-selected/i);
+  assert.match(statefulBuilderSource, /const primaryChipPressed = selectedFocusObjective === recommendationPrimary\.objective \? 'true' : 'false'/i);
+  assert.match(statefulBuilderSource, /return selectedRecommendationSource === 'alternative' && selectedFocusObjective === objective \? 'true' : 'false'/i);
   assert.doesNotMatch(statefulBuilderSource, /className=\"training-plan-focus-chip-form\"/i);
   assert.match(statefulBuilderSource, /More options/i);
   assert.match(statefulBuilderSource, /Month focus/i);
@@ -234,6 +239,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-quick-builder__header/i);
   assert.match(calendarStyles, /training-plan-focus-row/i);
   assert.match(calendarStyles, /training-plan-focus-chip/i);
+  assert.match(calendarStyles, /training-plan-focus-chip-selected/i);
+  assert.match(calendarStyles, /\.training-plan-focus-chip\[aria-pressed='true'\]/i);
   assert.match(calendarStyles, /training-plan-builder-bar/i);
   assert.match(calendarStyles, /training-plan-builder-advanced/i);
   assert.match(calendarStyles, /training-plan-live-strip/i);
