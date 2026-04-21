@@ -16,6 +16,7 @@ type PlanEvent = {
   date: string;
   type: 'A_race' | 'B_race' | 'C_race' | 'training_camp' | 'travel' | 'blackout';
   priority: 'primary' | 'support' | 'optional';
+  durationHours?: number;
 };
 
 type Workout = {
@@ -327,7 +328,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
                 <div className="chip-row training-plan-day-card__events">
                   {planEvents.map((event) => (
                     <span key={event.id} className={`chip planner-race-badge ${planEventBadgeClass(event.type)}`}>
-                      {event.title}
+                      {event.title}{event.durationHours ? ` • ${event.durationHours}h` : ''}
                     </span>
                   ))}
                 </div>

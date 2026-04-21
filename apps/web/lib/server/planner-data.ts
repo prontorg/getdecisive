@@ -1140,6 +1140,7 @@ export function buildMonthlyPlannerDraftPayload(
     successMarkers?: string[];
     mustFollow?: { noBackToBackHardDays?: boolean; maxWeeklyHours?: number };
     preferences?: { restDay?: string; restDaysPerWeek?: number; longRideDay?: string };
+    planEvents?: Array<{ id?: string; date: string; type?: string; title?: string; priority?: string; durationHours?: number }>;
   },
 ): MonthlyPlannerDraftPayload {
   const ctl = Number(live?.wellness?.ctl || 0);
@@ -1187,6 +1188,7 @@ export function buildMonthlyPlannerDraftPayload(
     ? isoDate(new Date(todayDate.getTime() + 86400000))
     : today;
   const completedThisWeekHours = completedThisWeek.reduce((acc, row) => acc + Number(row.durationMinutes || 0), 0) / 60;
+  const planEvents = input.planEvents || [];
 
   const weeks = weekLabels.map((label, index) => {
     const monday = new Date(start);
@@ -1233,9 +1235,13 @@ export function buildMonthlyPlannerDraftPayload(
     const baseHours = Math.min(weeklyCap, Math.max(6.5, Number((Math.min(weeklyCap, recentWeeklyHours * (index === 3 ? 0.78 : index === 2 ? 1.04 : index === 1 ? 1 : 0.94))).toFixed(1))));
     const rawWeekHours = Number(Math.min(weeklyCap, Number((baseHours * weekLoads[index]).toFixed(1))).toFixed(1));
     const isCurrentWeek = index === 0;
+    const weekStartIso = isoDate(monday);
+    const weekEndIso = isoDate(new Date(monday.getTime() + 6 * 86400000));
+    const weekEvents = planEvents.filter((event) => event.date >= weekStartIso && event.date <= weekEndIso);
+    const eventHours = Number(weekEvents.reduce((acc, event) => acc + Number(event.durationHours || 0), 0).toFixed(1));
     const remainingDaysThisWeek = Math.max(1, Math.round((new Date(`${isoDate(new Date(monday.getTime() + 6 * 86400000))}T00:00:00Z`).getTime() - new Date(`${planningStartDate}T00:00:00Z`).getTime()) / 86400000) + 1);
     const remainingFraction = isCurrentWeek ? Number((remainingDaysThisWeek / 7).toFixed(2)) : 1;
-    const remainingWeeklyCap = isCurrentWeek ? Math.max(0, Number((weeklyCap - completedThisWeekHours).toFixed(1))) : weeklyCap;
+    const remainingWeeklyCap = isCurrentWeek ? Math.max(0, Number((weeklyCap - completedThisWeekHours - eventHours).toFixed(1))) : Math.max(0, Number((weeklyCap - eventHours).toFixed(1)));
     const targetHours = Number(Math.max(0, Math.min(remainingWeeklyCap, Number((rawWeekHours * remainingFraction).toFixed(1)))).toFixed(1));
     const targetLoad = Math.round(targetHours * (index === 3 ? 42 : hardTwo === 'race_like' ? 52 : 50));
     const longMinutes = Math.min(index === 3 ? 120 : enduranceNeedsSupport ? 210 : 180, Math.max(90, Math.round(targetHours * 60 * (enduranceNeedsSupport ? 0.38 : 0.34))));
@@ -1298,9 +1304,11 @@ export function buildMonthlyPlannerDraftPayload(
               : 'Recent repeatability is still thin, so the plan should actively rebuild it instead of assuming it is already there.',
         protected: constrained && index === 0
           ? 'The first planned week is slightly protected because freshness is already constrained.'
-          : noBackToBack
-            ? 'Support days stay genuinely supportive and separate the hard recommendations so quality does not leak across the week.'
-            : 'Support days still need to stay truly supportive even when back-to-back hard days are allowed.',
+          : weekEvents.length
+            ? `Planner events consume ${eventHours.toFixed(1)} h this week, so training budget is reduced around ${weekEvents.map((event) => event.title || event.type || 'event').join(', ')}.`
+            : noBackToBack
+              ? 'Support days stay genuinely supportive and separate the hard recommendations so quality does not leak across the week.'
+              : 'Support days still need to stay truly supportive even when back-to-back hard days are allowed.',
         mainAim: objective === 'race_specificity'
           ? `Increase race-like specificity without stacking uncontrolled fatigue${nearGoal ? ' as the goal event approaches.' : '.'}`
           : objective === 'taper'

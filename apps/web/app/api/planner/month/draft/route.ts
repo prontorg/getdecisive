@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
-import { getUserGoalEntries, saveMonthlyPlanDraft, saveMonthlyPlanInput } from '../../../../../lib/server/planner-customization';
+import { getUserGoalEntries, listPlanningEvents, saveMonthlyPlanDraft, saveMonthlyPlanInput } from '../../../../../lib/server/planner-customization';
 import { normalizeMonthlyPlanRequestBody } from '../../../../../lib/server/monthly-plan-request';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     const monthlyInputs = await saveMonthlyPlanInput(userId, normalizeMonthlyPlanRequestBody(parsed, planner.live?.today || new Date().toISOString().slice(0, 10)));
     const latestInput = monthlyInputs[0];
     const currentDirection = buildGoalPayload(planner.live, await getUserGoalEntries(userId)).goalHistory[0]?.title;
+    const planEvents = await listPlanningEvents(userId);
     const generated = buildMonthlyPlannerDraftPayload(planner.live, {
       objective: latestInput?.objective || 'repeatability',
       ambition: latestInput?.ambition || 'balanced',
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
         restDaysPerWeek: latestInput?.preferences.restDaysPerWeek,
         longRideDay: latestInput?.preferences.longRideDay,
       },
+      planEvents,
     });
 
     const savedDrafts = await saveMonthlyPlanDraft(userId, {

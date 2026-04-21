@@ -137,6 +137,7 @@ type PlanningEvent = {
   date: string;
   type: 'A_race' | 'B_race' | 'C_race' | 'training_camp' | 'travel' | 'blackout';
   priority: 'primary' | 'support' | 'optional';
+  durationHours?: number;
   notes?: string;
   createdAt: string;
   updatedAt: string;

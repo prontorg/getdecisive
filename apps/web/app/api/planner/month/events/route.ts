@@ -22,13 +22,15 @@ export async function POST(request: Request) {
   const date = String(isJson ? payload.date : payload.get('date') || '').trim();
   const type = String(isJson ? payload.type : payload.get('type') || 'B_race') as 'A_race' | 'B_race' | 'C_race' | 'training_camp' | 'travel' | 'blackout';
   const priority = String(isJson ? payload.priority : payload.get('priority') || 'support') as 'primary' | 'support' | 'optional';
+  const durationHoursRaw = String(isJson ? payload.durationHours || '' : payload.get('durationHours') || '').trim();
+  const durationHours = durationHoursRaw ? Number(durationHoursRaw) : undefined;
   const notes = String(isJson ? payload.notes || '' : payload.get('notes') || '').trim();
 
   if (!title || !date) {
     return NextResponse.json({ error: 'Title and date are required' }, { status: 400 });
   }
 
-  const event = await savePlanningEvent(userId, { title, date, type, priority, notes: notes || undefined });
+  const event = await savePlanningEvent(userId, { title, date, type, priority, durationHours: Number.isFinite(durationHours) ? durationHours : undefined, notes: notes || undefined });
 
   if (isJson) {
     return NextResponse.json({ event }, { status: 201 });

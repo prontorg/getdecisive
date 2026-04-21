@@ -275,6 +275,7 @@ test('planner race events are stored newest-first and can be filtered by plannin
       date: '2026-05-12',
       type: 'A_race',
       priority: 'primary',
+      durationHours: 3,
       notes: 'Main target',
     });
     const second = await savePlanningEvent('user_1', {
@@ -282,14 +283,17 @@ test('planner race events are stored newest-first and can be filtered by plannin
       date: '2026-04-28',
       type: 'B_race',
       priority: 'support',
+      durationHours: 4.5,
     });
 
     const listed = await listPlanningEvents('user_1');
     assert.equal(listed.length, 2);
     assert.equal(listed[0]?.id, second.id);
+    assert.equal(listed[0]?.durationHours, 4.5);
 
-    const updated = await updatePlanningEvent('user_1', first.id, { notes: 'A priority target', priority: 'primary' });
+    const updated = await updatePlanningEvent('user_1', first.id, { notes: 'A priority target', priority: 'primary', durationHours: 2.5 });
     assert.equal(updated?.notes, 'A priority target');
+    assert.equal(updated?.durationHours, 2.5);
 
     const inWindow = await listPlanningEventsInWindow('user_1', '2026-05-01', '2026-05-31');
     assert.equal(inWindow.length, 1);

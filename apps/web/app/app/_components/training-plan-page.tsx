@@ -115,6 +115,7 @@ export async function TrainingPlanPage({
         restDaysPerWeek: latestInput.preferences.restDaysPerWeek,
         longRideDay: latestInput.preferences.longRideDay,
       },
+      planEvents,
     });
     const savedDrafts = await saveMonthlyPlanDraft(userId, {
       monthStart: regenerated.monthStart,

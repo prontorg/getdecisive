@@ -251,6 +251,30 @@ test('monthly planner draft payload keeps week 4 lighter, respects max weekly ho
   assert.equal(payload.weeks[0]?.workouts.some((workout) => workout.category === 'endurance'), true);
 });
 
+test('monthly planner draft payload subtracts planning-event hours from the affected week budget', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 130, duration_s: 5400, summary: { short_label: '30/15 set' } },
+      { activity_id: '2', start_date_local: '2026-04-14T09:00:00', session_type: 'threshold / race-support ride', training_load: 145, duration_s: 7200, summary: { short_label: '2x15 threshold' } },
+      { activity_id: '3', start_date_local: '2026-04-13T09:00:00', session_type: 'endurance / Z2 ride', training_load: 95, duration_s: 10800, summary: { short_label: 'Endurance' } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Raise repeatability for track racing',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+    planEvents: [
+      { id: 'event_1', title: 'Track omnium', date: '2026-04-22', type: 'A_race', priority: 'primary', durationHours: 4 },
+    ],
+  });
+
+  assert.equal(payload.weeks[1]?.targetHours, 6);
+  assert.match(payload.weeks[1]?.rationale.protected || '', /event|race|travel/i);
+});
+
 test('monthly planner draft payload applies selected rest day, configurable rest-day count, and disabled back-to-back guardrail without dropping sessions', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-16',

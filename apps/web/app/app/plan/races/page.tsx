@@ -40,6 +40,10 @@ export default async function PlanRacesPage({
               <input name="date" type="date" />
             </label>
             <label>
+              <span>Hours</span>
+              <input name="durationHours" type="number" min="0" step="0.5" placeholder="3.5" />
+            </label>
+            <label>
               <span>Type</span>
               <select name="type">
                 <option value="A_race">A race</option>
@@ -68,7 +72,7 @@ export default async function PlanRacesPage({
             {events.length ? events.map((event) => (
               <div key={event.id} className="training-plan-guide-card">
                 <strong>{event.title}</strong>
-                <p>{event.date} • {event.type} • {event.priority}</p>
+                <p>{event.date} • {event.type} • {event.priority}{event.durationHours ? ` • ${event.durationHours} h` : ''}</p>
               </div>
             )) : <div className="training-plan-guide-card"><strong>No events yet</strong><p>Add the races that should shape the month.</p></div>}
           </div>

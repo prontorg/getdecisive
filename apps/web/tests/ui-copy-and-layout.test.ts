@@ -76,6 +76,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(planRacesPageSource, /<form/i);
   assert.match(planRacesPageSource, /title=\"Race title\"|name=\"title\"/i);
   assert.match(planRacesPageSource, /name=\"date\"/i);
+  assert.match(planRacesPageSource, /name=\"durationHours\"/i);
   assert.match(planRacesPageSource, /name=\"type\"/i);
   assert.match(planRacesPageSource, /name=\"priority\"/i);
   assert.match(planRacesPageSource, /\/api\/planner\/month\/events/i);
@@ -128,6 +129,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /plannedForDisplay/i);
   assert.match(calendarSource, /training-plan-day-card__summary/i);
   assert.match(calendarSource, /planEvents/i);
+  assert.match(calendarSource, /durationHours/i);
   assert.match(calendarSource, /planner-race-badge/i);
   assert.match(calendarSource, /planEventBadgeClass/i);
   assert.match(calendarSource, /intervalLabel/i);

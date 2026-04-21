@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
-import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, replaceMonthlyPlanWeek, updateMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
+import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, listPlanningEvents, replaceMonthlyPlanWeek, updateMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
 
@@ -107,6 +107,7 @@ export async function POST(request: Request) {
     let nextDraft = null;
     if (action === 'regenerate') {
       const currentDirection = buildGoalPayload(planner.live, await getUserGoalEntries(userId)).goalHistory[0]?.title;
+      const planEvents = await listPlanningEvents(userId);
       const regenerated = buildMonthlyPlannerDraftPayload(planner.live, {
         objective: latestInput?.objective || 'repeatability',
         ambition: latestInput?.ambition || 'balanced',
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
           noBackToBackHardDays: latestInput?.mustFollow.noBackToBackHardDays,
           maxWeeklyHours: latestInput?.mustFollow.maxWeeklyHours,
         },
+        planEvents,
       }).weeks[week.weekIndex - 1];
       if (!regenerated) return routeErrorResponse(ROUTE, 500, 'Could not regenerate week', { userId, draftId, weekId, action });
       nextDraft = await replaceMonthlyPlanWeek(userId, draftId, {

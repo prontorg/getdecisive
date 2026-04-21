@@ -15,6 +15,7 @@ test('planner month events route supports list/create for form and JSON callers'
   assert.match(source, /request\.headers\.get\('content-type'\)/i);
   assert.match(source, /application\/json/i);
   assert.match(source, /formData\(/i);
+  assert.match(source, /durationHours/i);
   assert.match(source, /appRoutes\.planRaces|appRoutes\.plan/i);
   assert.match(source, /NextResponse\.redirect\(new URL\(/i);
 });
