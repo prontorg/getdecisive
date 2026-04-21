@@ -8,6 +8,7 @@ const appHeaderPath = join(process.cwd(), 'app/app/_components/app-header.tsx');
 test('logged-in header uses a POST logout form for full-page cookie clearing without GET logout links', async () => {
   const source = await readFile(appHeaderPath, 'utf8');
 
+  assert.match(source, /app-brand-mark-pill/i);
   assert.match(source, /<form action="\/api\/auth\/logout" method="post">/i);
   assert.match(source, /<button type="submit" className="button-secondary button-link">\s*Log out\s*<\/button>/i);
   assert.doesNotMatch(source, /<a href="\/api\/auth\/logout"/i);

@@ -24,7 +24,7 @@ export function AppHeader({ loggedIn, isAdmin, userDisplayName, userEmail }: App
     <header className="app-topbar md-surface md-surface-raised">
       <div className="app-topbar__inner">
         <div className="app-topbar__brand app-topbar__brand-expanded">
-          <Link href={appRoutes.landing} className="app-brand-mark app-brand-mark-stacked">
+          <Link href={appRoutes.landing} className="app-brand-mark app-brand-mark-stacked app-brand-mark-pill">
             <div className="app-topbar__brand-title">GET DECISIVE</div>
             <span className="app-brand-mark__eyebrow">AI Coaching for the people</span>
           </Link>
