@@ -566,6 +566,7 @@ type PlannerIntervalContext = {
   raceSpecificityBias?: boolean;
   enduranceNeedsSupport?: boolean;
   taper?: boolean;
+  weekIndex?: number;
 };
 
 function plannedIntervalLabel(
@@ -578,9 +579,27 @@ function plannedIntervalLabel(
   const thresholdHigh = Math.round(threshold * 1.03);
   const repeatOn = Math.round(threshold * 1.1);
   const repeatOff = Math.round(threshold * 0.55);
-  if (category === 'repeatability') return context?.repeatabilityDensityLow ? `3x10x30/15 @ ${repeatOn}w/${repeatOff}w` : index === 2 ? `2x8x30/15 @ ${repeatOn}w/${repeatOff}w` : `3x8x30/15 @ ${repeatOn}w/${repeatOff}w`;
-  if (category === 'threshold_support') return context?.thresholdNeedsSupport ? `3x12min @ ${thresholdLow}-${thresholdHigh}w` : index === 3 ? `3x10min @ ${thresholdLow}-${thresholdHigh}w` : `2x15min @ ${thresholdLow}-${thresholdHigh}w`;
-  if (category === 'race_like') return context?.raceSpecificityBias ? 'scratch/openers + 6x2min stochastic set' : '6x2min on / 4x10s jump set';
+  const weekIndex = Number(context?.weekIndex || 0);
+  if (category === 'repeatability') {
+    if (weekIndex >= 2) return `2x10x40/20 @ ${repeatOn}w/${repeatOff}w`;
+    if (index >= 3) return `2x10x40/20 @ ${repeatOn}w/${repeatOff}w`;
+    if (index === 2 || weekIndex === 1) return `2x8x30/15 @ ${repeatOn}w/${repeatOff}w`;
+    if (context?.repeatabilityDensityLow) return `3x10x30/15 @ ${repeatOn}w/${repeatOff}w`;
+    return `3x8x30/15 @ ${repeatOn}w/${repeatOff}w`;
+  }
+  if (category === 'threshold_support') {
+    if (weekIndex >= 1 && !context?.thresholdNeedsSupport) return `2x(12min over-under) @ ${thresholdLow}-${thresholdHigh}w`;
+    if (index >= 3 && !context?.thresholdNeedsSupport) return `2x(12min over-under) @ ${thresholdLow}-${thresholdHigh}w`;
+    if (context?.thresholdNeedsSupport) return `3x12min @ ${thresholdLow}-${thresholdHigh}w`;
+    if (index === 3) return `3x10min @ ${thresholdLow}-${thresholdHigh}w`;
+    return `2x15min @ ${thresholdLow}-${thresholdHigh}w`;
+  }
+  if (category === 'race_like') {
+    if (weekIndex >= 2) return 'pursuit build + 3x4min race pace set';
+    if (index >= 4) return 'pursuit build + 3x4min race pace set';
+    if (context?.raceSpecificityBias) return 'scratch/openers + 6x2min stochastic set';
+    return 'points-race jumps + 4x10s kick set';
+  }
   if (category === 'endurance') return context?.enduranceNeedsSupport ? 'Z2 durability support 2.5-4h' : index === 4 ? 'Z2 aerobic support' : 'Z2 steady support';
   if (category === 'recovery') return context?.taper ? '40-50min easy spin + openers' : '45-60min easy spin';
   return 'Off / mobility';
@@ -1465,7 +1484,7 @@ export function buildMonthlyPlannerDraftPayload(
     const qualityOneMinutes = Math.min(qualitySessionCap, Math.max(70, Math.round(targetHours * 60 * qualityOneShare)));
     const qualityTwoMinutes = Math.min(qualitySessionCap, Math.max(75, Math.round(targetHours * 60 * qualityTwoShare)));
     const recoveryMinutes = noBackToBack ? (taper ? 50 : 60) : Math.min(isLighterWeek ? 65 : 70, Math.max(45, Math.round(targetHours * 60 * 0.1)));
-    const intervalContext = { workingThreshold: Number(live?.working_threshold_w || 365), repeatabilityDensityLow, thresholdNeedsSupport, raceSpecificityBias, enduranceNeedsSupport, taper };
+    const intervalContext = { workingThreshold: Number(live?.working_threshold_w || 365), repeatabilityDensityLow, thresholdNeedsSupport, raceSpecificityBias, enduranceNeedsSupport, taper, weekIndex: index };
     const supportWorkout = selectWorkoutFromLibrary({
       weekFocus: weekDecision.focus,
       slot: 'support_primary',
