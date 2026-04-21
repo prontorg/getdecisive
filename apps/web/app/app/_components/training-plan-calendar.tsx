@@ -61,6 +61,19 @@ function shortCategoryLabel(category: Workout['category']) {
   }
 }
 
+function familyIntentLabel(workout: Pick<Workout, 'category' | 'label' | 'intervalLabel'>) {
+  const text = `${workout.label} ${workout.intervalLabel || ''}`.toLowerCase();
+  if (/standing-start|torque/.test(text)) return 'standing start';
+  if (/sprint primer|neuromuscular sprint/.test(text)) return 'sprint';
+  if (/openers/.test(text)) return 'openers';
+  if (workout.category === 'threshold_support') return /sweetspot/.test(text) ? 'sweetspot' : /tempo/.test(text) ? 'tempo' : 'threshold';
+  if (workout.category === 'repeatability') return /vo2|max aerobic/.test(text) ? 'vo2' : 'repeatability';
+  if (workout.category === 'race_like') return /race-pace bridge/.test(text) ? 'race bridge' : 'race specific';
+  if (workout.category === 'endurance') return /long endurance/.test(text) ? 'long endurance' : 'endurance';
+  if (workout.category === 'recovery') return 'recovery';
+  return 'rest';
+}
+
 function weekdayLabel(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
 }
@@ -413,6 +426,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>
+                      <span className="training-plan-session-card__tag training-plan-session-card__tag-family">{familyIntentLabel(workout)}</span>
                       <span className="training-plan-session-card__tag">{shortCategoryLabel(workout.category)}</span>
                     </div>
                   </div>

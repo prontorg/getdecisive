@@ -884,6 +884,10 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   text-transform: capitalize;
   white-space: nowrap;
 }
+.training-plan-session-card__tag-family {
+  background: rgba(122,167,255,0.12);
+  color: #bcd3ff;
+}
 .training-plan-session-card__meta { display:flex; justify-content:space-between; gap:6px; margin-top:4px; color: var(--muted); font-size: 10px; }
 .training-plan-session-card__meta-compact { justify-content:flex-start; gap:6px; flex-wrap:wrap; }
 .training-plan-inline-menu { margin: 0; }
@@ -947,6 +951,7 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-calendar-publish-copy strong { display:block; color:#eef4ff; }
 .training-plan-calendar-publish-copy p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
 .training-plan-category-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.training-plan-intent-compare-card__kicker { margin: 4px 0 0; color: var(--muted); text-transform: capitalize; font-size: 11px; }
 .training-plan-week-summary-column {
   display:grid;
   gap: 8px;

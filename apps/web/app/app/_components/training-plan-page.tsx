@@ -40,6 +40,18 @@ function fmtHours(value: number) {
   return `${value.toFixed(1)} h`;
 }
 
+function compareIntentLabel(category: string) {
+  switch (category) {
+    case 'threshold_support': return 'Threshold intent';
+    case 'repeatability': return 'Repeatability intent';
+    case 'race_like': return 'Race-specific intent';
+    case 'endurance': return 'Endurance intent';
+    case 'recovery': return 'Recovery intent';
+    case 'rest': return 'Rest intent';
+    default: return category;
+  }
+}
+
 function formatRange(dateA: string, dateB: string) {
   const start = new Date(`${dateA}T00:00:00Z`);
   const end = new Date(`${dateB}T00:00:00Z`);
@@ -406,8 +418,9 @@ const draftStatusLabel = latestDraft
                 </div>
                 <div className="training-plan-category-grid">
                   {comparePayload.categoryComparison.map((item) => (
-                    <div key={item.category} className="status-item">
-                      <strong>{item.category}</strong>
+                    <div key={item.category} className="status-item training-plan-intent-compare-card">
+                      <strong>{compareIntentLabel(item.category)}</strong>
+                      <p className="training-plan-intent-compare-card__kicker">{item.category}</p>
                       <p>Recent: {item.recentSessions} sessions / {fmtHours(item.recentHours)}</p>
                       <p>Planned: {item.plannedSessions} sessions / {fmtHours(item.plannedHours)}</p>
                       <p>Delta sessions: {item.deltaSessions >= 0 ? '+' : ''}{item.deltaSessions}</p>

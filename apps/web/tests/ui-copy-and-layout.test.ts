@@ -133,8 +133,14 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /planEventBadgeClass/i);
   assert.match(calendarSource, /intervalLabel/i);
   assert.match(calendarSource, /training-plan-session-card__subhead/i);
+  assert.match(calendarSource, /familyIntentLabel/i);
+  assert.match(calendarSource, /training-plan-session-card__tag-family/i);
+  assert.match(calendarSource, /standing start|race bridge|race specific/i);
   assert.match(calendarSource, /training-plan-day-card-empty/i);
   assert.match(source, /recentWindow/i);
+  assert.match(source, /compareIntentLabel/i);
+  assert.match(source, /training-plan-intent-compare-card/i);
+  assert.match(source, /Race-specific intent|Repeatability intent|Threshold intent/i);
   assert.doesNotMatch(source, /training-plan-review-meta/i);
   assert.doesNotMatch(source, /Live week on top, editable month underneath\./i);
   const plannerDataSource = await readFile(join(webRoot, 'lib/server/planner-data.ts'), 'utf8');
@@ -190,6 +196,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /Drop looks usable/i);
   assert.match(calendarSource, /training-plan-day-card__drop-hint/i);
   assert.match(calendarStyles, /training-plan-session-card__quick-actions/i);
+  assert.match(calendarStyles, /training-plan-session-card__tag-family/i);
+  assert.match(calendarStyles, /training-plan-intent-compare-card__kicker/i);
   assert.match(calendarStyles, /opacity:\s*\.42/i);
   assert.match(calendarStyles, /training-plan-session-card:hover \.training-plan-session-card__quick-actions/i);
   assert.match(calendarStyles, /training-plan-day-card-drop-warning/i);
