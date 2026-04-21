@@ -10,6 +10,14 @@ type MoveFeedback = {
   suggestedDate?: string | null;
 };
 
+type PlanEvent = {
+  id: string;
+  title: string;
+  date: string;
+  type: 'A_race' | 'B_race' | 'C_race' | 'training_camp' | 'travel' | 'blackout';
+  priority: 'primary' | 'support' | 'optional';
+};
+
 type Workout = {
   id: string;
   date: string;
@@ -71,7 +79,17 @@ function sessionToneClass(category: Workout['category'] | undefined) {
   }
 }
 
-export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: string; weeks: Week[]; today: string }) {
+function planEventBadgeClass(type: PlanEvent['type']) {
+  switch (type) {
+    case 'A_race': return 'planner-race-badge-a';
+    case 'B_race': return 'planner-race-badge-b';
+    case 'C_race': return 'planner-race-badge-c';
+    case 'blackout': return 'planner-race-badge-blackout';
+    default: return 'planner-race-badge-b';
+  }
+}
+
+export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }: { draftId: string; weeks: Week[]; today: string; planEvents?: PlanEvent[] }) {
   const router = useRouter();
   const [draggingWorkoutId, setDraggingWorkoutId] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
@@ -140,6 +158,15 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
     }
     return map;
   }, [weeks]);
+  const planEventsByDate = useMemo(() => {
+    const map = new Map<string, PlanEvent[]>();
+    for (const event of planEvents) {
+      const current = map.get(event.date) || [];
+      current.push(event);
+      map.set(event.date, current);
+    }
+    return map;
+  }, [planEvents]);
 
   const hardCategories = new Set<Workout['category']>(['repeatability', 'threshold_support', 'race_like']);
 
@@ -273,6 +300,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
           const isOutsidePlannedRange = !workoutsByDate.has(date);
           const activeHint = dayHint(draggingWorkoutId, date);
           const isHinted = Boolean(draggingWorkoutId) && hoverDate === date && activeHint;
+          const planEvents = planEventsByDate.get(date) || [];
           return (
             <div
               key={date}
@@ -295,6 +323,15 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
                 <strong>{shortDateLabel(date)}</strong>
                 <span>{weekdayLabel(date)}</span>
               </div>
+              {planEvents.length ? (
+                <div className="chip-row training-plan-day-card__events">
+                  {planEvents.map((event) => (
+                    <span key={event.id} className={`chip planner-race-badge ${planEventBadgeClass(event.type)}`}>
+                      {event.title}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <p className="training-plan-day-card__summary">
                 {dayData.completed.length ? `${dayData.completed.length} done` : plannedForDisplay.length ? `${plannedForDisplay.length} planned` : 'Rest'}
               </p>

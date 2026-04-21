@@ -170,21 +170,8 @@ export function TrainingPlanStatefulBuilderClient({
       </div>
 
       <div className="training-plan-builder-bar training-plan-builder-bar-compact">
-        <label>
-          <span>Month focus</span>
-          <select name="objectiveVisible" value={selectedFocusObjective} onChange={(event) => {
-            const objective = event.target.value;
-            const objectiveLabel = objectiveOptions.find((item) => item.value === objective)?.label || objective;
-            const nextState = applyManualObjectiveOverride(builderState, objective, objectiveLabel);
-            setSelectedFocusObjective(nextState.objective);
-            setSelectedRecommendationSource(nextState.recommendationSource);
-            setSelectedRecommendationTitle(nextState.recommendationTitle);
-            setSelectedRecommendationReason(nextState.recommendationReason);
-            setSelectedRecommendationConfidence(nextState.recommendationConfidence);
-          }}>
-            {objectiveOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-        </label>
+        <input type="hidden" name="objectiveVisible" value={selectedFocusObjective} />
+        <input type="hidden" name="longRideDay" value={longRideDay} />
         <label>
           <span>Hours</span>
           <input name="maxWeeklyHours" type="number" min="4" max="20" step="0.5" value={maxWeeklyHours} onChange={(event) => setMaxWeeklyHours(event.target.value)} />
@@ -195,6 +182,7 @@ export function TrainingPlanStatefulBuilderClient({
             {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day) => <option key={day} value={day}>{day}</option>)}
           </select>
         </label>
+        <input type="hidden" name="restDaysPerWeek" value={restDaysPerWeek} />
         <button type="submit">Generate next month</button>
 
         <details className="training-plan-builder-advanced">

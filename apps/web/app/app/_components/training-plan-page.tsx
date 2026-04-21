@@ -507,7 +507,7 @@ export async function TrainingPlanPage({
                   </details>
                 </div>
               </div>
-              <TrainingPlanCalendar draftId={latestDraft.id} weeks={(displayedWeeks || latestDraft.weeks) as any} today={planner.live?.today || ''} />
+              <TrainingPlanCalendar draftId={latestDraft.id} weeks={(displayedWeeks || latestDraft.weeks) as any} today={planner.live?.today || ''} planEvents={planEvents} />
               <details className="training-plan-compare-panel">
                 <summary>Month details</summary>
                 <div className="training-plan-comparison-grid training-plan-comparison-grid-compact">

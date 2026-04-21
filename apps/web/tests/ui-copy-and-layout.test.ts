@@ -72,6 +72,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Event proximity/i);
   assert.match(source, /Upcoming races/i);
   assert.match(source, /planEvents/i);
+  assert.match(source, /planEvents\[0\]/i);
   assert.match(planRacesPageSource, /<form/i);
   assert.match(planRacesPageSource, /title=\"Race title\"|name=\"title\"/i);
   assert.match(planRacesPageSource, /name=\"date\"/i);
@@ -126,6 +127,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /past/i);
   assert.match(calendarSource, /plannedForDisplay/i);
   assert.match(calendarSource, /training-plan-day-card__summary/i);
+  assert.match(calendarSource, /planEvents/i);
+  assert.match(calendarSource, /planner-race-badge/i);
+  assert.match(calendarSource, /planEventBadgeClass/i);
   assert.match(calendarSource, /intervalLabel/i);
   assert.match(calendarSource, /training-plan-session-card__subhead/i);
   assert.match(calendarSource, /training-plan-day-card-empty/i);
@@ -225,6 +229,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /name=\"maxWeeklyHours\"[^\n]*value=\{maxWeeklyHours\}/i);
   assert.match(statefulBuilderSource, /name=\"restDay\" value=\{restDay\}/i);
   assert.match(statefulBuilderSource, /name=\"restDaysPerWeek\" value=\{restDaysPerWeek\}/i);
+  assert.doesNotMatch(statefulBuilderSource, /<span>Month focus<\/span>[\s\S]*<select name=\"objectiveVisible\"/i);
+  assert.doesNotMatch(statefulBuilderSource, /training-plan-builder-bar-compact[\s\S]*<span>Rest days \/ week<\/span>[\s\S]*Generate next month/i);
   assert.match(statefulBuilderSource, /name=\"longRideDay\" value=\{longRideDay\}/i);
   assert.match(statefulBuilderSource, /name=\"note\"[^\n]*value=\{note\}/i);
   assert.match(statefulBuilderSource, /name=\"successMarkers\" value=\{item\} checked=\{selectedSuccessMarkers\.includes\(item\)\}/i);
@@ -236,10 +242,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /return selectedRecommendationSource === 'alternative' && selectedFocusObjective === objective \? 'true' : 'false'/i);
   assert.doesNotMatch(statefulBuilderSource, /className=\"training-plan-focus-chip-form\"/i);
   assert.match(statefulBuilderSource, /More options/i);
-  assert.match(statefulBuilderSource, /Month focus/i);
+  assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(statefulBuilderSource, /name=\"restDay\"/i);
   assert.match(statefulBuilderSource, /name=\"restDaysPerWeek\"/i);
-  assert.match(statefulBuilderSource, /Rest days \/ week/i);
+  assert.match(statefulBuilderSource, /<span>Rest days \/ week<\/span>[\s\S]*name=\"restDaysPerWeek\"/i);
   assert.match(statefulBuilderSource, /name=\"longRideDay\"/i);
   assert.match(statefulBuilderSource, /useState\(/i);
   assert.match(statefulBuilderSource, /selectedFocusObjective/i);
@@ -279,6 +285,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-mini-facts/i);
   assert.match(calendarStyles, /training-plan-week-decision-grid/i);
   assert.match(calendarStyles, /training-plan-week-decision-callout/i);
+  assert.match(calendarStyles, /planner-race-badge-a/i);
+  assert.match(calendarStyles, /planner-race-badge-b/i);
+  assert.match(calendarStyles, /planner-race-badge-c/i);
+  assert.match(calendarStyles, /planner-race-badge-blackout/i);
   assert.match(calendarStyles, /training-plan-quick-builder/i);
   assert.match(calendarStyles, /training-plan-quick-builder__header/i);
   assert.match(calendarStyles, /training-plan-focus-row/i);
