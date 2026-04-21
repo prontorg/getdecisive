@@ -399,6 +399,80 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-grid-main { min-width: 0; }
 .training-plan-state-hero { position: relative; }
 .training-plan-top-strip { width: 100%; }
+.planning-workspace-shell { display:grid; gap: 16px; }
+.planning-workspace-banner {
+  display:grid;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(122,167,255,0.14);
+  background: linear-gradient(180deg, rgba(17,24,37,0.96), rgba(11,17,27,0.9));
+}
+.planning-workspace-banner h3 { margin: 0; }
+.planning-workspace-banner p { margin: 6px 0 0; color: var(--muted); max-width: 58ch; }
+.planning-workspace-banner__chips { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.planning-workspace-chip {
+  display:grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(122,167,255,0.12);
+  background: linear-gradient(180deg, rgba(16,23,34,0.9), rgba(12,18,27,0.82));
+}
+.planning-workspace-chip strong { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #9ec5ff; }
+.planning-workspace-chip span { color: #eef4ff; font-size: 13px; line-height: 1.45; }
+.planning-workspace-chip-warning { border-color: rgba(245,158,11,0.18); background: linear-gradient(180deg, rgba(56,33,13,0.42), rgba(22,18,12,0.82)); }
+.planning-workspace-step-nav {
+  position: sticky;
+  top: 78px;
+  z-index: 20;
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.planning-workspace-step-nav__item {
+  display:flex;
+  gap: 10px;
+  align-items:flex-start;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(122,167,255,0.12);
+  background: rgba(12,18,27,0.88);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(3,8,20,.14);
+}
+.planning-workspace-step-nav__number {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(15,82,186,0.22);
+  color: #eef4ff;
+  font-size: 12px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.planning-workspace-step-nav__body { display:grid; gap: 3px; min-width: 0; }
+.planning-workspace-step-nav__body strong { color: #eef4ff; font-size: 13px; }
+.planning-workspace-step-nav__body span { color: #c7d2e0; font-size: 12px; line-height: 1.35; }
+.planning-workspace-section {
+  display:grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(122,167,255,0.12);
+  background: linear-gradient(180deg, rgba(15,22,34,0.64), rgba(12,18,27,0.46));
+}
+.planning-workspace-section__header { display:grid; gap: 8px; }
+.planning-workspace-section__header h3,
+.planning-workspace-section__header h2 { margin: 0; }
+.planning-workspace-section__header p { margin: 0; color: var(--muted); max-width: 60ch; }
+.planning-workspace-section__header-review { margin-bottom: 12px; }
+.planning-workspace-guide-row { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.planning-workspace-guide-row-2up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .training-plan-flow-shell { display:grid; gap: 16px; }
 .training-plan-flow-header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
 .training-plan-flow-header h3 { margin: 0; }
@@ -792,6 +866,10 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   .planner-tabs-3, .planner-tabs-2 { grid-template-columns: 1fr; }
   .form-split-quad { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .training-plan-flow-header,
+  .planning-workspace-banner__chips,
+  .planning-workspace-guide-row,
+  .planning-workspace-guide-row-2up,
+  .planning-workspace-step-nav,
   .training-plan-inline-layout,
   .training-plan-context-grid,
   .training-plan-direction-grid,

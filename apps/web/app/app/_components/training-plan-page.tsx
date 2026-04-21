@@ -37,19 +37,28 @@ const successOptions = [
 
 const plannerSteps = [
   {
+    key: 'understand',
     number: '1',
-    title: 'Confirm Context',
-    description: 'Check what the planner thinks is true today before changing the month.',
+    title: 'Understand',
+    description: 'Check what is true today and what changed before planning.',
   },
   {
+    key: 'decide',
     number: '2',
-    title: 'Set Month Direction',
-    description: 'Choose the goal, guardrails, and preferred weekly structure.',
+    title: 'Decide',
+    description: 'See the recommended month direction and choose the focus.',
   },
   {
+    key: 'build',
     number: '3',
-    title: 'Review Draft',
-    description: 'Approve the 4-week draft, then adjust the live week, weeks, or workouts.',
+    title: 'Build',
+    description: 'Set the key constraints that shape the next 4 weeks.',
+  },
+  {
+    key: 'review',
+    number: '4',
+    title: 'Review',
+    description: 'Check the live week and tidy the generated draft.',
   },
 ] as const;
 
@@ -243,6 +252,15 @@ export async function TrainingPlanPage({
       ? 'Draft saved and locally published'
       : 'Draft saved locally and still editable'
     : 'No draft saved yet';
+  const selectedDirectionLabel = latestInput
+    ? objectiveOptions.find((item) => item.value === latestInput.objective)?.label || latestInput.objective
+    : 'No direction selected yet';
+  const workspaceStatusLabel = latestDraft
+    ? 'Reviewing generated draft'
+    : latestInput
+      ? 'Direction saved, ready to generate draft'
+      : 'Waiting for direction selection';
+  const changeSummary = activePlanning.summary?.reason || comparePayload.freshnessWarnings[0] || 'No major planning change detected yet.';
 
   return (
     <AppPageShell>
@@ -288,116 +306,169 @@ export async function TrainingPlanPage({
       {!isCalendarMode ? (
         <section className="training-plan-top-strip mt-18">
           <AppCard className="training-plan-card training-plan-card-flat">
-            <div className="training-plan-flow-shell">
-              <div className="training-plan-flow-header">
+            <div className="planning-workspace-shell">
+              <div className="planning-workspace-banner">
                 <div>
-                  <div className="kicker">Plan builder flow</div>
-                  <h3>Build the month in 3 simple steps</h3>
-                  <p>First confirm what is true today, then set the month direction, then review and adjust the draft.</p>
+                  <div className="kicker">Planning workspace</div>
+                  <h3>Understand, decide, build, then review</h3>
+                  <p>The planner should show the live truth first, then the chosen direction, then the generated month.</p>
                 </div>
-                <div className="training-plan-flow-status">
-                  <strong>Current draft status</strong>
-                  <span>{draftStatusLabel}</span>
+                <div className="planning-workspace-banner__chips">
+                  <div className="planning-workspace-chip">
+                    <strong>Status</strong>
+                    <span>{workspaceStatusLabel}</span>
+                  </div>
+                  <div className="planning-workspace-chip">
+                    <strong>Selected direction</strong>
+                    <span>{selectedDirectionLabel}</span>
+                  </div>
+                  <div className="planning-workspace-chip">
+                    <strong>Draft state</strong>
+                    <span>{draftStatusLabel}</span>
+                  </div>
+                  <div className="planning-workspace-chip planning-workspace-chip-warning">
+                    <strong>Changed since last update</strong>
+                    <span>{changeSummary}</span>
+                  </div>
                 </div>
               </div>
-              <div className="training-plan-step-grid">
-                {plannerSteps.map((step) => (
-                  <div key={step.number} className="training-plan-step-card">
-                    <span className="training-plan-step-card__number">Step {step.number}</span>
-                    <strong>{step.title}</strong>
-                    <p>{step.description}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="training-plan-inline-layout training-plan-inline-layout-guided">
-                <section className="training-plan-step-section training-plan-inline-layout__context">
-                  <div className="training-plan-step-section__header">
-                    <span className="training-plan-step-pill">Step 1</span>
-                    <div>
-                      <div className="kicker">Confirm Context</div>
-                      <h3>Check today before you plan the month</h3>
-                      <p>Make sure the planner is reading the current week correctly. If this looks wrong, fix the live context first.</p>
-                    </div>
-                  </div>
-                  <div className="training-plan-context-grid training-plan-context-grid-compact training-plan-context-grid-fullwidth">
-                    {activePlanning.summary ? (
-                      <>
-                        <div className="training-plan-context-chip">
-                          <strong>Week intention</strong>
-                          <span>{activePlanning.summary.weekIntention}</span>
-                        </div>
-                        <div className="training-plan-context-chip">
-                          <strong>Planned today</strong>
-                          <span>{activePlanning.summary.plannedToday}</span>
-                        </div>
-                        <div className="training-plan-context-chip training-plan-context-chip-strong">
-                          <strong>Actually today</strong>
-                          <span>{activePlanning.summary.actualToday}</span>
-                        </div>
-                        <div className="training-plan-context-chip">
-                          <strong>Planned tomorrow</strong>
-                          <span>{activePlanning.summary.plannedTomorrow}</span>
-                        </div>
-                        <div className="training-plan-context-chip">
-                          <strong>Tomorrow likely</strong>
-                          <span>{activePlanning.summary.likelyTomorrow}</span>
-                        </div>
-                        <div className="training-plan-context-chip">
-                          <strong>Confidence</strong>
-                          <span>{activePlanning.summary.confidence || 'Planning refresh pending'}</span>
-                        </div>
-                        <div className="training-plan-context-chip">
-                          <strong>Next key day</strong>
-                          <span>{activePlanning.summary.nextKeyDay || 'Protect the next quality slot once freshness allows.'}</span>
-                        </div>
-                        <div className="training-plan-context-chip training-plan-context-chip-warning">
-                          <strong>Why this is the call</strong>
-                          <span>{activePlanning.summary.reason}</span>
-                        </div>
-                      </>
-                    ) : null}
-                    <div className="training-plan-context-chip training-plan-context-chip-emphasis">
-                      <strong>Last updated</strong>
-                      <span>{liveSyncStamp}</span>
-                    </div>
-                    <div className="training-plan-context-chip">
-                      <strong>Goal</strong>
-                      <span>{contextPayload.goalEvent.title}{contextPayload.goalEvent.date ? ` • ${contextPayload.goalEvent.date}` : ''}</span>
-                    </div>
-                    <div className="training-plan-context-chip">
-                      <strong>State</strong>
-                      <span>CTL {contextPayload.currentState.ctl} • ATL {contextPayload.currentState.atl} • Form {contextPayload.currentState.form >= 0 ? '+' : ''}{contextPayload.currentState.form}</span>
-                    </div>
-                    <div className="training-plan-context-chip">
-                      <strong>Freshness</strong>
-                      <span>{contextPayload.currentState.freshnessSummary}</span>
-                    </div>
-                    <div className="training-plan-context-chip">
-                      <strong>Recent</strong>
-                      <span>{contextPayload.recentHistory.repeatablePattern}</span>
-                    </div>
-                    <div className="training-plan-context-chip">
-                      <strong>Availability</strong>
-                      <span>{contextPayload.availability.summary.join(' ')}</span>
-                    </div>
-                    <div className="training-plan-context-chip">
-                      <strong>Guardrails</strong>
-                      <span>{contextPayload.guardrails.summary.join(' ')}</span>
-                    </div>
-                    <div className="training-plan-context-chip training-plan-context-chip-warning">
-                      <strong>Freshness risk</strong>
-                      <span>{comparePayload.freshnessWarnings[0] || 'No major freshness risk visible from the current recent-vs-planned comparison.'}</span>
-                    </div>
-                  </div>
-                </section>
 
-                <form action="/api/planner/month/draft" method="post" className="training-plan-step-section training-plan-inline-layout__form training-plan-inline-layout__form-fullwidth">
-                  <div className="training-plan-step-section__header">
-                    <span className="training-plan-step-pill">Step 2</span>
+              <nav className="planning-workspace-step-nav" aria-label="Planning workspace steps">
+                {plannerSteps.map((step) => (
+                  <a key={step.key} href={`#${step.key}`} className="planning-workspace-step-nav__item">
+                    <span className="planning-workspace-step-nav__number">{step.number}</span>
+                    <span className="planning-workspace-step-nav__body">
+                      <strong>{step.title}</strong>
+                      <span>{step.description}</span>
+                    </span>
+                  </a>
+                ))}
+              </nav>
+
+              <section id="understand" className="planning-workspace-section">
+                <div className="planning-workspace-section__header">
+                  <span className="training-plan-step-pill">Step 1</span>
+                  <div>
+                    <div className="kicker">Understand</div>
+                    <h3>What is true right now?</h3>
+                    <p>Use this to confirm the live truth before changing the month direction.</p>
+                  </div>
+                </div>
+                <div className="planning-workspace-guide-row">
+                  <div className="training-plan-guide-card">
+                    <strong>Use this first</strong>
+                    <p>Check whether today, tomorrow, freshness, and the key risk match reality.</p>
+                  </div>
+                  <div className="training-plan-guide-card">
+                    <strong>Live, not guessed</strong>
+                    <p>This section should reflect the current sync state and active planning runtime.</p>
+                  </div>
+                  <div className="training-plan-guide-card">
+                    <strong>If it looks wrong</strong>
+                    <p>Fix the live context first. Do not build a month on bad current-state assumptions.</p>
+                  </div>
+                </div>
+                <div className="training-plan-context-grid training-plan-context-grid-compact training-plan-context-grid-fullwidth">
+                  {activePlanning.summary ? (
+                    <>
+                      <div className="training-plan-context-chip">
+                        <strong>Week intention</strong>
+                        <span>{activePlanning.summary.weekIntention}</span>
+                      </div>
+                      <div className="training-plan-context-chip">
+                        <strong>Planned today</strong>
+                        <span>{activePlanning.summary.plannedToday}</span>
+                      </div>
+                      <div className="training-plan-context-chip training-plan-context-chip-strong">
+                        <strong>Actually today</strong>
+                        <span>{activePlanning.summary.actualToday}</span>
+                      </div>
+                      <div className="training-plan-context-chip">
+                        <strong>Planned tomorrow</strong>
+                        <span>{activePlanning.summary.plannedTomorrow}</span>
+                      </div>
+                      <div className="training-plan-context-chip">
+                        <strong>Tomorrow likely</strong>
+                        <span>{activePlanning.summary.likelyTomorrow}</span>
+                      </div>
+                      <div className="training-plan-context-chip">
+                        <strong>Confidence</strong>
+                        <span>{activePlanning.summary.confidence || 'Planning refresh pending'}</span>
+                      </div>
+                      <div className="training-plan-context-chip">
+                        <strong>Next key day</strong>
+                        <span>{activePlanning.summary.nextKeyDay || 'Protect the next quality slot once freshness allows.'}</span>
+                      </div>
+                      <div className="training-plan-context-chip training-plan-context-chip-warning">
+                        <strong>Why this is the call</strong>
+                        <span>{activePlanning.summary.reason}</span>
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="training-plan-context-chip training-plan-context-chip-emphasis">
+                    <strong>Last updated</strong>
+                    <span>{liveSyncStamp}</span>
+                  </div>
+                  <div className="training-plan-context-chip">
+                    <strong>Goal</strong>
+                    <span>{contextPayload.goalEvent.title}{contextPayload.goalEvent.date ? ` • ${contextPayload.goalEvent.date}` : ''}</span>
+                  </div>
+                  <div className="training-plan-context-chip">
+                    <strong>State</strong>
+                    <span>CTL {contextPayload.currentState.ctl} • ATL {contextPayload.currentState.atl} • Form {contextPayload.currentState.form >= 0 ? '+' : ''}{contextPayload.currentState.form}</span>
+                  </div>
+                  <div className="training-plan-context-chip">
+                    <strong>Freshness</strong>
+                    <span>{contextPayload.currentState.freshnessSummary}</span>
+                  </div>
+                  <div className="training-plan-context-chip">
+                    <strong>Recent</strong>
+                    <span>{contextPayload.recentHistory.repeatablePattern}</span>
+                  </div>
+                  <div className="training-plan-context-chip">
+                    <strong>Availability</strong>
+                    <span>{contextPayload.availability.summary.join(' ')}</span>
+                  </div>
+                  <div className="training-plan-context-chip">
+                    <strong>Guardrails</strong>
+                    <span>{contextPayload.guardrails.summary.join(' ')}</span>
+                  </div>
+                  <div className="training-plan-context-chip training-plan-context-chip-warning">
+                    <strong>Freshness risk</strong>
+                    <span>{comparePayload.freshnessWarnings[0] || 'No major freshness risk visible from the current recent-vs-planned comparison.'}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section id="decide" className="planning-workspace-section">
+                <div className="planning-workspace-section__header">
+                  <span className="training-plan-step-pill">Step 2</span>
+                  <div>
+                    <div className="kicker">Decide</div>
+                    <h3>What should this month become?</h3>
+                    <p>The system should recommend a direction. For now, use the selected direction and the latest live context to decide it explicitly.</p>
+                  </div>
+                </div>
+                <div className="planning-workspace-guide-row planning-workspace-guide-row-2up">
+                  <div className="training-plan-guide-card">
+                    <strong>Current direction</strong>
+                    <p>{selectedDirectionLabel}</p>
+                  </div>
+                  <div className="training-plan-guide-card">
+                    <strong>Why this direction</strong>
+                    <p>{currentDirection || 'No historical goal direction found yet. Use the current objective and live state.'}</p>
+                  </div>
+                </div>
+              </section>
+
+              <section id="build" className="planning-workspace-section">
+                <form action="/api/planner/month/draft" method="post" className="training-plan-step-section training-plan-inline-layout__form training-plan-inline-layout__form-fullwidth planning-workspace-build-form">
+                  <div className="planning-workspace-section__header">
+                    <span className="training-plan-step-pill">Step 3</span>
                     <div>
-                      <div className="kicker">Set Month Direction</div>
-                      <h3>Tell the planner what this month should achieve</h3>
-                      <p>Pick the main aim first, then set the weekly limits and preferred weekly structure.</p>
+                      <div className="kicker">Build</div>
+                      <h3>Set the key constraints and build the draft</h3>
+                      <p>Keep the visible controls to the small set that should shape the next 4 weeks.</p>
                     </div>
                   </div>
                   <div className="training-plan-form-guide-grid">
@@ -487,10 +558,10 @@ export async function TrainingPlanPage({
                   </label>
                   <div className="button-row training-plan-top-strip__actions">
                     <button type="submit">Generate draft</button>
-                    <p className="training-plan-inline-help">This saves your inputs, builds the next 4 weeks, and opens Step 3 below.</p>
+                    <p className="training-plan-inline-help">This saves your inputs, builds the next 4 weeks, and refreshes the review section below.</p>
                   </div>
                 </form>
-              </div>
+              </section>
             </div>
           </AppCard>
         </section>
@@ -500,13 +571,13 @@ export async function TrainingPlanPage({
         </section>
       )}
 
-      <section className="training-plan-review-stack mt-18">
+      <section id="review" className="training-plan-review-stack mt-18">
         <AppCard className="training-plan-card training-plan-card-fullwidth">
-          <div className="training-plan-review-header">
+          <div className="planning-workspace-section__header planning-workspace-section__header-review">
             <div>
-              <div className="training-plan-step-pill">Step 3</div>
-              <div className="kicker">Review Draft</div>
-              <h2>Your next 4 weeks</h2>
+              <span className="training-plan-step-pill">Step 4</span>
+              <div className="kicker">Review</div>
+              <h2>Review the live week and the generated month</h2>
               {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
               {latestDraft ? <p>{reviewsIntro}</p> : null}
             </div>
