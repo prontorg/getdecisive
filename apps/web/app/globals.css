@@ -473,6 +473,33 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .planning-workspace-section__header-review { margin-bottom: 12px; }
 .planning-workspace-guide-row { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .planning-workspace-guide-row-2up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.planning-workspace-guide-row-3up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.planning-recommendation-grid { display:grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .85fr) minmax(0, .85fr); gap: 10px; }
+.planning-recommendation-card {
+  display:grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(122,167,255,0.12);
+  background: linear-gradient(180deg, rgba(17,24,37,0.88), rgba(12,18,27,0.76));
+}
+.planning-recommendation-card-primary { border-color: rgba(122,167,255,0.26); background: linear-gradient(180deg, rgba(15,82,186,0.18), rgba(18,24,35,0.94)); }
+.planning-recommendation-card__topline { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+.planning-recommendation-card h4 { margin: 0; color: #eef4ff; font-size: 1.05rem; }
+.planning-recommendation-card p { margin: 0; color: #d7e2f0; line-height: 1.5; }
+.planning-recommendation-confidence {
+  display:inline-flex;
+  align-items:center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #eef4ff;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.planning-recommendation-chip-row { margin-top: 2px; }
+.planning-recommendation-list { margin: 0; color: #d7e2f0; }
 .training-plan-flow-shell { display:grid; gap: 16px; }
 .training-plan-flow-header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
 .training-plan-flow-header h3 { margin: 0; }
@@ -869,7 +896,9 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   .planning-workspace-banner__chips,
   .planning-workspace-guide-row,
   .planning-workspace-guide-row-2up,
+  .planning-workspace-guide-row-3up,
   .planning-workspace-step-nav,
+  .planning-recommendation-grid,
   .training-plan-inline-layout,
   .training-plan-context-grid,
   .training-plan-direction-grid,

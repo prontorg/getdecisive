@@ -190,8 +190,14 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Use this first/i);
   assert.match(source, /Live, not guessed/i);
   assert.match(source, /If it looks wrong/i);
-  assert.match(source, /Current direction/i);
-  assert.match(source, /Why this direction/i);
+  assert.match(source, /AI recommendation: what should this month become\?/i);
+  assert.match(source, /Recommended now/i);
+  assert.match(source, /Confidence \{recommendationPayload\.primary\.confidence\}/i);
+  assert.match(source, /Why this recommendation/i);
+  assert.match(source, /Risks to watch/i);
+  assert.match(source, /Accept recommendation/i);
+  assert.match(source, /recommendationPayload\.alternatives\.map/i);
+  assert.match(source, /recommendedConstraints/i);
   assert.match(source, /Calendar<\/a>/i);
   assert.match(source, /Dashboard<\/a>/i);
   assert.match(source, /Publish future draft/i);
@@ -203,6 +209,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /planning-workspace-step-nav/i);
   assert.match(calendarStyles, /planning-workspace-step-nav__item/i);
   assert.match(calendarStyles, /planning-workspace-section/i);
+  assert.match(calendarStyles, /planning-recommendation-grid/i);
+  assert.match(calendarStyles, /planning-recommendation-card-primary/i);
+  assert.match(calendarStyles, /planning-recommendation-confidence/i);
   assert.match(calendarStyles, /training-plan-step-pill/i);
   assert.match(calendarStyles, /training-plan-inline-help/i);
   assert.match(calendarStyles, /training-plan-context-chip-emphasis/i);

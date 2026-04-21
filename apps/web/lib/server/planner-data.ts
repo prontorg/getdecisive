@@ -196,6 +196,23 @@ export type CurrentWeekReplanPayload = {
   remainingQualityBudget: number;
 };
 
+export type PlanningRecommendationPayload = {
+  primary: {
+    title: string;
+    objective: string;
+    confidence: 'low' | 'medium' | 'high';
+    explanation: string;
+  };
+  alternatives: Array<{
+    title: string;
+    objective: string;
+    reason: string;
+  }>;
+  rationaleBullets: string[];
+  riskFlags: string[];
+  recommendedConstraints: string[];
+};
+
 export async function getAuthenticatedPlannerContext(userId: string): Promise<AuthenticatedPlannerContext | null> {
   const state = await getPlatformState();
   const onboarding = await getDerivedOnboardingStatusRecord(userId) || deriveOnboardingStatus(state, userId) || getOnboardingRun(state, userId);
@@ -849,6 +866,88 @@ export function buildMonthlyPlannerContextPayload(
       useLast28DaysOnly: false,
       excludeNonPrimarySport: false,
     },
+  };
+}
+
+export function buildPlanningRecommendationPayload(
+  live?: LiveState | null,
+  currentDirection?: string,
+): PlanningRecommendationPayload {
+  const context = buildMonthlyPlannerContextPayload(live, currentDirection);
+  const form = context.currentState.form;
+  const repeatabilityGap = /repeatability density still needs rebuilding/i.test(context.recentHistory.repeatablePattern);
+  const thresholdGap = /threshold support still needs clearer reinforcement/i.test(context.recentHistory.repeatablePattern);
+  const daysToGoal = live?.goal_race_date
+    ? Math.round((new Date(`${live.goal_race_date}T00:00:00Z`).getTime() - new Date(`${(live?.today || todayIso())}T00:00:00Z`).getTime()) / 86400000)
+    : null;
+  const nearGoal = daysToGoal !== null && daysToGoal <= 35;
+  const objective = form <= -18
+    ? 'consistency'
+    : nearGoal
+      ? 'race_specificity'
+      : thresholdGap
+        ? 'threshold_support'
+        : repeatabilityGap
+          ? 'repeatability'
+          : 'aerobic_support';
+  const title = objective === 'race_specificity'
+    ? 'Race-like month'
+    : objective === 'threshold_support'
+      ? 'Threshold-support month'
+      : objective === 'consistency'
+        ? 'Freshness-protect month'
+        : objective === 'aerobic_support'
+          ? 'Aerobic-support month'
+          : 'Repeatability month';
+  const confidence = form <= -18 || daysToGoal === null ? 'medium' as const : nearGoal || thresholdGap ? 'high' as const : 'medium' as const;
+  const explanation = objective === 'consistency'
+    ? 'Freshness is constrained enough that the next block should protect repeatability before adding more pressure.'
+    : objective === 'race_specificity'
+      ? 'The event is close enough that one quality lane should tilt clearly toward race-like track demand.'
+      : objective === 'threshold_support'
+        ? 'Recent work shows enough repeatability support, but threshold support still needs clearer reinforcement.'
+        : objective === 'aerobic_support'
+          ? 'The current picture allows a steadier support month without losing the sharper work already present.'
+          : 'Recent support is visible, but decisive repeatability density still needs to become more reliable.';
+
+  return {
+    primary: {
+      title,
+      objective,
+      confidence,
+      explanation,
+    },
+    alternatives: [
+      {
+        title: 'Make it safer',
+        objective: 'consistency',
+        reason: 'Use this if freshness is the bigger limiter than raw fitness support right now.',
+      },
+      {
+        title: 'Lean more threshold',
+        objective: 'threshold_support',
+        reason: 'Use this if you want the month anchored more clearly around threshold support and race support.',
+      },
+      {
+        title: 'Lean more race-like',
+        objective: 'race_specificity',
+        reason: 'Use this if the next races matter more than building general support this month.',
+      },
+    ],
+    rationaleBullets: [
+      `Freshness: ${context.currentState.freshnessSummary}`,
+      `Recent pattern: ${context.recentHistory.repeatablePattern}`,
+      context.recentHistory.caution,
+    ],
+    riskFlags: [
+      form <= -18 ? 'Opening week should stay freshness-protective.' : 'No major freshness block on the opening week.',
+      nearGoal ? 'Race proximity increases the value of race-like specificity.' : 'There is still room to build support before sharpening.',
+    ],
+    recommendedConstraints: [
+      'Keep only two real quality exposures per week.',
+      'Protect the day after a hard session unless you explicitly override it.',
+      'Let blank days stay endurance support unless you make them true rest.',
+    ],
   };
 }
 

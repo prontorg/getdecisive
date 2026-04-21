@@ -7,6 +7,7 @@ import {
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
   buildMonthlyPlannerDraftPayload,
+  buildPlanningRecommendationPayload,
   getActivePlanningContext,
   getAuthorizedPlannerLiveContext,
   replaceCurrentWeekWithRuntime,
@@ -184,6 +185,7 @@ export async function TrainingPlanPage({
   }
 
   const contextPayload = buildMonthlyPlannerContextPayload(planner.live, currentDirection);
+  const recommendationPayload = buildPlanningRecommendationPayload(planner.live, currentDirection);
   const comparePayload = buildMonthlyPlannerComparePayload(planner.live, latestDraft ? {
     monthStart: latestDraft.monthStart,
     objective: latestInput?.objective || 'repeatability',
@@ -445,19 +447,55 @@ export async function TrainingPlanPage({
                   <span className="training-plan-step-pill">Step 2</span>
                   <div>
                     <div className="kicker">Decide</div>
-                    <h3>What should this month become?</h3>
-                    <p>The system should recommend a direction. For now, use the selected direction and the latest live context to decide it explicitly.</p>
+                    <h3>AI recommendation: what should this month become?</h3>
+                    <p>Start from the recommended direction, then choose whether to accept it or lean the month another way.</p>
                   </div>
                 </div>
-                <div className="planning-workspace-guide-row planning-workspace-guide-row-2up">
-                  <div className="training-plan-guide-card">
-                    <strong>Current direction</strong>
-                    <p>{selectedDirectionLabel}</p>
+                <div className="planning-recommendation-grid">
+                  <div className="planning-recommendation-card planning-recommendation-card-primary">
+                    <div className="planning-recommendation-card__topline">
+                      <strong>Recommended now</strong>
+                      <span className="planning-recommendation-confidence">Confidence {recommendationPayload.primary.confidence}</span>
+                    </div>
+                    <h4>{recommendationPayload.primary.title}</h4>
+                    <p>{recommendationPayload.primary.explanation}</p>
+                    <div className="chip-row planning-recommendation-chip-row">
+                      <span className="chip">Objective: {recommendationPayload.primary.objective}</span>
+                      <span className="chip">Current direction: {selectedDirectionLabel}</span>
+                    </div>
                   </div>
-                  <div className="training-plan-guide-card">
-                    <strong>Why this direction</strong>
-                    <p>{currentDirection || 'No historical goal direction found yet. Use the current objective and live state.'}</p>
+                  <div className="planning-recommendation-card">
+                    <strong>Why this recommendation</strong>
+                    <ul className="list planning-recommendation-list">
+                      {recommendationPayload.rationaleBullets.map((item) => <li key={item}>{item}</li>)}
+                    </ul>
                   </div>
+                  <div className="planning-recommendation-card">
+                    <strong>Risks to watch</strong>
+                    <ul className="list planning-recommendation-list">
+                      {recommendationPayload.riskFlags.map((item) => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                </div>
+                <div className="planning-workspace-guide-row planning-workspace-guide-row-3up">
+                  <div className="training-plan-guide-card">
+                    <strong>Accept recommendation</strong>
+                    <p>Keep the current build settings aligned with {recommendationPayload.primary.title.toLowerCase()}.</p>
+                  </div>
+                  {recommendationPayload.alternatives.map((item) => (
+                    <div key={item.objective} className="training-plan-guide-card">
+                      <strong>{item.title}</strong>
+                      <p>{item.reason}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="planning-workspace-guide-row planning-workspace-guide-row-3up">
+                  {recommendationPayload.recommendedConstraints.map((item) => (
+                    <div key={item} className="training-plan-guide-card">
+                      <strong>Constraint</strong>
+                      <p>{item}</p>
+                    </div>
+                  ))}
                 </div>
               </section>
 
