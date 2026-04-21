@@ -74,6 +74,7 @@ function sessionToneClass(category: Workout['category'] | undefined) {
 export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: string; weeks: Week[]; today: string }) {
   const router = useRouter();
   const [draggingWorkoutId, setDraggingWorkoutId] = useState<string | null>(null);
+  const [hoverDate, setHoverDate] = useState<string | null>(null);
   const [busyDate, setBusyDate] = useState<string | null>(null);
   const [moveFeedback, setMoveFeedback] = useState<MoveFeedback | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
@@ -130,6 +131,70 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
     });
     return rowMap;
   }, [calendarRows, workoutsByDate]);
+
+  const workoutsById = useMemo(() => {
+    const map = new Map<string, Workout>();
+    for (const week of weeks) {
+      for (const workout of week.workouts) map.set(workout.id, workout);
+      for (const workout of week.completedThisWeek || []) map.set(workout.id, workout);
+    }
+    return map;
+  }, [weeks]);
+
+  const hardCategories = new Set<Workout['category']>(['repeatability', 'threshold_support', 'race_like']);
+
+  function dayHint(workoutId: string | null, targetDate: string) {
+    if (!workoutId) return null;
+    const moving = workoutsById.get(workoutId);
+    if (!moving) return null;
+    const dayData = workoutsByDate.get(targetDate);
+    const sameDayConflict = Boolean(dayData?.planned.some((item) => item.id !== workoutId));
+    const movingHard = hardCategories.has(moving.category);
+    const backToBackHard = movingHard && weeks.some((week) => week.workouts.some((item) => {
+      if (item.id === workoutId || !hardCategories.has(item.category)) return false;
+      const daysApart = Math.abs(Math.round((new Date(`${item.date}T00:00:00Z`).getTime() - new Date(`${targetDate}T00:00:00Z`).getTime()) / 86400000));
+      return daysApart <= 1;
+    }));
+    if (sameDayConflict) return { tone: 'blocked' as const, text: 'Same-day conflict' };
+    if (backToBackHard) return { tone: 'warning' as const, text: 'Back-to-back hard risk' };
+    return { tone: 'safe' as const, text: 'Drop looks usable' };
+  }
+
+  async function mutateWorkout(workoutId: string, action: 'lock' | 'easier' | 'harder' | 'remove', extra: Record<string, unknown> = {}) {
+    const workout = workoutsById.get(workoutId);
+    if (!workout) return;
+    setSuccessNotice(null);
+    setMoveFeedback(null);
+    setBusyDate(workout.date);
+    try {
+      const response = await fetch('/api/planner/month/workout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draftId, workoutId, action, ...extra }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setMoveFeedback({
+          workoutId,
+          requestedDate: workout.date,
+          reason: payload?.error || `${action} failed. Try again.`,
+          suggestedDate: null,
+        });
+        return;
+      }
+      const nextNotice = action === 'remove'
+        ? `${workout.label} removed`
+        : action === 'lock'
+          ? `${workout.label} ${workout.locked ? 'unlocked' : 'locked'}`
+          : action === 'easier'
+            ? `${workout.label} made easier`
+            : `${workout.label} made harder`;
+      setSuccessNotice(nextNotice);
+      router.refresh();
+    } finally {
+      setBusyDate(null);
+    }
+  }
 
   async function moveWorkout(workoutId: string, moveDate: string) {
     if (!workoutId || !moveDate) return;
@@ -206,16 +271,22 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
           const plannedForDisplay = isPastDay ? [] : dayData.planned;
           const isRestLike = !dayData.completed.length && !plannedForDisplay.length;
           const isOutsidePlannedRange = !workoutsByDate.has(date);
+          const activeHint = dayHint(draggingWorkoutId, date);
+          const isHinted = Boolean(draggingWorkoutId) && hoverDate === date && activeHint;
           return (
             <div
               key={date}
-              className={`training-plan-day-card ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''}`}
+              className={`training-plan-day-card ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''} ${isHinted && activeHint?.tone === 'blocked' ? 'training-plan-day-card-drop-blocked' : ''} ${isHinted && activeHint?.tone === 'warning' ? 'training-plan-day-card-drop-warning' : ''} ${isHinted && activeHint?.tone === 'safe' ? 'training-plan-day-card-drop-safe' : ''}`}
               onDragOver={(event) => {
                 event.preventDefault();
+                setHoverDate(date);
                 event.dataTransfer.dropEffect = 'move';
               }}
+              onDragEnter={() => setHoverDate(date)}
+              onDragLeave={() => setHoverDate((current) => (current === date ? null : current))}
               onDrop={(event) => {
                 event.preventDefault();
+                setHoverDate(null);
                 const droppedWorkoutId = event.dataTransfer.getData('text/plain') || draggingWorkoutId;
                 if (droppedWorkoutId) moveWorkout(droppedWorkoutId, date);
               }}
@@ -227,6 +298,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
               <p className="training-plan-day-card__summary">
                 {dayData.completed.length ? `${dayData.completed.length} done` : plannedForDisplay.length ? `${plannedForDisplay.length} planned` : 'Rest'}
               </p>
+              {isHinted && activeHint ? <p className={`training-plan-day-card__drop-hint training-plan-day-card__drop-hint-${activeHint.tone}`}>{activeHint.text}</p> : null}
               <div className="training-plan-day-card__sessions">
                 {dayData.completed.map((workout) => (
                   <div key={workout.id} className={`training-plan-session-card training-plan-session-card-completed ${sessionToneClass(workout.category)}`}>
@@ -247,16 +319,25 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
                     draggable={!workout.locked}
                     onDragStart={(event) => {
                       setDraggingWorkoutId(workout.id);
+                      setHoverDate(null);
                       event.dataTransfer.effectAllowed = 'move';
                       event.dataTransfer.setData('text/plain', workout.id);
                     }}
-                    onDragEnd={() => setDraggingWorkoutId(null)}
+                    onDragEnd={() => {
+                      setDraggingWorkoutId(null);
+                      setHoverDate(null);
+                    }}
                     className={`training-plan-session-card ${sessionToneClass(workout.category)} ${busyDate === date ? 'training-plan-session-card-busy' : ''}`}
                   >
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
                       <div className="training-plan-session-card__actions">
                         {workout.locked ? <span className="training-plan-session-card__tag">lock</span> : null}
+                        <div className="training-plan-session-card__quick-actions">
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'easier')}>Easier</button>
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'harder')}>Harder</button>
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'lock', { locked: !workout.locked })}>{workout.locked ? 'Unlock' : 'Lock'}</button>
+                        </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>
                           <form action="/api/planner/month/workout" method="post" className="training-plan-inline-menu__content">
@@ -277,6 +358,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today }: { draftId: strin
                               <span>Move day</span>
                               <input type="date" name="moveDate" defaultValue={workout.date} />
                             </label>
+                            <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'remove')}>Remove now</button>
                             <button type="submit">Apply</button>
                           </form>
                         </details>

@@ -436,6 +436,13 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-day-card__header strong { font-size: 11px; color: #eef4ff; }
 .training-plan-day-card__header span, .training-plan-day-card__summary { color: var(--muted); font-size: 10px; }
 .training-plan-day-card__summary { margin: 1px 0 5px; }
+.training-plan-day-card__drop-hint { margin: 0 0 5px; font-size: 9px; line-height: 1.2; }
+.training-plan-day-card__drop-hint-safe { color: #9ec5ff; }
+.training-plan-day-card__drop-hint-warning { color: #ffcf85; }
+.training-plan-day-card__drop-hint-blocked { color: #ff9f9f; }
+.training-plan-day-card-drop-safe { border-color: rgba(122,167,255,0.24); box-shadow: inset 0 0 0 1px rgba(122,167,255,0.16); }
+.training-plan-day-card-drop-warning { border-color: rgba(245,158,11,0.34); box-shadow: inset 0 0 0 1px rgba(245,158,11,0.14); }
+.training-plan-day-card-drop-blocked { border-color: rgba(239,68,68,0.4); box-shadow: inset 0 0 0 1px rgba(239,68,68,0.16); }
 .training-plan-day-card__sessions { display:grid; gap:4px; flex: 1; align-content: start; overflow:auto; padding-right: 2px; }
 .training-plan-session-card {
   padding: 5px 6px;
@@ -449,6 +456,8 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-session-card__label { color:#eef4ff; font-size:11px; line-height:1.2; }
 .training-plan-session-card__subhead { margin-top: 3px; color: #cdd8e8; font-size: 9px; line-height: 1.25; }
 .training-plan-session-card__actions { display:flex; align-items:center; gap:4px; margin-left:auto; }
+.training-plan-session-card__quick-actions { display:flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+.training-plan-session-card__quick-action { padding: 4px 6px; font-size: 10px; border-radius: 999px; min-height: 22px; }
 .training-plan-session-card__tag {
   display:inline-flex;
   align-items:center;
