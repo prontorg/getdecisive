@@ -164,9 +164,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
 
   assert.match(source, /training-plan-mini-facts/i);
   assert.match(source, /training-plan-mini-fact/i);
-  assert.match(source, /<strong>Today<\/strong>/i);
-  assert.match(source, /<strong>Done<\/strong>/i);
-  assert.match(source, /<strong>Tomorrow<\/strong>/i);
+  assert.match(source, /What should actually happen/i);
+  assert.match(source, /training-plan-week-decision-grid/i);
+  assert.match(source, /training-plan-week-decision-callout/i);
+  assert.match(source, /<strong>Planned today<\/strong>/i);
+  assert.match(source, /<strong>Do today<\/strong>/i);
+  assert.match(source, /<strong>Planned tomorrow<\/strong>/i);
+  assert.match(source, /<strong>Tomorrow if today lands<\/strong>/i);
   assert.match(source, /<strong>Confidence<\/strong>/i);
   assert.match(source, /<strong>Hours left<\/strong>/i);
   assert.match(source, /<strong>Key slots<\/strong>/i);
@@ -246,6 +250,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /--m3-radius-md/i);
   assert.match(calendarStyles, /border-radius:\s*999px/i);
   assert.match(calendarStyles, /training-plan-mini-facts/i);
+  assert.match(calendarStyles, /training-plan-week-decision-grid/i);
+  assert.match(calendarStyles, /training-plan-week-decision-callout/i);
   assert.match(calendarStyles, /training-plan-quick-builder/i);
   assert.match(calendarStyles, /training-plan-quick-builder__header/i);
   assert.match(calendarStyles, /training-plan-focus-row/i);

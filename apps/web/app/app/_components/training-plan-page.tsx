@@ -392,13 +392,20 @@ export async function TrainingPlanPage({
                 <div className="status-item training-plan-week-decision-panel">
                   <strong>Active week • live runtime</strong>
                   <p>{activePlanning.summary?.weekIntention || 'Planning refresh pending'}</p>
-                  <div className="training-plan-mini-facts">
-                    <span className="training-plan-mini-fact"><strong>Today</strong>{activePlanning.summary?.plannedToday || '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Done</strong>{activePlanning.summary?.actualToday || '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Tomorrow</strong>{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
-                    <span className="training-plan-mini-fact"><strong>Confidence</strong>{activePlanning.summary?.confidence || '—'}</span>
+                  <div className="training-plan-week-decision-grid training-plan-mini-facts">
+                    <span className="training-plan-mini-fact"><strong>Planned today</strong>{activePlanning.summary?.plannedToday || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Do today</strong>{activePlanning.summary?.actualToday || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Planned tomorrow</strong>{activePlanning.summary?.plannedTomorrow || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Tomorrow if today lands</strong>{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
                   </div>
-                  <p>{activePlanning.summary?.nextKeyDay ? `Next key day ${activePlanning.summary.nextKeyDay}` : 'Next key day still resolving.'}</p>
+                  <div className="training-plan-week-decision-callout">
+                    <strong>What should actually happen</strong>
+                    <p>{activePlanning.summary?.reason || 'Daily decision rationale is still resolving.'}</p>
+                  </div>
+                  <div className="training-plan-mini-facts">
+                    <span className="training-plan-mini-fact"><strong>Confidence</strong>{activePlanning.summary?.confidence || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Next key day</strong>{activePlanning.summary?.nextKeyDay || 'Still resolving'}</span>
+                  </div>
                   {activePlanning.summary?.risks?.length ? (
                     <p>Risk: {activePlanning.summary.risks[0]}</p>
                   ) : null}
