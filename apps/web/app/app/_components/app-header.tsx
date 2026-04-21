@@ -59,7 +59,9 @@ export function AppHeader({ loggedIn, isAdmin, userDisplayName, userEmail }: App
                   Config
                 </Link>
                 <form action="/api/auth/logout" method="post">
-                  <button type="submit" className="button-secondary button-link">Log out</button>
+                  <button type="submit" className="button-secondary button-link">
+                    Log out
+                  </button>
                 </form>
               </>
             )}

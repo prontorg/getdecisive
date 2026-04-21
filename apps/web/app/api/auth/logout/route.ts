@@ -14,8 +14,14 @@ function buildLogoutResponse(request: Request) {
   return response;
 }
 
-export async function GET() {
-  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+function buildCrossSiteBlockedResponse(request: Request) {
+  const loginUrl = new URL(appRoutes.login, request.url);
+  loginUrl.searchParams.set('notice', 'Use the in-app logout button');
+  return NextResponse.redirect(loginUrl);
+}
+
+export async function GET(request: Request) {
+  return buildCrossSiteBlockedResponse(request);
 }
 
 export async function POST(request: Request) {

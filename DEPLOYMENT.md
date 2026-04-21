@@ -11,3 +11,8 @@ Reason:
 - allows separate auth/session handling
 - allows separate release cadence
 - keeps product onboarding and planner routes isolated from the current coaching dashboard
+
+Release rule:
+- every planner deployment/release must run automated regression checks first
+- use `npm run verify:web` for checks only
+- use `npm run release:web` for checks + planner service restart

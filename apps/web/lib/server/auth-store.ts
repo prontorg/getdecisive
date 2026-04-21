@@ -36,6 +36,19 @@ function createEmptyPlatformState(): PlatformState {
   };
 }
 
+function adminCount(state: PlatformState) {
+  return state.memberships.filter((membership) => membership.roles.includes('admin')).length;
+}
+
+function ensureNotRemovingLastAdmin(state: PlatformState, userId: string, nextRoles?: PlatformRole[]) {
+  const membership = state.memberships.find((entry) => entry.userId === userId) || null;
+  if (!membership?.roles.includes('admin')) return;
+  if (nextRoles && nextRoles.includes('admin')) return;
+  if (adminCount(state) <= 1) {
+    throw new Error('At least one admin must remain');
+  }
+}
+
 function stableUuid(seed: string): string {
   const hex = createHash('sha256').update(seed).digest('hex').slice(0, 32).split('');
   hex[12] = '4';
@@ -405,6 +418,55 @@ export async function loginWithPasswordRecord(email: string, password: string): 
   return mapUserRow(row);
 }
 
+export async function enqueueIntervalsRefreshOnLogin(
+  userId: string,
+  statusMessage = 'Login refresh queued',
+): Promise<boolean> {
+  const connection = await getLatestIntervalsConnectionRecord(userId);
+  if (!connection) return false;
+
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    const latestConnection = state.intervalsConnections.find((entry) => entry.id === connection.id && entry.userId === userId) || null;
+    if (!latestConnection) return false;
+    const existingQueued = state.syncJobs
+      .filter((job) => job.userId === userId && job.connectionId === latestConnection.id)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] || null;
+    if (existingQueued && (existingQueued.status === 'queued' || existingQueued.status === 'running')) return false;
+
+    const queuedAt = nowIso();
+    state.syncJobs.push({
+      id: makeId('syncjob'),
+      userId,
+      connectionId: latestConnection.id,
+      jobType: 'intervals_incremental_sync',
+      status: 'queued',
+      progressPct: 10,
+      statusMessage,
+      startedAt: queuedAt,
+      updatedAt: queuedAt,
+    });
+    await savePlatformState(state);
+    return true;
+  }
+
+  const pool = getPgPool();
+  const existing = await pool.query(
+    `select id, status from sync_jobs_runtime where user_id = $1 and connection_id = $2 order by updated_at desc limit 1`,
+    [userId, connection.id],
+  );
+  const latest = existing.rows[0];
+  if (latest && (latest.status === 'queued' || latest.status === 'running')) return false;
+
+  const queuedAt = nowIso();
+  await pool.query(
+    `insert into sync_jobs_runtime (id, user_id, connection_id, job_type, status, progress_pct, status_message, started_at, updated_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$8)`,
+    [`syncjob_${randomUUID()}`, userId, connection.id, 'intervals_incremental_sync', 'queued', 10, statusMessage, queuedAt],
+  );
+  return true;
+}
+
 export async function getUserByIdRecord(userId: string): Promise<UserRecord | null> {
   if (!isPostgresSyncStoreEnabled()) {
     const state = await loadPlatformState();
@@ -618,6 +680,290 @@ export async function upsertIntervalsConnectionRecord(connection: IntervalsConne
      on conflict (id) do update set external_athlete_id = excluded.external_athlete_id, credential_ref = excluded.credential_ref, sync_status = excluded.sync_status`,
     [connection.id, athleteProfileId, 'api_key', connection.credentialPayload, connection.externalAthleteId, connection.syncStatus, connection.createdAt],
   );
+}
+
+export type ManagedUserSummary = {
+  user: UserRecord;
+  membership: MembershipRecord | null;
+  onboarding: OnboardingRunRecord | null;
+  intervalsConnection: IntervalsConnectionRecord | null;
+};
+
+export async function listManagedUsersRecord(): Promise<ManagedUserSummary[]> {
+  const state = await getPlatformState();
+  return state.users
+    .map((user) => ({
+      user,
+      membership: state.memberships.find((membership) => membership.userId === user.id) || null,
+      onboarding: state.onboardingRuns.find((item) => item.userId === user.id) || null,
+      intervalsConnection: state.intervalsConnections
+        .filter((connection) => connection.userId === user.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] || null,
+    }))
+    .sort((a, b) => a.user.displayName.localeCompare(b.user.displayName));
+}
+
+export async function createManagedUserRecord(
+  actorUserId: string,
+  input: { email: string; displayName: string; password: string; roles?: PlatformRole[] },
+): Promise<{ user: UserRecord; membership: MembershipRecord; onboarding: OnboardingRunRecord }> {
+  const email = normalizeEmail(input.email);
+  const displayName = input.displayName.trim();
+  const password = input.password.trim();
+  const roles = (input.roles?.length ? input.roles : ['athlete']).filter(Boolean) as PlatformRole[];
+  if (!email) throw new Error('Email is required');
+  if (!displayName) throw new Error('Display name is required');
+  if (!password) throw new Error('Password is required');
+
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    if (state.users.some((user) => user.email === email)) throw new Error('Email already exists');
+    const workspaceId = makeId('workspace');
+    const user: UserRecord = { id: makeId('user'), email, displayName, password: hashPassword(password), workspaceId };
+    const membership: MembershipRecord = { id: makeId('membership'), userId: user.id, workspaceId, roles };
+    const onboarding: OnboardingRunRecord = {
+      id: makeId('onboard'),
+      userId: user.id,
+      state: 'account_created',
+      progressPct: 15,
+      statusMessage: 'Account created. Intervals connection required next.',
+      updatedAt: nowIso(),
+    };
+    state.users.push(user);
+    state.memberships.push(membership);
+    state.onboardingRuns.push(onboarding);
+    state.auditEvents.push({ id: makeId('audit'), eventType: 'user.managed_created', entityType: 'user', entityId: user.id, createdAt: nowIso() });
+    await savePlatformState(state);
+    return { user, membership, onboarding };
+  }
+
+  const pool = getPgPool();
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    const existing = await client.query(`select id from users where email = $1 limit 1`, [email]);
+    if (existing.rows[0]) throw new Error('Email already exists');
+    const actorMembershipResult = await client.query(`select id from workspace_memberships where user_id = $1 order by created_at asc limit 1`, [actorUserId]);
+    const actorMembershipId = actorMembershipResult.rows[0]?.id;
+    if (!actorMembershipId) throw new Error('Admin membership not found');
+    const userId = randomUUID();
+    const workspaceId = randomUUID();
+    const membershipId = randomUUID();
+    const onboardingId = randomUUID();
+    const hashed = hashPassword(password);
+    await client.query(`insert into users (id, email, password_hash, display_name) values ($1,$2,$3,$4)`, [userId, email, hashed, displayName]);
+    await client.query(`insert into workspaces (id, name, created_by) values ($1,$2,$3)`, [workspaceId, `${displayName} workspace`, actorUserId]);
+    await client.query(`insert into workspace_memberships (id, workspace_id, user_id) values ($1,$2,$3)`, [membershipId, workspaceId, userId]);
+    for (const role of roles) {
+      await client.query(`insert into workspace_membership_roles (id, membership_id, role_key) values ($1,$2,$3)`, [randomUUID(), membershipId, role]);
+    }
+    await client.query(
+      `insert into onboarding_runs (id, user_id, state, progress_pct, status_message, updated_at) values ($1,$2,$3,$4,$5,$6)`,
+      [onboardingId, userId, 'account_created', 15, 'Account created. Intervals connection required next.', nowIso()],
+    );
+    await client.query(
+      `insert into audit_events (id, actor_user_id, actor_membership_id, event_type, entity_type, entity_id, payload_json)
+       values ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+      [randomUUID(), actorUserId, actorMembershipId, 'user.managed_created', 'user', userId, JSON.stringify({ email, roles })],
+    );
+    await client.query('commit');
+    return {
+      user: { id: userId, email, displayName, password: hashed, workspaceId },
+      membership: { id: membershipId, userId, workspaceId, roles },
+      onboarding: { id: onboardingId, userId, state: 'account_created', progressPct: 15, statusMessage: 'Account created. Intervals connection required next.', updatedAt: nowIso() },
+    };
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateManagedUserRecord(
+  userId: string,
+  input: { email?: string; displayName?: string; password?: string; roles?: PlatformRole[] },
+): Promise<{ user: UserRecord; membership: MembershipRecord }> {
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    const user = state.users.find((entry) => entry.id === userId) || null;
+    const membership = state.memberships.find((entry) => entry.userId === userId) || null;
+    if (!user || !membership) throw new Error('User not found');
+    const nextEmail = input.email ? normalizeEmail(input.email) : user.email;
+    if (state.users.some((entry) => entry.id !== userId && entry.email === nextEmail)) throw new Error('Email already exists');
+    const nextRoles = input.roles?.length ? input.roles : membership.roles;
+    ensureNotRemovingLastAdmin(state, userId, nextRoles);
+    user.email = nextEmail;
+    user.displayName = input.displayName?.trim() || user.displayName;
+    if (input.password?.trim()) user.password = hashPassword(input.password.trim());
+    if (input.roles?.length) membership.roles = input.roles;
+    state.auditEvents.push({ id: makeId('audit'), eventType: 'user.managed_updated', entityType: 'user', entityId: user.id, createdAt: nowIso() });
+    await savePlatformState(state);
+    return { user, membership };
+  }
+
+  const current = await getUserByIdRecord(userId);
+  if (!current) throw new Error('User not found');
+  const currentState = await getPlatformState();
+  const roles = input.roles?.length ? input.roles : await getMembershipRolesRecord(userId) as PlatformRole[];
+  ensureNotRemovingLastAdmin(currentState, userId, roles);
+  const nextEmail = input.email ? normalizeEmail(input.email) : current.email;
+  const nextDisplayName = input.displayName?.trim() || current.displayName;
+  const nextPasswordHash = input.password?.trim() ? hashPassword(input.password.trim()) : current.password;
+  const membershipResult = await getPgPool().query(`select id, workspace_id from workspace_memberships where user_id = $1 order by created_at asc limit 1`, [userId]);
+  const membershipId = membershipResult.rows[0]?.id;
+  const workspaceId = membershipResult.rows[0]?.workspace_id;
+  if (!membershipId || !workspaceId) throw new Error('User membership not found');
+  await getPgPool().query(`update users set email = $2, display_name = $3, password_hash = $4 where id = $1`, [userId, nextEmail, nextDisplayName, nextPasswordHash]);
+  await getPgPool().query(`delete from workspace_membership_roles where membership_id = $1`, [membershipId]);
+  for (const role of roles) {
+    await getPgPool().query(`insert into workspace_membership_roles (id, membership_id, role_key) values ($1,$2,$3)`, [randomUUID(), membershipId, role]);
+  }
+  return {
+    user: { ...current, email: nextEmail, displayName: nextDisplayName, password: nextPasswordHash, workspaceId: String(workspaceId) },
+    membership: { id: String(membershipId), userId, workspaceId: String(workspaceId), roles },
+  };
+}
+
+export async function deleteManagedUserRecord(userId: string): Promise<void> {
+  const currentState = await getPlatformState();
+  ensureNotRemovingLastAdmin(currentState, userId);
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    state.users = state.users.filter((item) => item.id !== userId);
+    state.memberships = state.memberships.filter((item) => item.userId !== userId);
+    state.onboardingRuns = state.onboardingRuns.filter((item) => item.userId !== userId);
+    const connectionIds = state.intervalsConnections.filter((item) => item.userId === userId).map((item) => item.id);
+    state.intervalsConnections = state.intervalsConnections.filter((item) => item.userId !== userId);
+    state.syncJobs = state.syncJobs.filter((item) => item.userId !== userId && !connectionIds.includes(item.connectionId));
+    state.intervalsSnapshots = state.intervalsSnapshots.filter((item) => item.userId !== userId && !connectionIds.includes(item.connectionId));
+    state.auditEvents.push({ id: makeId('audit'), eventType: 'user.managed_deleted', entityType: 'user', entityId: userId, createdAt: nowIso() });
+    await savePlatformState(state);
+    return;
+  }
+
+  const membershipResult = await getPgPool().query(`select id, workspace_id from workspace_memberships where user_id = $1`, [userId]);
+  const membershipIds = membershipResult.rows.map((row) => row.id);
+  const workspaceIds = membershipResult.rows.map((row) => row.workspace_id);
+  const connectionResult = await getPgPool().query(`select intervals_connections.id from intervals_connections join athlete_profiles on athlete_profiles.id = intervals_connections.athlete_profile_id where athlete_profiles.user_id = $1`, [userId]);
+  const connectionIds = connectionResult.rows.map((row) => row.id);
+  if (connectionIds.length) {
+    await getPgPool().query(`delete from intervals_snapshots_runtime where connection_id = any($1::uuid[])`, [connectionIds]);
+    await getPgPool().query(`delete from sync_jobs_runtime where connection_id = any($1::uuid[]) or user_id = $2`, [connectionIds, userId]);
+    await getPgPool().query(`delete from intervals_connections where id = any($1::uuid[])`, [connectionIds]);
+  }
+  await getPgPool().query(`delete from onboarding_runs where user_id = $1`, [userId]);
+  if (membershipIds.length) {
+    await getPgPool().query(`delete from workspace_membership_roles where membership_id = any($1::uuid[])`, [membershipIds]);
+    await getPgPool().query(`delete from workspace_memberships where id = any($1::uuid[])`, [membershipIds]);
+  }
+  if (workspaceIds.length) {
+    await getPgPool().query(`delete from athlete_profiles where workspace_id = any($1::uuid[]) or user_id = $2`, [workspaceIds, userId]);
+    await getPgPool().query(`delete from workspaces where id = any($1::uuid[])`, [workspaceIds]);
+  }
+  await getPgPool().query(`delete from users where id = $1`, [userId]);
+}
+
+export async function upsertManagedUserIntervalsConnectionRecord(
+  userId: string,
+  input: { athleteId: string; credentialPayload: string; connectionLabel?: string },
+): Promise<IntervalsConnectionRecord> {
+  if (!input.athleteId.trim()) throw new Error('Intervals athlete ID is required');
+  if (!input.credentialPayload.trim()) throw new Error('Intervals credential payload is required');
+  const existing = await getLatestIntervalsConnectionRecord(userId);
+  if (!existing) {
+    return (await applyIntervalsCredentialsRecord(userId, input)).connection;
+  }
+
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    const connection = state.intervalsConnections.find((entry) => entry.id === existing.id) || null;
+    if (!connection) throw new Error('Intervals connection not found');
+    connection.externalAthleteId = input.athleteId.trim();
+    connection.credentialPayload = input.credentialPayload.trim();
+    connection.connectionLabel = input.connectionLabel?.trim() || undefined;
+    connection.syncStatus = 'sync_started';
+    connection.createdAt = nowIso();
+    const onboarding = state.onboardingRuns.find((item) => item.userId === userId) || null;
+    if (onboarding) {
+      onboarding.state = 'sync_started';
+      onboarding.progressPct = 25;
+      onboarding.statusMessage = 'Sync job queued';
+      onboarding.syncStartedAt = nowIso();
+      onboarding.updatedAt = nowIso();
+    }
+    const syncJob = {
+      id: makeId('syncjob'),
+      userId,
+      connectionId: connection.id,
+      jobType: 'intervals_initial_sync' as const,
+      status: 'queued' as const,
+      progressPct: 25,
+      statusMessage: 'Sync job queued',
+      startedAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.syncJobs.push(syncJob);
+    state.intervalsSnapshots = state.intervalsSnapshots.filter((snapshot) => snapshot.connectionId !== connection.id);
+    await savePlatformState(state);
+    return connection;
+  }
+
+  const updated: IntervalsConnectionRecord = {
+    ...existing,
+    externalAthleteId: input.athleteId.trim(),
+    credentialPayload: input.credentialPayload.trim(),
+    connectionLabel: input.connectionLabel?.trim() || undefined,
+    syncStatus: 'sync_started',
+    createdAt: nowIso(),
+  };
+  await upsertIntervalsConnectionRecord(updated);
+  const onboarding = await getOnboardingRunRecord(userId);
+  if (onboarding) {
+    const syncStartedAt = nowIso();
+    await getPgPool().query(
+      `update onboarding_runs set state = $2, progress_pct = $3, status_message = $4, details_json = jsonb_set(coalesce(details_json, '{}'::jsonb), '{syncStartedAt}', to_jsonb($5::text)), updated_at = $5 where id = $1`,
+      [onboarding.id, 'sync_started', 25, 'Sync job queued', syncStartedAt],
+    );
+    await getPgPool().query(
+      `insert into sync_jobs_runtime (id, user_id, connection_id, job_type, status, progress_pct, status_message, started_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$8)`,
+      [`syncjob_${randomUUID()}`, userId, updated.id, 'intervals_initial_sync', 'queued', 25, 'Sync job queued', syncStartedAt],
+    );
+    await getPgPool().query(`delete from intervals_snapshots_runtime where connection_id = $1`, [updated.id]);
+  }
+  return updated;
+}
+
+export async function removeManagedUserIntervalsConnectionRecord(userId: string): Promise<void> {
+  const existing = await getLatestIntervalsConnectionRecord(userId);
+  if (!existing) return;
+  if (!isPostgresSyncStoreEnabled()) {
+    const state = await loadPlatformState();
+    state.intervalsConnections = state.intervalsConnections.filter((item) => item.id !== existing.id);
+    state.syncJobs = state.syncJobs.filter((item) => item.connectionId !== existing.id);
+    state.intervalsSnapshots = state.intervalsSnapshots.filter((item) => item.connectionId !== existing.id);
+    const onboarding = state.onboardingRuns.find((item) => item.userId === userId) || null;
+    if (onboarding) {
+      onboarding.state = 'account_created';
+      onboarding.progressPct = 15;
+      onboarding.statusMessage = 'Account created. Intervals connection required next.';
+      onboarding.syncStartedAt = undefined;
+      onboarding.updatedAt = nowIso();
+    }
+    await savePlatformState(state);
+    return;
+  }
+  await getPgPool().query(`delete from intervals_snapshots_runtime where connection_id = $1`, [existing.id]);
+  await getPgPool().query(`delete from sync_jobs_runtime where connection_id = $1`, [existing.id]);
+  await getPgPool().query(`delete from intervals_connections where id = $1`, [existing.id]);
+  const onboarding = await getOnboardingRunRecord(userId);
+  if (onboarding) {
+    await getPgPool().query(
+      `update onboarding_runs set state = $2, progress_pct = $3, status_message = $4, details_json = '{}'::jsonb, updated_at = $5 where id = $1`,
+      [onboarding.id, 'account_created', 15, 'Account created. Intervals connection required next.', nowIso()],
+    );
+  }
 }
 
 export async function migratePlatformStateToPostgres(sourceState?: PlatformState): Promise<{ migrated: boolean; users: number; invites: number; onboardingRuns: number; intervalsConnections: number; syncJobs: number; intervalsSnapshots: number }> {

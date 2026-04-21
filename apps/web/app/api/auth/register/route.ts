@@ -19,6 +19,10 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Registration failed';
-    return NextResponse.redirect(new URL(`${appRoutes.register}?error=${encodeURIComponent(message)}`, request.url));
+    const query = new URLSearchParams({ error: message });
+    if (inviteCode) query.set('inviteCode', inviteCode);
+    if (email) query.set('email', email);
+    if (displayName) query.set('name', displayName);
+    return NextResponse.redirect(new URL(`${appRoutes.register}?${query.toString()}`, request.url));
   }
 }

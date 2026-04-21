@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import {
   applyIntervalsCredentialsRecord,
   createInviteRecord,
+  enqueueIntervalsRefreshOnLogin,
   listInviteRecords,
   loginWithPasswordRecord,
   registerUserWithInviteRecord,
@@ -62,6 +63,48 @@ test('applyIntervalsCredentialsRecord creates a queued sync job in file fallback
     const state = await loadPlatformState();
     assert.equal(state.syncJobs.length, 1);
     assert.equal(state.syncJobs[0]?.jobType, 'intervals_initial_sync');
+  } finally {
+    if (previousDb === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDb;
+    if (previousStore === undefined) delete process.env.DECISIVE_PLATFORM_STORE_PATH; else process.env.DECISIVE_PLATFORM_STORE_PATH = previousStore;
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('enqueueIntervalsRefreshOnLogin creates a queued incremental sync job without clearing the latest snapshot', async () => {
+  const previousDb = process.env.DATABASE_URL;
+  const previousStore = process.env.DECISIVE_PLATFORM_STORE_PATH;
+  const dir = await mkdtemp(join(tmpdir(), 'auth-store-'));
+  process.env.DECISIVE_PLATFORM_STORE_PATH = join(dir, 'store.json');
+  delete process.env.DATABASE_URL;
+  try {
+    const email = `athlete-${Date.now()}@example.com`;
+    const registration = await registerUserWithInviteRecord({ inviteCode: 'DECISIVE-INVITE', email, password: 'secret123', displayName: 'Athlete' });
+    await applyIntervalsCredentialsRecord(registration.user.id, { athleteId: '17634020', credentialPayload: 'api_key=xyz', connectionLabel: 'Primary' });
+    const state = await loadPlatformState();
+    const connectionId = state.intervalsConnections[0]?.id;
+    assert.ok(connectionId);
+    state.syncJobs[0].status = 'completed';
+    state.syncJobs[0].updatedAt = '2026-04-14T08:00:00Z';
+    state.intervalsConnections[0].syncStatus = 'ready';
+    state.intervalsSnapshots.push({
+      id: 'snap_1',
+      userId: registration.user.id,
+      connectionId,
+      sourceJobId: state.syncJobs[0].id,
+      capturedAt: '2026-04-14T08:05:00Z',
+      liveState: { today: '2026-04-14', athlete_id: '17634020', today_plan: 'Z2 endurance', tomorrow_plan: '6x4 min @ 410-420 W' },
+    });
+    await import('../lib/server/dev-store').then(({ savePlatformState }) => savePlatformState(state));
+
+    const queued = await enqueueIntervalsRefreshOnLogin(registration.user.id);
+    const updated = await loadPlatformState();
+
+    assert.equal(queued, true);
+    assert.equal(updated.syncJobs.length, 2);
+    assert.equal(updated.syncJobs[1]?.jobType, 'intervals_incremental_sync');
+    assert.equal(updated.syncJobs[1]?.status, 'queued');
+    assert.equal(updated.intervalsSnapshots.length, 1);
+    assert.equal(updated.intervalsConnections[0]?.syncStatus, 'ready');
   } finally {
     if (previousDb === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDb;
     if (previousStore === undefined) delete process.env.DECISIVE_PLATFORM_STORE_PATH; else process.env.DECISIVE_PLATFORM_STORE_PATH = previousStore;

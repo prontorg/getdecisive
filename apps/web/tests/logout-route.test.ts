@@ -4,10 +4,12 @@ import assert from 'node:assert/strict';
 import { GET as logoutGet, POST as logoutPost } from '../app/api/auth/logout/route';
 import { sessionCookieName } from '../lib/server/session';
 
-test('logout GET returns method not allowed', async () => {
-  const response = await logoutGet();
+test('logout GET redirects back to login without clearing the session', async () => {
+  const response = await logoutGet(new Request('https://decisive.coach/api/auth/logout'));
 
-  assert.equal(response.status, 405);
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get('location'), 'https://decisive.coach/login?notice=Use+the+in-app+logout+button');
+  assert.equal(response.headers.get('set-cookie'), null);
 });
 
 test('logout POST redirects back to login with a signed-out notice and clears the session', async () => {

@@ -9,18 +9,23 @@ const loginPanelPath = join(webRoot, 'components/auth/LoginPanel.tsx');
 const headerPath = join(webRoot, 'app/app/_components/app-header.tsx');
 const planPagePath = join(webRoot, 'app/app/plan/page.tsx');
 const trainingPlanPagePath = join(webRoot, 'app/app/_components/training-plan-page.tsx');
+const trainingPlanCalendarPath = join(webRoot, 'app/app/_components/training-plan-calendar.tsx');
+const calendarStylesPath = join(webRoot, 'app/globals.css');
 const calendarPagePath = join(webRoot, 'app/app/calendar/page.tsx');
 const accountPagePath = join(webRoot, 'app/app/account/page.tsx');
 const adminPagePath = join(webRoot, 'app/app/admin/page.tsx');
 const dashboardPagePath = join(webRoot, 'app/app/dashboard/page.tsx');
+const appLiveRefreshPath = join(webRoot, 'app/app/_components/app-live-refresh.tsx');
 const deviceLocationSyncPath = join(webRoot, 'app/app/_components/device-location-sync.tsx');
 const middlewarePath = join(webRoot, 'middleware.ts');
 const dashboardScriptPath = '/root/.hermes/profiles/profdecisive/scripts/intervals_dashboard.py';
 
 test('login screen copy and auth-page header chrome match the latest product wording', async () => {
-  const [loginPanel, header] = await Promise.all([
+  const [loginPanel, header, registerPage, registerPanel] = await Promise.all([
     readFile(loginPanelPath, 'utf8'),
     readFile(headerPath, 'utf8'),
+    readFile(join(webRoot, 'app/register/page.tsx'), 'utf8'),
+    readFile(join(webRoot, 'components/auth/RegisterPanel.tsx'), 'utf8'),
   ]);
 
   assert.match(loginPanel, />Get decisive<\/h2>/i);
@@ -31,44 +36,117 @@ test('login screen copy and auth-page header chrome match the latest product wor
   assert.doesNotMatch(header, /Le ciel et la limite/i);
   assert.doesNotMatch(header, /label: 'Configuration'/i);
   assert.match(header, /userDisplayName && userEmail \? `\$\{userDisplayName\} - \$\{userEmail\}`/i);
+  assert.match(registerPage, /validateInviteCodeRecord/i);
+  assert.match(registerPanel, /disabled=\{!hasInviteCode\}/i);
+  assert.match(registerPanel, /Open signup from a valid invite link before creating an account/i);
 });
 
 test('training plan page uses the latest decisive monthly-planner framing and layout', async () => {
-  const [planPageSource, source, calendarPageSource] = await Promise.all([
+  const [planPageSource, source, calendarSource, calendarStyles, calendarPageSource] = await Promise.all([
     readFile(planPagePath, 'utf8'),
     readFile(trainingPlanPagePath, 'utf8'),
+    readFile(trainingPlanCalendarPath, 'utf8'),
+    readFile(calendarStylesPath, 'utf8'),
     readFile(calendarPagePath, 'utf8'),
   ]);
 
   assert.match(planPageSource, /mode=\"plan\"/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
-  assert.match(source, /Calendar-first monthly planning surface/i);
+  assert.match(source, /Calendar-first planner: the active week is shown from the live runtime layer/i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
-  assert.match(source, /Build next 4 weeks/i);
-  assert.match(source, /Confirm Context/i);
-  assert.match(source, /Set Month Direction/i);
-  assert.match(source, /Review Draft/i);
-  assert.match(source, /Calendar Review/i);
-  assert.match(source, /Calendar is the main review surface/i);
-  assert.match(source, /Calendar-first monthly planning surface/i);
-  assert.match(source, /Publish/i);
-  assert.match(source, /Looks right/i);
+  assert.match(source, /Current month setup/i);
+  assert.match(source, /getActivePlanningContext/i);
+  assert.match(source, /Week intention/i);
+  assert.match(source, /Planned today/i);
+  assert.match(source, /Actually today/i);
+  assert.match(source, /Planned tomorrow/i);
+  assert.match(source, /Tomorrow likely/i);
+  assert.match(source, /Why this is the call/i);
+  assert.match(source, /formatLiveSyncStamp/i);
+  assert.match(source, /Last updated .* UTC|Snapshot refresh pending/i);
+  assert.match(source, /training-plan-range-headline/i);
+  assert.match(source, /formatRange/i);
+  assert.match(source, /training-plan-inline-layout/i);
+  assert.match(source, /training-plan-context-grid/i);
+  assert.match(source, /training-plan-direction-grid/i);
   assert.match(source, /What should this month do\?/i);
-  assert.match(source, /Must follow/i);
-  assert.match(source, /Prefer if possible/i);
+  assert.match(source, /Active week \/ today \/ tomorrow stay live runtime-backed/i);
+  assert.match(source, /future weeks, month shaping, and publish stay in the editable draft layer/i);
   assert.match(source, /Generate draft/i);
+  assert.match(source, /select name=\"restDay\"/i);
+  assert.match(source, /select name=\"restDaysPerWeek\"/i);
+  assert.match(source, /Rest days per week/i);
+  assert.match(source, /select name=\"longRideDay\"/i);
+  assert.match(await readFile(join(webRoot, 'app/api/planner/month/draft/route.ts'), 'utf8'), /appRoutes\.plan\?notice=.*Draft generated|revalidatePath\(appRoutes\.calendar\)/i);
+  assert.doesNotMatch(source, /Open full calendar/i);
   assert.match(source, /Your next 4 weeks/i);
-  assert.match(source, /Compare to recent 4 weeks/i);
-  assert.match(source, /Week controls/i);
-  assert.match(source, /Legacy detail view/i);
-  assert.match(source, /<details/i);
-  assert.match(source, /calendar view/i);
-  assert.match(source, /Month view/i);
+  assert.match(source, /training-plan-context-chip-warning/i);
+  assert.match(source, /training-plan-calendar-toolbar|training-plan-inline-panel|Publish future draft layer/i);
+  assert.match(source, /Publish future draft layer/i);
+  assert.match(source, /Active week remains live runtime-backed/i);
+  assert.doesNotMatch(source, /training-plan-publish-inline/i);
+  assert.match(calendarSource, /effectAllowed = 'move'/i);
+  assert.match(calendarSource, /setData\('text\/plain', workout\.id\)/i);
+  assert.match(calendarSource, /getData\('text\/plain'\)/i);
+  assert.match(calendarSource, /draggable=\{!workout\.locked\}/i);
+  assert.match(source, /Publish plan/i);
+  assert.match(calendarSource, /past/i);
+  assert.match(calendarSource, /plannedForDisplay/i);
+  assert.match(calendarSource, /training-plan-day-card__summary/i);
+  assert.match(calendarSource, /intervalLabel/i);
+  assert.match(calendarSource, /training-plan-session-card__subhead/i);
+  assert.match(calendarSource, /training-plan-day-card-empty/i);
+  assert.match(source, /recentWindow/i);
+  assert.doesNotMatch(source, /training-plan-review-meta/i);
+  assert.match(source, /Month grid stays visible\./i);
+  const plannerDataSource = await readFile(join(webRoot, 'lib/server/planner-data.ts'), 'utf8');
+  assert.match(source, /displayedWeeks/i);
+  assert.match(source, /replaceCurrentWeekWithRuntime/i);
+  assert.match(plannerDataSource, /activePlanningIntentFromCycle/i);
+  assert.match(plannerDataSource, /runtimeWorkoutCategory/i);
+  assert.match(plannerDataSource, /weekSpanFromDraftWeek/i);
+  assert.match(plannerDataSource, /weekWindowForToday/i);
+  assert.match(plannerDataSource, /day\.date >= today/i);
+  assert.match(plannerDataSource, /visibleWeekWorkouts/i);
+  assert.match(calendarSource, /completedThisWeek/i);
+  assert.match(calendarSource, /rest-day-subtle/i);
+  assert.match(calendarSource, /training-plan-week-summary-column/i);
+  assert.match(calendarSource, /training-plan-week-summary-card/i);
+  assert.match(calendarSource, /calendarRows/i);
+  assert.match(calendarSource, /rowIndexByWeekIndex/i);
+  assert.match(calendarStyles, /\.training-plan-month-grid \{[^}]*grid-auto-rows:\s*124px/i);
+  assert.match(calendarStyles, /\.training-plan-week-summary-card \{[^}]*height:\s*124px/i);
+  assert.match(calendarStyles, /\.training-plan-week-summary-column \{[^}]*grid-auto-rows:\s*124px/i);
+  assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*background:\s*linear-gradient\(180deg, rgba\(12,15,21,0\.62\), rgba\(10,13,19,0\.56\)\)/i);
+  assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*border-color:\s*rgba\(120,134,156,0\.06\)/i);
+  assert.match(calendarStyles, /\.rest-day-subtle \.training-plan-day-card__header strong \{[^}]*color:\s*#d7e2f0/i);
+  assert.match(calendarStyles, /\.rest-day-subtle \.training-plan-day-card__summary \{[^}]*color:\s*#9aa9bb/i);
+  assert.match(calendarStyles, /\.session-tone-rest \{[^}]*--session-border:\s*rgba\(120,134,156,0\.18\)[^}]*--session-bg:\s*rgba\(120,134,156,0\.06\)/i);
+  assert.match(calendarStyles, /\.session-tone-rest \.training-plan-session-card__label \{[^}]*color:\s*#d7e2f0/i);
+  assert.match(calendarStyles, /\.session-tone-rest \.training-plan-session-card__subhead \{[^}]*color:\s*#9aa9bb/i);
+  assert.match(calendarStyles, /\.session-tone-rest \.training-plan-session-card__tag \{[^}]*background:\s*rgba\(255,255,255,0\.04\)[^}]*color:\s*#cbd5e1/i);
   assert.match(source, /Action/i);
-  assert.match(source, /select name="action"/i);
-  assert.match(source, /Move day/i);
-  assert.match(source, /moveDate/i);
+  assert.match(calendarSource, /summary title=\"Session actions\"/i);
+  assert.match(calendarSource, /training-plan-day-card__header/i);
+  assert.match(calendarSource, /shortDateLabel/i);
+  assert.match(calendarSource, /sessionToneClass/i);
+  assert.match(calendarSource, /training-plan-month-grid/i);
+  assert.match(calendarSource, /training-plan-inline-menu/i);
+  assert.match(calendarSource, /Move day/i);
+  assert.match(calendarSource, /moveDate/i);
+  assert.match(source, /Active-week edits • draft bridge/i);
+  assert.match(source, /currentWeekBridge\?\.draftBridgeLabel/i);
+  assert.match(source, /These actions rewrite only the remaining draft bridge for this week/i);
+  assert.match(source, /Planning refresh pending/i);
+  assert.match(source, /Confidence/i);
+  assert.match(source, /Next key day/i);
+  assert.match(source, /Risk:/i);
+  assert.match(source, /repair missed draft slot/i);
+  assert.match(source, /cut current-week bridge/i);
+  assert.match(source, /spend extra freshness/i);
+  assert.match(source, /make bridge more race-like/i);
+  assert.match(source, /\/api\/planner\/month\/replan/i);
   assert.match(source, /Use suggested day/i);
   assert.match(source, /moveConflictReason/i);
   assert.match(source, /moveConflictSuggestedDate/i);
@@ -80,22 +158,39 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Publish plan/i);
   assert.match(source, /getLatestMonthlyPlanDraft/i);
   assert.match(source, /getLatestMonthlyPlanInput/i);
+  assert.match(source, /needsAutomaticDraftRefresh/i);
+  assert.match(source, /latestDraft\.monthStart !== currentMonthStart/i);
+  assert.match(source, /latestDraft\.updatedAt \|\| ''\)\.slice\(0, 10\) < today/i);
+  assert.match(source, /saveMonthlyPlanDraft/i);
+  assert.match(source, /buildMonthlyPlannerDraftPayload/i);
+  assert.match(source, /currentDirection/i);
+  assert.match(await readFile(join(webRoot, 'lib/server/planner-data.ts'), 'utf8'), /goals, current figures, and recent history|current figures, and recent history/i);
   assert.doesNotMatch(source, /title="Your Goals & Plan"/i);
   assert.doesNotMatch(source, /Goal direction summary/i);
 });
 
 test('dashboard pages keep the shared page hero shell and current dashboard embed structure', async () => {
-  const [pageSource, dashboardSource, deviceLocationSyncSource, coachDashboardSource] = await Promise.all([
+  const [pageSource, dashboardSource, liveRefreshSource, deviceLocationSyncSource, coachDashboardSource, layoutSource] = await Promise.all([
     readFile(dashboardPagePath, 'utf8'),
     readFile(dashboardScriptPath, 'utf8'),
+    readFile(appLiveRefreshPath, 'utf8'),
     readFile(deviceLocationSyncPath, 'utf8'),
     readFile(join(webRoot, 'lib/server/coach-dashboard.ts'), 'utf8'),
+    readFile(join(webRoot, 'app/layout.tsx'), 'utf8'),
   ]);
 
   assert.match(pageSource, /AppHero/i);
   assert.match(pageSource, /title="Training Dashboard"/i);
   assert.match(pageSource, /dashboard-fragment-host/i);
   assert.doesNotMatch(pageSource, /LocationRefreshButton/i);
+  assert.match(layoutSource, /<AppLiveRefresh \/>/i);
+  assert.match(liveRefreshSource, /REFRESH_INTERVAL_MS = 5 \* 60 \* 1000/i);
+  assert.match(liveRefreshSource, /APP_REFRESH_PATHS = new Set\(\['\/app\/dashboard', '\/app\/plan', '\/app\/calendar'\]\)/i);
+  assert.match(liveRefreshSource, /window\.setInterval\(refreshIfStale, REFRESH_INTERVAL_MS\)/i);
+  assert.match(liveRefreshSource, /window\.addEventListener\('focus', refreshIfStale\)/i);
+  assert.match(liveRefreshSource, /document\.addEventListener\('visibilitychange', handleVisibility\)/i);
+  assert.match(liveRefreshSource, /const dayChanged = activeDayRef\.current !== currentDay/i);
+  assert.match(liveRefreshSource, /router\.refresh\(\)/i);
   assert.match(deviceLocationSyncSource, /const staleLocation = !city \|\| city === 'current location' \|\| !hasCoords/i);
   assert.match(deviceLocationSyncSource, /maximumAge: staleLocation \? 0 : 30 \* 60 \* 1000/i);
   assert.match(deviceLocationSyncSource, /router\.refresh\(\)/i);
@@ -109,12 +204,37 @@ test('dashboard pages keep the shared page hero shell and current dashboard embe
   assert.doesNotMatch(dashboardSource, /overview-support/i);
   assert.match(dashboardSource, /volume-grid/i);
   assert.match(pageSource, /title="Training Dashboard"/i);
+  assert.match(pageSource, /getActivePlanningContext/i);
+  assert.match(pageSource, /Planning/i);
+  assert.match(pageSource, /Week intention/i);
+  assert.match(pageSource, /Planned today/i);
+  assert.match(pageSource, /Actually today/i);
+  assert.match(pageSource, /Planned tomorrow/i);
+  assert.match(pageSource, /Tomorrow likely becomes/i);
+  assert.match(pageSource, /Why this is the call/i);
+  assert.match(pageSource, /formatLiveSyncStamp/i);
+  assert.match(pageSource, /Last updated .* UTC|Snapshot refresh pending/i);
+  assert.match(dashboardSource, /<div class="overview-copy">\{esc\(live_sync_stamp\)\}<\/div>/i);
+  assert.match(dashboardSource, /def format_last_updated\(value: Any\) -> str:/i);
+  assert.match(dashboardSource, /merged_live_state\['last_updated_at'\] = latest\.get\('capturedAt'\)/i);
   assert.match(dashboardSource, /md-page-hero/i);
-  assert.match(dashboardSource, /This week plan/i);
+  assert.match(dashboardSource, /Today view/i);
+  assert.match(dashboardSource, /Tomorrow view/i);
+  assert.doesNotMatch(dashboardSource, /This week plan/i);
   assert.match(dashboardSource, /<h2>Last activity<\/h2>/i);
   assert.match(dashboardSource, /Last activity - /i);
-  assert.match(dashboardSource, /Past take/i);
+  assert.match(dashboardSource, /Ride analysis/i);
+  assert.doesNotMatch(dashboardSource, /Past take/i);
   assert.match(dashboardSource, /weather.*current location|current location.*weather|weather-place/i);
+  assert.match(dashboardSource, /DEFAULT_WEATHER_LABEL = f'\{DEFAULT_WEATHER_CITY\}, \{DEFAULT_WEATHER_COUNTRY\}'/i);
+  assert.match(dashboardSource, /if key == 'next_three' and isinstance\(value, list\):/i);
+  assert.match(dashboardSource, /if not merged_item\.get\('weather'\):/i);
+  assert.match(dashboardSource, /merged_item\['weather'\] = base_item\.get\('weather'\)/i);
+  assert.match(dashboardSource, /city = DEFAULT_WEATHER_CITY/i);
+  assert.match(dashboardSource, /state\['today_weather'\] = weather_by_date\.get\(state\.get\('today'\)\) or state\.get\('today_weather'\)/i);
+  assert.match(dashboardSource, /derive_week_rows_from_recent_rows/i);
+  assert.match(dashboardSource, /missed-row/i);
+  assert.match(dashboardSource, /planned \/ not done/i);
   assert.match(dashboardSource, /Daily user input/i);
   assert.match(dashboardSource, /type="range"/i);
   assert.match(dashboardSource, /disabled/i);
@@ -123,6 +243,13 @@ test('dashboard pages keep the shared page hero shell and current dashboard embe
   assert.match(dashboardSource, /chart-top-row/i);
   assert.match(dashboardSource, /<h3>Fitness trend<\/h3>/i);
   assert.match(dashboardSource, /<h3>Current month<\/h3>/i);
+  assert.match(dashboardSource, /summary-chip-row/i);
+  assert.match(dashboardSource, /render_cumulative_summary\(state.get\('month_summary'\) or \{\}, 'This month'\)/i);
+  assert.match(dashboardSource, /render_cumulative_summary\(state.get\('year_summary'\) or \{\}, 'This year'\)/i);
+  assert.match(dashboardSource, /sessions incl\. virtual/i);
+  assert.match(dashboardSource, /virtual placeholders/i);
+  assert.match(dashboardSource, /month_summary/i);
+  assert.match(dashboardSource, /year_summary/i);
   assert.match(dashboardSource, /<h3>This Week<\/h3>/i);
   assert.match(dashboardSource, /<h3>This Month<\/h3>/i);
   assert.match(dashboardSource, /Rest day/i);

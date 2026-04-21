@@ -1,11 +1,12 @@
-export function LoginPanel({ error, notice }: { error?: string; notice?: string }) {
+import React from 'react';
+
+export function LoginPanel({ error }: { error?: string; notice?: string }) {
   return (
-    <section className="card">
-      <div className="kicker">Launch auth</div>
-      <h2>Simple account login</h2>
-      <p className="muted">Use the email and password from your private invite signup. Access stays intentionally simple for now.</p>
+    <section className="card auth-login-card auth-login-card-simple">
+      <div className="kicker">Login</div>
+      <h2>Get decisive</h2>
+      <p className="muted">Use the email and password from your private invite signup.</p>
       {error ? <p className="notice error">{error}</p> : null}
-      {notice ? <p className="notice">{notice}</p> : null}
       <form className="form-grid" action="/api/auth/login" method="post">
         <label>
           <span>Email</span>

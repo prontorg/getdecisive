@@ -12,6 +12,9 @@
     "build:web": "npm run build -w apps/web",
     "lint:web": "npm run lint -w apps/web",
     "typecheck:web": "npm run typecheck -w apps/web",
+    "test:web": "npm test -w apps/web",
+    "verify:web": "npm run test:web && npm run typecheck:web && npm run build:web",
+    "release:web": "./scripts/release-web.sh",
     "migrate:auth-postgres": "npx tsx scripts/migrate-auth-state-to-postgres.ts"
   },
   "dependencies": {

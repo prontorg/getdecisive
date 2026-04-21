@@ -6,12 +6,17 @@ type RegisterPanelProps = {
 };
 
 export function RegisterPanel({ error, email, name, inviteCode }: RegisterPanelProps) {
+  const hasInviteCode = Boolean(inviteCode);
+  const inviteError = !hasInviteCode ? 'Open signup from a valid invite link before creating an account.' : null;
+  const displayError = error === inviteError ? inviteError : error;
+
   return (
     <section className="card signup-card">
       <div className="kicker">Invite-only signup</div>
       <h2>Create your account</h2>
       <p className="muted">Keep signup simple here. Intervals connection happens in the guided onboarding step right after account creation.</p>
-      {error ? <p className="notice error">{error}</p> : null}
+      {displayError ? <p className="notice error">{displayError}</p> : null}
+      {inviteError && inviteError !== displayError ? <p className="notice error">{inviteError}</p> : null}
       <form className="form-grid" action="/api/auth/register" method="post">
         <input name="inviteCode" type="hidden" value={inviteCode || ''} />
         <label>
@@ -27,7 +32,7 @@ export function RegisterPanel({ error, email, name, inviteCode }: RegisterPanelP
           <input name="displayName" type="text" placeholder="Athlete name" defaultValue={name || ''} required autoComplete="name" />
         </label>
         <div className="button-row">
-          <button type="submit">Create account</button>
+          <button type="submit" disabled={!hasInviteCode} aria-disabled={!hasInviteCode}>Create account</button>
         </div>
       </form>
     </section>

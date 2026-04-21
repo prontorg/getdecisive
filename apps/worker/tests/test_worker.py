@@ -61,7 +61,8 @@ class WorkerAppTest(unittest.TestCase):
                     'wellness': {'ctl': 107, 'atl': 128},
                     'recent_rows': [],
                     'latest_day_rows': [],
-                    'month_zone_totals': {},
+                    'timeline_rows': [{'activity_id': '1', 'start_date_local': '2026-04-13T09:00:00', 'session_type': 'endurance / Z2 ride', 'summary': {'short_label': 'Endurance'}}],
+                    'month_zone_totals': {'Z2': 7200},
                     'next_three': [],
                 }
 

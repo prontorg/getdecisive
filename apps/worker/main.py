@@ -204,20 +204,28 @@ class WorkerApp:
         month_start = date(today.year, today.month, 1)
         wellness_series = client.wellness(oldest=(date(today.year, 1, 1) - timedelta(days=7)).isoformat(), newest=today.isoformat())
         recent_activities = client.activities(oldest=oldest.isoformat(), newest=today.isoformat(), limit=50)
+        month_activities = client.activities(oldest=month_start.isoformat(), newest=today.isoformat(), limit=240)
+        year_activities = client.activities(oldest=date(today.year, 1, 1).isoformat(), newest=today.isoformat(), limit=1000)
         detailed_rows = []
+        timeline_rows: list[dict[str, Any]] = []
         month_zone_totals: dict[str, int] = {}
         latest_day = None
         latest_day_rows: list[dict[str, Any]] = []
-        for row in recent_activities[:12]:
-            detail = client.activity(str(row.get("id") or row.get("activity_id")))
+
+        seen_activity_ids: set[str] = set()
+
+        def build_live_row(detail: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
             zone_times = {str(zone.get("id") or "other"): int(zone.get("secs") or 0) for zone in (detail.get("icu_zone_times") or []) if zone.get("id")}
-            activity_date = str(detail.get("start_date_local") or row.get("start_date_local") or "")[:10]
-            live_row = {
+            return {
                 "activity_id": str(detail.get("id") or row.get("id") or row.get("activity_id") or ""),
                 "start_date_local": str(detail.get("start_date_local") or row.get("start_date_local") or ""),
                 "name": detail.get("name") or row.get("name"),
+                "activity_type": detail.get("type") or row.get("type") or row.get("activity_type") or "Ride",
                 "session_type": classify_session_type(detail),
                 "training_load": detail.get("icu_training_load") or row.get("icu_training_load") or row.get("training_load"),
+                "distance": detail.get("distance") or row.get("distance"),
+                "moving_time": detail.get("moving_time") or row.get("moving_time"),
+                "elapsed_time": detail.get("elapsed_time") or row.get("elapsed_time"),
                 "duration_s": detail.get("moving_time") or detail.get("elapsed_time") or row.get("moving_time") or row.get("elapsed_time"),
                 "weighted_avg_watts": detail.get("icu_weighted_avg_watts"),
                 "average_watts": detail.get("icu_average_watts"),
@@ -226,17 +234,46 @@ class WorkerApp:
                 "zone_times": zone_times,
                 "summary": {"short_label": detail.get("name") or row.get("name") or "Workout"},
             }
+
+        for row in recent_activities[:12]:
+            detail = client.activity(str(row.get("id") or row.get("activity_id")))
+            live_row = build_live_row(detail, row)
+            activity_date = str(live_row.get("start_date_local") or "")[:10]
             detailed_rows.append(live_row)
-            if activity_date >= month_start.isoformat():
-                for zone_id, seconds in zone_times.items():
-                    month_zone_totals[zone_id] = month_zone_totals.get(zone_id, 0) + int(seconds)
             if activity_date and (latest_day is None or activity_date > latest_day):
                 latest_day = activity_date
                 latest_day_rows = [live_row]
             elif activity_date and activity_date == latest_day:
                 latest_day_rows.append(live_row)
+            seen_activity_ids.add(str(live_row.get("activity_id") or ""))
+
+        for row in month_activities:
+            detail = client.activity(str(row.get("id") or row.get("activity_id")))
+            live_row = build_live_row(detail, row)
+            activity_id = str(live_row.get("activity_id") or "")
+            if activity_id in seen_activity_ids:
+                timeline_rows.append(live_row)
+            else:
+                timeline_rows.append(live_row)
+                seen_activity_ids.add(activity_id)
+            for zone_id, seconds in (live_row.get("zone_times") or {}).items():
+                month_zone_totals[zone_id] = month_zone_totals.get(zone_id, 0) + int(seconds)
+
+        def summarize_window(rows: list[dict[str, Any]]) -> dict[str, Any]:
+            included = [row for row in rows if str(row.get("type") or row.get("activity_type") or "") in {"Ride", "VirtualRide", "Run"}]
+            total_distance_m = sum(float(row.get("distance") or 0) for row in included)
+            total_duration_s = sum(int(row.get("moving_time") or row.get("elapsed_time") or 0) for row in included)
+            total_load = round(sum(float(row.get("icu_training_load") or row.get("training_load") or 0) for row in included))
+            return {
+                "distance_km": round(total_distance_m / 1000, 1),
+                "duration_s": total_duration_s,
+                "load": total_load,
+                "activity_count": len(included),
+            }
+
         detailed_rows.sort(key=lambda row: row.get("start_date_local", ""), reverse=True)
         latest_day_rows.sort(key=lambda row: row.get("start_date_local", ""), reverse=True)
+        timeline_rows.sort(key=lambda row: row.get("start_date_local", ""), reverse=True)
         wellness = wellness_series[-1] if wellness_series else {}
         return {
             "today": today.isoformat(), "today_plan": None, "tomorrow_plan": None, "goal_race_date": None,
@@ -244,7 +281,8 @@ class WorkerApp:
             "season_phase": "build user-scoped sync foundations",
             "wellness": {"ctl": wellness.get("ctl"), "atl": wellness.get("atl")},
             "wellness_series": [{"id": str(item.get("id") or item.get("date") or index), "ctl": item.get("ctl"), "atl": item.get("atl")} for index, item in enumerate(wellness_series)],
-            "recent_rows": detailed_rows, "latest_day_rows": latest_day_rows, "month_zone_totals": month_zone_totals,
+            "recent_rows": detailed_rows, "latest_day_rows": latest_day_rows, "timeline_rows": timeline_rows, "month_zone_totals": month_zone_totals,
+            "month_summary": summarize_window(month_activities), "year_summary": summarize_window(year_activities),
             "next_three": build_next_three(today), "sync_source": job_type,
         }
 

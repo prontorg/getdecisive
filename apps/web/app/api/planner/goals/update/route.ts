@@ -14,7 +14,8 @@ export async function POST(request: Request) {
   if (!context) return NextResponse.redirect(new URL(appRoutes.onboardingSync, request.url));
 
   const formData = await request.formData();
-  const title = String(formData.get('title') || '').trim();
+  const prompt = String(formData.get('prompt') || '').trim();
+  const title = String(formData.get('title') || '').trim() || prompt.slice(0, 140);
   const type = String(formData.get('type') || 'capability_goal').trim();
   const status = String(formData.get('status') || 'active').trim();
   const priority = String(formData.get('priority') || 'support').trim();
@@ -28,10 +29,11 @@ export async function POST(request: Request) {
       status,
       priority: priority === 'A' || priority === 'B' ? priority : 'support',
       targetDate: targetDateRaw || undefined,
-      notes: notes || undefined,
+      notes: [prompt, notes].filter(Boolean).join('\n\n') || undefined,
     });
   }
 
   revalidatePath(appRoutes.analysis);
-  return NextResponse.redirect(new URL(appRoutes.analysis, request.url));
+  revalidatePath(appRoutes.plan);
+  return NextResponse.redirect(new URL(appRoutes.plan, request.url));
 }

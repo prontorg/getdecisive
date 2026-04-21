@@ -1,19 +1,21 @@
+import React from 'react';
+
+import { appRoutes } from '../../lib/routes';
 import { LoginPanel } from '../../components/auth/LoginPanel';
 
-export default async function LoginPage({ searchParams }: { searchParams?: Promise<{ error?: string; notice?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams?: Promise<{ error?: string; notice?: string; inviteCode?: string }> }) {
   const params = (await searchParams) || {};
+  const inviteHref = params.inviteCode ? `${appRoutes.register}?inviteCode=${encodeURIComponent(params.inviteCode)}` : null;
+
   return (
-    <main className="page-shell auth-screen-shell">
-      <section className="auth-screen-panel md-surface md-surface-raised">
-        <div className="auth-screen-copy">
-          <div className="kicker">Decisive platform</div>
-          <h1>Access decisive</h1>
-          <p>
-            One login for the full decisive.coach application. If there is no active session, keep the shell visible,
-            send all tab clicks to this page, and let login be the primary fallback.
-          </p>
-        </div>
-        <LoginPanel error={params.error} notice={params.notice} />
+    <main className="page-shell auth-screen-shell auth-screen-shell-simple">
+      <section className="auth-screen-panel auth-screen-panel-simple md-surface md-surface-raised">
+        <LoginPanel error={params.error} />
+        {inviteHref ? (
+          <div className="button-row auth-invite-row">
+            <a href={inviteHref} className="button-secondary button-link">Create account</a>
+          </div>
+        ) : null}
       </section>
     </main>
   );

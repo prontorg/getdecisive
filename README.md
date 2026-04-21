@@ -29,3 +29,9 @@ This is the initial Milestone A scaffold:
 3. Implement auth and invite code flows
 4. Implement guided Intervals onboarding + sync status UI
 5. Connect worker to coaching-engine sync modules
+
+## Release discipline
+- Never deploy the planner app without running automated regression checks first.
+- Standard verification command: `npm run verify:web`
+- Standard release command: `npm run release:web`
+- `release:web` runs the existing web test suite, typecheck, production build, then restarts `decisive-planner.service` only if all checks pass.

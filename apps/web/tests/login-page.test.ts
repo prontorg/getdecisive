@@ -27,9 +27,11 @@ test('login page only shows create account when invite code is present', async (
   assert.match(html, /href="\/register\?inviteCode=DECISIVE-INVITE"/i);
 });
 
-test('logout rejects GET and redirects back to login with a signed-out notice on POST', async () => {
-  const getResponse = await logoutGet();
-  assert.equal(getResponse.status, 405);
+test('logout GET redirects to login without clearing the session, while POST still clears the session', async () => {
+  const getResponse = await logoutGet(new Request('https://app.decisive.coach/api/auth/logout'));
+  assert.equal(getResponse.status, 307);
+  assert.equal(getResponse.headers.get('location'), 'https://app.decisive.coach/login?notice=Use+the+in-app+logout+button');
+  assert.equal(getResponse.headers.get('set-cookie'), null);
 
   const response = await logoutPost(new Request('https://app.decisive.coach/api/auth/logout', { method: 'POST' }));
   assert.equal(response.status, 307);
