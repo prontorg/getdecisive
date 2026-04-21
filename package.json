@@ -13,6 +13,7 @@
     "lint:web": "npm run lint -w apps/web",
     "typecheck:web": "npm run typecheck -w apps/web",
     "test:web": "npm test -w apps/web",
+    "verify:web:fast": "./scripts/verify-fast-web.sh",
     "verify:web": "./scripts/verify-web-quality.sh",
     "release:web": "./scripts/release-web.sh",
     "migrate:auth-postgres": "npx tsx scripts/migrate-auth-state-to-postgres.ts"

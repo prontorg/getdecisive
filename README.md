@@ -32,6 +32,9 @@ This is the initial Milestone A scaffold:
 
 ## Release discipline
 - Never deploy the planner app without running automated regression checks first.
+- Standard fast verification command: `npm run verify:web:fast`
 - Standard verification command: `npm run verify:web`
 - Standard release command: `npm run release:web`
-- `release:web` runs the existing web test suite, typecheck, production build, then restarts `decisive-planner.service` only if all checks pass.
+- `verify:web:fast` runs the fastest high-value gate: placeholder/TODO audit, typecheck, and focused reliability regressions.
+- `verify:web` runs the full web + worker quality gate.
+- `release:web` runs the full quality gate, restarts services, then verifies both local and public smoke checks before succeeding.

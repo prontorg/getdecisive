@@ -14,5 +14,6 @@ Reason:
 
 Release rule:
 - every planner deployment/release must run automated regression checks first
-- use `npm run verify:web` for checks only
-- use `npm run release:web` for checks + planner service restart
+- use `npm run verify:web:fast` for the fastest high-value pre-commit / pre-push gate
+- use `npm run verify:web` for the full quality gate
+- use `npm run release:web` for the full quality gate + service restart + local/public smoke validation

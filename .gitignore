@@ -27,5 +27,6 @@ apps/web/tsconfig.tsbuildinfo
 apps/worker/__pycache__/
 
 # Local editor / misc
+.hermes/
 .vscode/
 .idea/
