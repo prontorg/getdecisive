@@ -197,6 +197,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Risks to watch/i);
   assert.match(source, /Accept recommendation/i);
   assert.match(source, /recommendationPayload\.alternatives\.map/i);
+  assert.match(source, /Use recommendation<\/button>/i);
+  assert.match(source, /Select \{item\.title\}<\/button>/i);
+  assert.match(source, /planning-recommendation-action/i);
   assert.match(source, /recommendedConstraints/i);
   assert.match(source, /Calendar<\/a>/i);
   assert.match(source, /Dashboard<\/a>/i);

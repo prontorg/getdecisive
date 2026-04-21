@@ -498,6 +498,8 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   text-transform: uppercase;
   letter-spacing: .08em;
 }
+.planning-recommendation-action { margin-top: 6px; }
+.planning-recommendation-action button { width: 100%; }
 .planning-recommendation-chip-row { margin-top: 2px; }
 .planning-recommendation-list { margin: 0; color: #d7e2f0; }
 .training-plan-flow-shell { display:grid; gap: 16px; }

@@ -185,7 +185,6 @@ export async function TrainingPlanPage({
   }
 
   const contextPayload = buildMonthlyPlannerContextPayload(planner.live, currentDirection);
-  const recommendationPayload = buildPlanningRecommendationPayload(planner.live, currentDirection);
   const comparePayload = buildMonthlyPlannerComparePayload(planner.live, latestDraft ? {
     monthStart: latestDraft.monthStart,
     objective: latestInput?.objective || 'repeatability',
@@ -254,9 +253,9 @@ export async function TrainingPlanPage({
       ? 'Draft saved and locally published'
       : 'Draft saved locally and still editable'
     : 'No draft saved yet';
-  const selectedDirectionLabel = latestInput
-    ? objectiveOptions.find((item) => item.value === latestInput.objective)?.label || latestInput.objective
-    : 'No direction selected yet';
+  const recommendationPayload = buildPlanningRecommendationPayload(planner.live, currentDirection);
+  const selectedObjectiveValue = latestInput?.objective || recommendationPayload.primary.objective;
+  const selectedDirectionLabel = objectiveOptions.find((item) => item.value === selectedObjectiveValue)?.label || selectedObjectiveValue || 'No direction selected yet';
   const workspaceStatusLabel = latestDraft
     ? 'Reviewing generated draft'
     : latestInput
@@ -481,11 +480,33 @@ export async function TrainingPlanPage({
                   <div className="training-plan-guide-card">
                     <strong>Accept recommendation</strong>
                     <p>Keep the current build settings aligned with {recommendationPayload.primary.title.toLowerCase()}.</p>
+                    <form action="/api/planner/month/draft" method="post" className="planning-recommendation-action">
+                      <input type="hidden" name="objective" value={recommendationPayload.primary.objective} />
+                      <input type="hidden" name="ambition" value={latestInput?.ambition || 'balanced'} />
+                      <input type="hidden" name="maxWeeklyHours" value={String(latestInput?.mustFollow.maxWeeklyHours || 10.5)} />
+                      <input type="hidden" name="restDay" value={latestInput?.preferences.restDay || 'Saturday'} />
+                      <input type="hidden" name="restDaysPerWeek" value={String(latestInput?.preferences.restDaysPerWeek || 1)} />
+                      <input type="hidden" name="longRideDay" value={latestInput?.preferences.longRideDay || 'Sunday'} />
+                      {latestInput?.mustFollow.noDoubles ?? true ? <input type="hidden" name="noDoubles" value="on" /> : null}
+                      {latestInput?.mustFollow.noBackToBackHardDays ?? true ? <input type="hidden" name="noBackToBackHardDays" value="on" /> : null}
+                      <button type="submit">Use recommendation</button>
+                    </form>
                   </div>
                   {recommendationPayload.alternatives.map((item) => (
                     <div key={item.objective} className="training-plan-guide-card">
                       <strong>{item.title}</strong>
                       <p>{item.reason}</p>
+                      <form action="/api/planner/month/draft" method="post" className="planning-recommendation-action">
+                        <input type="hidden" name="objective" value={item.objective} />
+                        <input type="hidden" name="ambition" value={item.objective === 'consistency' ? 'conservative' : latestInput?.ambition || 'balanced'} />
+                        <input type="hidden" name="maxWeeklyHours" value={String(item.objective === 'consistency' ? Math.max(6, (latestInput?.mustFollow.maxWeeklyHours || 10.5) - 1) : latestInput?.mustFollow.maxWeeklyHours || 10.5)} />
+                        <input type="hidden" name="restDay" value={latestInput?.preferences.restDay || 'Saturday'} />
+                        <input type="hidden" name="restDaysPerWeek" value={String(latestInput?.preferences.restDaysPerWeek || 1)} />
+                        <input type="hidden" name="longRideDay" value={latestInput?.preferences.longRideDay || 'Sunday'} />
+                        {latestInput?.mustFollow.noDoubles ?? true ? <input type="hidden" name="noDoubles" value="on" /> : null}
+                        {latestInput?.mustFollow.noBackToBackHardDays ?? true ? <input type="hidden" name="noBackToBackHardDays" value="on" /> : null}
+                        <button type="submit">Select {item.title}</button>
+                      </form>
                     </div>
                   ))}
                 </div>
