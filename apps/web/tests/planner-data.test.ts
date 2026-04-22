@@ -735,6 +735,51 @@ test('monthly planner draft payload uses repeatability as the second-week emphas
   assert.equal(secondWeek.workouts.some((workout) => workout.category === 'repeatability'), true);
 });
 
+test('monthly planner draft rationale protects threshold support and trims first-week volume when freshness is constrained', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-12',
+    working_threshold_w: 365,
+    wellness: { ctl: 106, atl: 123 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 142, duration_s: 7200, weighted_avg_watts: 362, summary: { short_label: '3x15 threshold' }, zone_times: { Z4: 2600 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6900, weighted_avg_watts: 358, summary: { short_label: '2x15 threshold' }, zone_times: { Z4: 2300 } },
+      { activity_id: '3', start_date_local: '2026-04-16T09:00:00', session_type: 'endurance / Z2 ride', training_load: 88, duration_s: 9600, summary: { short_label: 'Long endurance' }, zone_times: { Z2: 8200 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Keep threshold support repeatable without excess fatigue',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10.5 },
+  });
+
+  const firstWeek = payload.weeks[0]!;
+  const secondWeek = payload.weeks[1]!;
+  assert.match(firstWeek.rationale.protected, /threshold support|freshness/i);
+  assert.equal(firstWeek.targetHours < secondWeek.targetHours, true);
+});
+
+test('monthly planner draft rationale explicitly protects aerobic durability when that strength is already present', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-20',
+    wellness: { ctl: 108, atl: 111 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 140, duration_s: 7200, weighted_avg_watts: 360, summary: { short_label: '3x15 threshold' }, zone_times: { Z4: 2600 } },
+      { activity_id: '2', start_date_local: '2026-04-16T09:00:00', session_type: 'threshold / race-support ride', training_load: 136, duration_s: 6600, weighted_avg_watts: 355, summary: { short_label: '2x16 threshold' }, zone_times: { Z4: 2400 } },
+      { activity_id: '3', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance / Z2 ride', training_load: 92, duration_s: 12600, summary: { short_label: 'Long endurance' }, zone_times: { Z2: 9800 } },
+      { activity_id: '4', start_date_local: '2026-04-12T09:00:00', session_type: 'endurance / Z2 ride', training_load: 88, duration_s: 11700, summary: { short_label: 'Aerobic durability' }, zone_times: { Z2: 9000 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Keep the aerobic chassis and threshold floor while building repeatability',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 11 },
+  });
+
+  assert.match(payload.weeks[0]!.rationale.protected, /aerobic durability|durability/i);
+});
+
 test('monthly planner workout selection gives repeatability weeks a sharper bridge session once threshold is already stable', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-20',

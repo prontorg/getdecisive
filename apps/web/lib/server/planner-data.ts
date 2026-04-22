@@ -1697,7 +1697,6 @@ export function buildMonthlyPlannerDraftPayload(
   const monthStart = today.slice(0, 8) + '01';
   const currentWeekStart = mondayOf(today);
   const start = new Date(currentWeekStart);
-  const constrained = form <= -18;
   const noBackToBack = input.mustFollow?.noBackToBackHardDays !== false;
   const objective = input.objective || 'repeatability';
   const ambition = input.ambition || 'balanced';
@@ -1738,6 +1737,7 @@ export function buildMonthlyPlannerDraftPayload(
   const planEvents = input.planEvents || [];
 
   const needs = buildTrainingNeedsSummary(live, input);
+  const constrained = needs.freshnessState === 'blocked' || needs.freshnessState === 'constrained';
   const blockDecision = buildBlockDecisionSummary(needs, { objective, ambition });
 
   const weeks = weekLabels.map((label, index) => {
@@ -1958,12 +1958,16 @@ export function buildMonthlyPlannerDraftPayload(
               ? 'Recent repeatability has enough density to stay as a true weekly recommendation.'
               : 'Recent repeatability is still thin, so the plan should actively rebuild it instead of assuming it is already there.',
         protected: constrained && index === 0
-          ? 'The first planned week is slightly protected because freshness is already constrained.'
+          ? needs.protectedStrengths.includes('threshold_support')
+            ? 'The first planned week is slightly protected because freshness is already constrained, while threshold support remains a strength to preserve.'
+            : 'The first planned week is slightly protected because freshness is already constrained.'
           : weekEvents.length
             ? `Planner events consume ${eventHours.toFixed(1)} h this week, so training budget is reduced around ${weekEvents.map((event) => event.title || event.type || 'event').join(', ')}.`
-            : noBackToBack
-              ? 'Support days stay genuinely supportive and separate the hard recommendations so quality does not leak across the week.'
-              : 'Support days still need to stay truly supportive even when back-to-back hard days are allowed.',
+            : needs.protectedStrengths.includes('aerobic_durability')
+              ? 'Aerobic durability is already a real strength, so the week protects that chassis instead of replacing it with extra hidden intensity.'
+              : noBackToBack
+                ? 'Support days stay genuinely supportive and separate the hard recommendations so quality does not leak across the week.'
+                : 'Support days still need to stay truly supportive even when back-to-back hard days are allowed.',
         mainAim: objective === 'race_specificity'
           ? `Increase race-like specificity without stacking uncontrolled fatigue${nearGoal ? ' as the goal event approaches.' : '.'}`
           : objective === 'taper'
