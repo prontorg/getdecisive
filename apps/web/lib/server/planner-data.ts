@@ -15,7 +15,9 @@ import {
   type UserRecord,
 } from './platform-state';
 import { getLatestSnapshotForUser, getLatestSyncJobForUser } from './sync-store';
+import { buildTrainingNeedsSummary, classifyRecentRow } from './planning/training-needs';
 import { ensureCurrentPlanningContext } from './planning/planning-store';
+import type { TrainingNeedsSummary } from './planning/training-needs';
 import type { DailyDecision, PlanningCycle } from './planning/types';
 
 const execFileAsync = promisify(execFile);
@@ -222,25 +224,8 @@ export type PlanningRecommendationPayload = {
   recommendedConstraints: string[];
 };
 
-export type TrainingNeedsSummary = {
-  freshnessState: 'blocked' | 'constrained' | 'usable' | 'fresh';
-  eventPressure: 'far' | 'medium' | 'near' | 'taper';
-  primaryLimiter: 'repeatability' | 'threshold_support' | 'race_specificity' | 'aerobic_durability';
-  protectedStrengths: Array<'repeatability' | 'threshold_support' | 'race_specificity' | 'aerobic_durability'>;
-  systemStatus: {
-    repeatability: 'needs_focus' | 'developing' | 'good';
-    threshold_support: 'needs_focus' | 'developing' | 'good';
-    race_specificity: 'needs_focus' | 'developing' | 'good';
-    aerobic_durability: 'needs_focus' | 'developing' | 'good';
-  };
-  counts: {
-    repeatability: number;
-    threshold_support: number;
-    race_like: number;
-    endurance: number;
-  };
-  recentWeeklyHours: number;
-};
+export type { TrainingNeedsSummary } from './planning/training-needs';
+export { buildTrainingNeedsSummary } from './planning/training-needs';
 
 export type BlockDecisionSummary = {
   monthObjective: 'repeatability' | 'threshold_support' | 'race_specificity' | 'aerobic_support' | 'rebuild' | 'consistency' | 'taper';
@@ -429,73 +414,8 @@ function recentSessionCounts(rows: LiveRow[]): Record<string, number> {
   }, {});
 }
 
-function zoneSeconds(row: LiveRow, ...zones: string[]) {
-  return zones.reduce((acc, zone) => acc + Number(row.zone_times?.[zone] || 0), 0);
-}
-
-function classifyRecentRow(row: LiveRow): 'repeatability' | 'threshold_support' | 'race_like' | 'endurance' | 'recovery' | 'rest' {
-  const sessionType = (row.session_type || '').toLowerCase();
-  const label = `${row.summary?.short_label || ''} ${row.name || ''}`.toLowerCase();
-  const duration = Number(row.duration_s || 0);
-  const load = Number(row.training_load || 0);
-  const np = Number(row.weighted_avg_watts || row.average_watts || 0);
-  const z2 = zoneSeconds(row, 'Z2');
-  const z4 = zoneSeconds(row, 'Z4', 'SS');
-  const z5 = zoneSeconds(row, 'Z5', 'Z6', 'Z7');
-
-  if (sessionType.includes('rest')) return 'rest';
-  if (sessionType.includes('recovery')) return 'recovery';
-  if (sessionType.includes('repeatability') || sessionType.includes('broken vo2')) return 'repeatability';
-  if (sessionType.includes('threshold') || sessionType.includes('race-support')) return 'threshold_support';
-  if (sessionType.includes('race-like') || sessionType.includes('stochastic') || sessionType.includes('race')) return 'race_like';
-
-  if (/30\/?15|40\/?20|vo2|max aerobic|anaerobic|microburst|repeat/i.test(label) || z5 >= 10 * 60) return 'repeatability';
-  if (/threshold|sweet ?spot|tempo|over.?under|2x15|3x12|3x15/i.test(label) || z4 >= 20 * 60 || (np >= 330 && load >= 110)) return 'threshold_support';
-  if (/points|scratch|race|stochastic|attacks|sprint/i.test(label) || (z5 >= 6 * 60 && load >= 100)) return 'race_like';
-  if (duration <= 75 * 60 && load <= 40) return 'recovery';
-  if (z2 >= 90 * 60 || duration >= 2.5 * 3600 || load >= 80) return 'endurance';
-  return 'endurance';
-}
-
-export function buildTrainingNeedsSummary(
-  live: LiveState | null | undefined,
-  input?: {
-    objective?: string;
-    currentDirection?: string;
-    mustFollow?: { maxWeeklyHours?: number };
-  },
-): TrainingNeedsSummary {
-  const rows = live?.recent_rows || [];
-  const counts = {
-    repeatability: rows.filter((row) => classifyRecentRow(row) === 'repeatability').length,
-    threshold_support: rows.filter((row) => classifyRecentRow(row) === 'threshold_support').length,
-    race_like: rows.filter((row) => classifyRecentRow(row) === 'race_like').length,
-    endurance: rows.filter((row) => classifyRecentRow(row) === 'endurance').length,
-  };
-  const recentHours = rows.reduce((acc, row) => acc + Number(row.duration_s || 0), 0) / 3600;
-  const recentWeeklyHours = rows.length ? recentHours / Math.min(4, Math.max(1, Math.ceil(rows.length / 3))) : Number(input?.mustFollow?.maxWeeklyHours || 8);
-  const form = Number(live?.wellness?.ctl || 0) - Number(live?.wellness?.atl || 0);
-  const freshnessState = form <= -18 ? 'blocked' : form <= -12 ? 'constrained' : form >= 4 ? 'fresh' : 'usable';
-  const today = live?.today || todayIso();
-  const goalDate = live?.goal_race_date ? new Date(`${live.goal_race_date}T00:00:00Z`) : null;
-  const todayDate = new Date(`${today}T00:00:00Z`);
-  const daysToGoal = goalDate ? Math.round((goalDate.getTime() - todayDate.getTime()) / 86400000) : 999;
-  const eventPressure = daysToGoal <= 14 ? 'taper' : daysToGoal <= 35 ? 'near' : daysToGoal <= 70 ? 'medium' : 'far';
-  const systemStatus: TrainingNeedsSummary['systemStatus'] = {
-    repeatability: counts.repeatability >= 2 ? 'good' : counts.repeatability === 1 ? 'developing' : 'needs_focus',
-    threshold_support: counts.threshold_support >= 2 ? 'good' : counts.threshold_support === 1 ? 'developing' : 'needs_focus',
-    race_specificity: counts.race_like >= 1 ? 'good' : eventPressure === 'near' || eventPressure === 'taper' ? 'needs_focus' : 'developing',
-    aerobic_durability: counts.endurance >= 2 && recentWeeklyHours >= Math.max(7.5, Number(input?.mustFollow?.maxWeeklyHours || 10) * 0.72) ? 'good' : counts.endurance >= 1 ? 'developing' : 'needs_focus',
-  };
-  const priorities: Array<TrainingNeedsSummary['primaryLimiter']> = ['repeatability', 'threshold_support', 'race_specificity', 'aerobic_durability'];
-  const objective = input?.objective || 'repeatability';
-  const primaryLimiter = objective === 'threshold_support'
-    ? 'threshold_support'
-    : objective === 'race_specificity'
-      ? (systemStatus.race_specificity === 'needs_focus' ? 'race_specificity' : systemStatus.repeatability === 'needs_focus' ? 'repeatability' : 'threshold_support')
-      : priorities.find((key) => systemStatus[key] === 'needs_focus') || 'repeatability';
-  const protectedStrengths = priorities.filter((key) => systemStatus[key] === 'good');
-  return { freshnessState, eventPressure, primaryLimiter, protectedStrengths, systemStatus, counts, recentWeeklyHours };
+function mean(values: number[]): number {
+  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 }
 
 export function buildBlockDecisionSummary(
@@ -537,10 +457,6 @@ export function buildBlockDecisionSummary(
       { weekIndex: 4, focus: 'freshen' },
     ],
   };
-}
-
-function mean(values: number[]): number {
-  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 }
 
 function zoneFocus(zoneTotals: Record<string, number> = {}): Array<{ zone: string; hours: string }> {

@@ -396,10 +396,17 @@ test('training-needs summary identifies primary limiter, freshness state, and ev
 
   assert.equal(summary.freshnessState, 'constrained');
   assert.equal(summary.eventPressure, 'near');
+  assert.equal(summary.densityTolerance, 'moderate');
+  assert.equal(summary.fatiguePressure, 'elevated');
   assert.equal(summary.systemStatus.repeatability, 'needs_focus');
   assert.equal(summary.systemStatus.threshold_support, 'good');
+  assert.equal(summary.systemStatus.anaerobic_support, 'needs_focus');
   assert.equal(summary.primaryLimiter, 'repeatability');
+  assert.equal(summary.primaryLimiters[0], 'repeatability');
   assert.equal(summary.protectedStrengths.includes('threshold_support'), true);
+  assert.equal(summary.recentPatternSummary.hardDays, 2);
+  assert.equal(summary.recentPatternSummary.compressedStress, false);
+  assert.equal(summary.decisionNotes.includes('protect_threshold_support'), true);
 });
 
 test('block-decision summary turns training needs into coherent week intents and month objective', () => {
