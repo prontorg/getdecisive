@@ -687,6 +687,54 @@ test('monthly planner draft payload uses training-needs and block-decision logic
   assert.match(firstWeek.rationale.mainAim, /goals, current figures, and recent history|current figures, and recent history/i);
 });
 
+test('monthly planner draft payload starts with a lighter first week when freshness is constrained and density tolerance is low', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-18',
+    working_threshold_w: 365,
+    wellness: { ctl: 104, atl: 118 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'race-like sharpening', training_load: 132, duration_s: 5400, summary: { short_label: 'race pace jumps' }, zone_times: { Z5: 360, Z6: 150 } },
+      { activity_id: '2', start_date_local: '2026-04-18T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6600, weighted_avg_watts: 356, summary: { short_label: '2x16 threshold' }, zone_times: { Z4: 2400 } },
+      { activity_id: '3', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 118, duration_s: 5100, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: '4', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance / Z2 ride', training_load: 84, duration_s: 9000, summary: { short_label: 'endurance support' }, zone_times: { Z2: 6200 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Stay specific without digging the hole deeper this week',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+  });
+
+  const firstWeek = payload.weeks[0]!;
+  assert.equal(firstWeek.weekTypeLabel, 'Lighter week');
+  assert.match(firstWeek.intent, /^Lighter week\./i);
+  assert.equal(firstWeek.workouts.some((workout) => workout.category === 'race_like'), false);
+});
+
+test('monthly planner draft payload uses repeatability as the second-week emphasis when race specificity is already covered', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-08',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'bike', training_load: 102, duration_s: 4500, summary: { short_label: 'race pace jumps' }, zone_times: { Z5: 300, Z6: 120 } },
+      { activity_id: '2', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 126, duration_s: 5200, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: '3', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance ride', training_load: 86, duration_s: 10800, summary: { short_label: 'long aerobic support' }, zone_times: { Z2: 8200 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen for the track while keeping repeatability the bigger gap than specificity',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+  });
+
+  const secondWeek = payload.weeks[1]!;
+  assert.equal(secondWeek.weekTypeLabel, 'Repeatability week');
+  assert.match(secondWeek.intent, /^Repeatability focus\./i);
+  assert.equal(secondWeek.workouts.some((workout) => workout.category === 'repeatability'), true);
+});
+
 test('monthly planner workout selection gives repeatability weeks a sharper bridge session once threshold is already stable', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-20',

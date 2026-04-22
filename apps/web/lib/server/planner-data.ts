@@ -976,6 +976,15 @@ function selectWorkoutFromLibrary(args: {
     };
   }
 
+  if (category === 'recovery' && (slot === 'quality_primary' || slot === 'quality_secondary')) {
+    return {
+      label: 'Recovery spin',
+      category: 'recovery',
+      intervalLabel: plannedIntervalLabel('recovery', index, { ...context, taper: true }),
+      family: 'recovery',
+    };
+  }
+
   const phaseTag = phaseTagForContext({ weekFocus, isLighterWeek, eventPressure });
   const selection = selectCatalogWorkout({
     weekFocus,
@@ -1753,13 +1762,15 @@ export function buildMonthlyPlannerDraftPayload(
     const repeatabilityReady = repeatabilityHits >= 2 && recentRows
       .filter((row) => classifyRecentRow(row) === 'repeatability')
       .some((row) => Number(row.training_load || 0) >= 120);
-    const hardOne = weekDecision.focus === 'repeatability'
-      ? 'repeatability'
-      : weekDecision.focus === 'race_specificity'
-        ? (fatigueBlocked ? 'threshold_support' : 'race_like')
-        : 'threshold_support';
+    const hardOne = weekDecision.focus === 'freshen'
+      ? 'recovery'
+      : weekDecision.focus === 'repeatability'
+        ? 'repeatability'
+        : weekDecision.focus === 'race_specificity'
+          ? (fatigueBlocked ? 'threshold_support' : 'race_like')
+          : 'threshold_support';
     const hardTwo = weekDecision.focus === 'freshen'
-      ? 'threshold_support'
+      ? 'recovery'
       : weekDecision.focus === 'race_specificity'
         ? (fatigueBlocked ? 'threshold_support' : 'race_like')
         : weekDecision.focus === 'repeatability'
