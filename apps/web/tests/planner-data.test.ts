@@ -606,6 +606,62 @@ test('block-decision summary turns training needs into coherent week intents and
   assert.equal(block.weekDecisions[3]?.focus, 'freshen');
 });
 
+test('block-decision summary opens with freshen when density tolerance is low and freshness is constrained', () => {
+  const needs = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-18',
+    working_threshold_w: 365,
+    wellness: { ctl: 104, atl: 118 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'race-like sharpening', training_load: 132, duration_s: 5400, summary: { short_label: 'race pace jumps' }, zone_times: { Z5: 360, Z6: 150 } },
+      { activity_id: '2', start_date_local: '2026-04-18T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6600, weighted_avg_watts: 356, summary: { short_label: '2x16 threshold' }, zone_times: { Z4: 2400 } },
+      { activity_id: '3', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 118, duration_s: 5100, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: '4', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance / Z2 ride', training_load: 84, duration_s: 9000, summary: { short_label: 'endurance support' }, zone_times: { Z2: 6200 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    currentDirection: 'Stay specific without digging the hole deeper this week',
+    mustFollow: { maxWeeklyHours: 10 },
+  });
+
+  const block = buildBlockDecisionSummary(needs, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+  });
+
+  assert.equal(block.monthObjective, 'race_specificity');
+  assert.equal(block.weekDecisions[0]?.focus, 'freshen');
+  assert.equal(block.weekDecisions[1]?.focus, 'threshold_support');
+  assert.equal(block.weekDecisions[2]?.focus, 'race_specificity');
+});
+
+test('block-decision summary can prioritize repeatability before race specificity when specificity is already covered and density is usable', () => {
+  const needs = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-08',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'bike', training_load: 102, duration_s: 4500, summary: { short_label: 'race pace jumps' }, zone_times: { Z5: 300, Z6: 120 } },
+      { activity_id: '2', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 126, duration_s: 5200, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: '3', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance ride', training_load: 86, duration_s: 10800, summary: { short_label: 'long aerobic support' }, zone_times: { Z2: 8200 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    currentDirection: 'Sharpen for the track while keeping repeatability the bigger gap than specificity',
+    mustFollow: { maxWeeklyHours: 10 },
+  });
+
+  const block = buildBlockDecisionSummary(needs, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+  });
+
+  assert.equal(block.monthObjective, 'race_specificity');
+  assert.equal(block.weekDecisions[0]?.focus, 'threshold_support');
+  assert.equal(block.weekDecisions[1]?.focus, 'repeatability');
+  assert.equal(block.weekDecisions[2]?.focus, 'race_specificity');
+});
+
 test('monthly planner draft payload uses training-needs and block-decision logic to keep threshold first, then rebuild repeatability before sharper work', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-20',

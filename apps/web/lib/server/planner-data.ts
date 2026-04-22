@@ -430,23 +430,41 @@ export function buildBlockDecisionSummary(
       : needs.primaryLimiter === 'race_specificity'
         ? 'race_specificity'
         : 'repeatability';
-  const firstFocus = needs.freshnessState === 'blocked'
+
+  const usablePrimaryLimiters = needs.primaryLimiters.filter((key) => key !== 'anaerobic_support');
+  const firstNonSpecificLimiter = usablePrimaryLimiters.find((key) => key !== 'race_specificity');
+  const thresholdProtected = needs.protectedStrengths.includes('threshold_support');
+  const needsFreshenStart = needs.freshnessState === 'blocked'
+    || (needs.freshnessState === 'constrained' && needs.densityTolerance === 'low');
+  const specificityAlreadyCovered = needs.systemStatus.race_specificity === 'good';
+  const canAbsorbSpecificityNow = needs.freshnessState !== 'blocked' && needs.densityTolerance !== 'low';
+
+  const firstFocus: BlockDecisionSummary['weekDecisions'][number]['focus'] = needsFreshenStart
     ? 'freshen'
-    : needs.protectedStrengths.includes('threshold_support') && needs.primaryLimiter === 'repeatability'
+    : monthObjective === 'threshold_support'
       ? 'threshold_support'
-      : monthObjective === 'threshold_support'
+      : needs.primaryLimiter === 'repeatability' && thresholdProtected
         ? 'threshold_support'
-        : monthObjective === 'race_specificity' && needs.freshnessState !== 'constrained'
+        : monthObjective === 'race_specificity' && canAbsorbSpecificityNow && !specificityAlreadyCovered && needs.primaryLimiter === 'race_specificity'
           ? 'race_specificity'
           : 'threshold_support';
-  const secondFocus = monthObjective === 'race_specificity'
-    ? 'race_specificity'
-    : needs.primaryLimiter === 'repeatability'
+
+  const secondFocus: BlockDecisionSummary['weekDecisions'][number]['focus'] = monthObjective === 'threshold_support'
+    ? 'threshold_support'
+    : monthObjective === 'race_specificity' && specificityAlreadyCovered && needs.systemStatus.repeatability !== 'good'
       ? 'repeatability'
-      : monthObjective === 'threshold_support'
+      : firstNonSpecificLimiter === 'threshold_support'
         ? 'threshold_support'
-        : 'repeatability';
-  const thirdFocus = needs.eventPressure === 'near' || monthObjective === 'race_specificity' ? 'race_specificity' : secondFocus;
+        : firstNonSpecificLimiter === 'repeatability'
+          ? 'repeatability'
+          : monthObjective === 'race_specificity' && !specificityAlreadyCovered && canAbsorbSpecificityNow
+            ? 'race_specificity'
+            : 'repeatability';
+
+  const thirdFocus: BlockDecisionSummary['weekDecisions'][number]['focus'] = monthObjective === 'race_specificity' || needs.eventPressure === 'near' || needs.eventPressure === 'taper'
+    ? 'race_specificity'
+    : secondFocus;
+
   return {
     monthObjective,
     primaryNeed: needs.primaryLimiter,
