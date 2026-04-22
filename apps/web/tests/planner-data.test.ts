@@ -456,6 +456,81 @@ test('training-needs summary still flags race specificity near events when only 
   assert.equal(summary.primaryLimiters[0], 'race_specificity');
 });
 
+test('training-needs summary drops density tolerance and avoids promoting costly specificity when hard days are compressed and freshness is constrained', () => {
+  const summary = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-18',
+    working_threshold_w: 365,
+    wellness: { ctl: 104, atl: 118 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'race-like sharpening', training_load: 132, duration_s: 5400, summary: { short_label: 'race pace jumps' }, zone_times: { Z5: 360, Z6: 150 } },
+      { activity_id: '2', start_date_local: '2026-04-18T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6600, weighted_avg_watts: 356, summary: { short_label: '2x16 threshold' }, zone_times: { Z4: 2400 } },
+      { activity_id: '3', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 118, duration_s: 5100, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: '4', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance / Z2 ride', training_load: 84, duration_s: 9000, summary: { short_label: 'endurance support' }, zone_times: { Z2: 6200 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    currentDirection: 'Stay specific without digging the hole deeper this week',
+    mustFollow: { maxWeeklyHours: 10 },
+  });
+
+  assert.equal(summary.freshnessState, 'constrained');
+  assert.equal(summary.densityTolerance, 'low');
+  assert.equal(summary.recentPatternSummary.compressedStress, true);
+  assert.equal(summary.fatiguePressure, 'elevated');
+  assert.equal(summary.primaryLimiter, 'threshold_support');
+  assert.equal(summary.primaryLimiters.includes('race_specificity'), false);
+  assert.equal(summary.decisionNotes.includes('limit_quality_density'), true);
+});
+
+test('training-needs summary protects threshold and aerobic durability when long-support and threshold history are already strong', () => {
+  const summary = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-20',
+    wellness: { ctl: 108, atl: 111 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 140, duration_s: 7200, weighted_avg_watts: 360, summary: { short_label: '3x15 threshold' }, zone_times: { Z4: 2600 } },
+      { activity_id: '2', start_date_local: '2026-04-16T09:00:00', session_type: 'threshold / race-support ride', training_load: 136, duration_s: 6600, weighted_avg_watts: 355, summary: { short_label: '2x16 threshold' }, zone_times: { Z4: 2400 } },
+      { activity_id: '3', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance / Z2 ride', training_load: 92, duration_s: 12600, summary: { short_label: 'Long endurance' }, zone_times: { Z2: 9800 } },
+      { activity_id: '4', start_date_local: '2026-04-12T09:00:00', session_type: 'endurance / Z2 ride', training_load: 88, duration_s: 11700, summary: { short_label: 'Aerobic durability' }, zone_times: { Z2: 9000 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    currentDirection: 'Keep the aerobic chassis and threshold floor while building repeatability',
+    mustFollow: { maxWeeklyHours: 11 },
+  });
+
+  assert.equal(summary.systemStatus.threshold_support, 'good');
+  assert.equal(summary.systemStatus.aerobic_durability, 'good');
+  assert.equal(summary.protectedStrengths.includes('threshold_support'), true);
+  assert.equal(summary.protectedStrengths.includes('aerobic_durability'), true);
+  assert.equal(summary.recentPatternSummary.longSupportDays, 2);
+  assert.equal(summary.densityTolerance, 'high');
+});
+
+test('training-needs summary keeps aerobic durability as a focus need when quality exists but long-support is missing', () => {
+  const summary = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-15',
+    wellness: { ctl: 103, atl: 108 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6600, weighted_avg_watts: 355, summary: { short_label: '3x12 threshold' }, zone_times: { Z4: 2300 } },
+      { activity_id: '2', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 124, duration_s: 5200, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: '3', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance ride', training_load: 62, duration_s: 5400, summary: { short_label: 'short endurance' }, zone_times: { Z2: 3400 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    currentDirection: 'Keep quality but stop pretending short support rides solve durability',
+    mustFollow: { maxWeeklyHours: 10.5 },
+  });
+
+  assert.equal(summary.systemStatus.threshold_support, 'developing');
+  assert.equal(summary.systemStatus.aerobic_durability, 'needs_focus');
+  assert.equal(summary.primaryLimiters.includes('aerobic_durability'), true);
+  assert.equal(summary.protectedStrengths.includes('aerobic_durability'), false);
+  assert.equal(summary.recentPatternSummary.longSupportDays, 0);
+});
+
 test('block-decision summary turns training needs into coherent week intents and month objective', () => {
   const needs = buildTrainingNeedsSummary({
     today: '2026-04-20',

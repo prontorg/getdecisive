@@ -87,6 +87,20 @@ function parseDate(value: string | undefined) {
   return value ? new Date(`${value.slice(0, 10)}T00:00:00Z`) : null;
 }
 
+function inferAerobicDurabilityStatus(input: {
+  enduranceCount: number;
+  longSupportDays: number;
+  recentWeeklyHours: number;
+  maxWeeklyHours?: number;
+}): TrainingNeedStatus {
+  const weeklyHoursTarget = Math.max(7.5, Number(input.maxWeeklyHours || 10) * 0.72);
+  const hasAdequateVolume = input.recentWeeklyHours >= weeklyHoursTarget;
+
+  if (input.longSupportDays >= 2 && (hasAdequateVolume || input.enduranceCount >= 2)) return 'good';
+  if (input.longSupportDays >= 1 || (input.enduranceCount >= 2 && hasAdequateVolume)) return 'developing';
+  return 'needs_focus';
+}
+
 export function buildTrainingNeedsSummary(
   live: LiveState | null | undefined,
   input?: BuildTrainingNeedsInput,
@@ -130,16 +144,22 @@ export function buildTrainingNeedsSummary(
     ? 'low'
     : freshnessState === 'constrained' || hardDays >= 3
       ? 'moderate'
-      : longSupportDays >= 2 && recentWeeklyHours >= Math.max(7.5, Number(input?.mustFollow?.maxWeeklyHours || 10) * 0.72)
+      : longSupportDays >= 2 && (recentWeeklyHours >= Math.max(7.5, Number(input?.mustFollow?.maxWeeklyHours || 10) * 0.72) || counts.endurance >= 2)
         ? 'high'
         : 'moderate';
 
   const anaerobicSignals = rows.filter((row) => /anaerobic|sprint|standing start|neuromuscular/i.test(`${row.summary?.short_label || ''} ${row.name || ''}`) || zoneSeconds(row, 'Z6', 'Z7') >= 90).length;
+  const aerobicDurability = inferAerobicDurabilityStatus({
+    enduranceCount: counts.endurance,
+    longSupportDays,
+    recentWeeklyHours,
+    maxWeeklyHours: input?.mustFollow?.maxWeeklyHours,
+  });
   const systemStatus: TrainingNeedsSummary['systemStatus'] = {
     repeatability: counts.repeatability >= 2 ? 'good' : counts.repeatability === 1 ? 'developing' : 'needs_focus',
     threshold_support: counts.threshold_support >= 2 ? 'good' : counts.threshold_support === 1 ? 'developing' : 'needs_focus',
     race_specificity: counts.race_like >= 1 ? 'good' : eventPressure === 'near' || eventPressure === 'taper' ? 'needs_focus' : 'developing',
-    aerobic_durability: counts.endurance >= 2 && recentWeeklyHours >= Math.max(7.5, Number(input?.mustFollow?.maxWeeklyHours || 10) * 0.72) ? 'good' : counts.endurance >= 1 ? 'developing' : 'needs_focus',
+    aerobic_durability: aerobicDurability,
     anaerobic_support: anaerobicSignals >= 1 ? 'developing' : 'needs_focus',
   };
 
