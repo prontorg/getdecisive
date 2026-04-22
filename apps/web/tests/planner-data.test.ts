@@ -531,6 +531,50 @@ test('training-needs summary keeps aerobic durability as a focus need when quali
   assert.equal(summary.recentPatternSummary.longSupportDays, 0);
 });
 
+test('training-needs summary credits threshold support from strong Z4 and sweetspot time even when session labels stay generic', () => {
+  const summary = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-06-22',
+    wellness: { ctl: 107, atl: 111 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'bike', training_load: 132, duration_s: 6900, weighted_avg_watts: 352, summary: { short_label: 'indoor progression' }, zone_times: { Z4: 2100, SS: 700 } },
+      { activity_id: '2', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 128, duration_s: 6600, weighted_avg_watts: 348, summary: { short_label: 'steady build' }, zone_times: { Z4: 1800, SS: 900 } },
+      { activity_id: '3', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance ride', training_load: 90, duration_s: 11700, summary: { short_label: 'long aerobic support' }, zone_times: { Z2: 9000 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    currentDirection: 'Protect the threshold floor even when Intervals labels are generic',
+    mustFollow: { maxWeeklyHours: 10.5 },
+  });
+
+  assert.equal(summary.systemStatus.threshold_support, 'good');
+  assert.equal(summary.protectedStrengths.includes('threshold_support'), true);
+  assert.equal(summary.primaryLimiter, 'repeatability');
+});
+
+test('training-needs summary treats explicit race-specific bridge work as specificity support near events instead of forcing it as the main limiter', () => {
+  const summary = buildTrainingNeedsSummary({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-08',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'bike', training_load: 102, duration_s: 4500, summary: { short_label: 'race pace jumps' }, zone_times: { Z5: 300, Z6: 120 } },
+      { activity_id: '2', start_date_local: '2026-04-16T09:00:00', session_type: 'bike', training_load: 126, duration_s: 5200, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: '3', start_date_local: '2026-04-14T09:00:00', session_type: 'endurance ride', training_load: 86, duration_s: 10800, summary: { short_label: 'long aerobic support' }, zone_times: { Z2: 8200 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    currentDirection: 'Sharpen for the track while keeping repeatability the bigger gap than specificity',
+    mustFollow: { maxWeeklyHours: 10 },
+  });
+
+  assert.equal(summary.eventPressure, 'near');
+  assert.equal(summary.systemStatus.race_specificity, 'good');
+  assert.equal(summary.primaryLimiter, 'threshold_support');
+  assert.equal(summary.primaryLimiters.includes('race_specificity'), false);
+  assert.equal(summary.decisionNotes.includes('raise_race_specificity'), false);
+});
+
 test('block-decision summary turns training needs into coherent week intents and month objective', () => {
   const needs = buildTrainingNeedsSummary({
     today: '2026-04-20',
