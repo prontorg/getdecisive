@@ -46,6 +46,14 @@ function zoneSeconds(row: LiveRow, ...zones: string[]) {
   return zones.reduce((acc, zone) => acc + Number(row.zone_times?.[zone] || 0), 0);
 }
 
+function hasRaceSpecificMarkers(text: string) {
+  return /points|scratch|race|stochastic|attacks|sprint|flying 200|match sprint|keirin|track start/i.test(text);
+}
+
+function hasRepeatabilityMarkers(text: string) {
+  return /30\/?15|40\/?20|vo2|max aerobic|anaerobic|microburst|repeat|broken/i.test(text);
+}
+
 export function classifyRecentRow(row: LiveRow): 'repeatability' | 'threshold_support' | 'race_like' | 'endurance' | 'recovery' | 'rest' {
   const sessionType = (row.session_type || '').toLowerCase();
   const label = `${row.summary?.short_label || ''} ${row.name || ''}`.toLowerCase();
@@ -54,17 +62,22 @@ export function classifyRecentRow(row: LiveRow): 'repeatability' | 'threshold_su
   const np = Number(row.weighted_avg_watts || row.average_watts || 0);
   const z2 = zoneSeconds(row, 'Z2');
   const z4 = zoneSeconds(row, 'Z4', 'SS');
-  const z5 = zoneSeconds(row, 'Z5', 'Z6', 'Z7');
+  const z5 = zoneSeconds(row, 'Z5');
+  const z6Plus = zoneSeconds(row, 'Z6', 'Z7');
+  const highIntensity = z5 + z6Plus;
+  const raceSpecific = hasRaceSpecificMarkers(`${sessionType} ${label}`);
+  const repeatability = hasRepeatabilityMarkers(`${sessionType} ${label}`);
 
   if (sessionType.includes('rest')) return 'rest';
   if (sessionType.includes('recovery')) return 'recovery';
   if (sessionType.includes('repeatability') || sessionType.includes('broken vo2')) return 'repeatability';
   if (sessionType.includes('threshold') || sessionType.includes('race-support')) return 'threshold_support';
-  if (sessionType.includes('race-like') || sessionType.includes('stochastic') || sessionType.includes('race')) return 'race_like';
+  if (sessionType.includes('race-like') || sessionType.includes('stochastic')) return 'race_like';
+  if (sessionType.includes('race') && !sessionType.includes('race-support')) return 'race_like';
 
-  if (/30\/?15|40\/?20|vo2|max aerobic|anaerobic|microburst|repeat/i.test(label) || z5 >= 10 * 60) return 'repeatability';
+  if (repeatability || highIntensity >= 10 * 60 || (z5 >= 6 * 60 && !raceSpecific && load >= 95)) return 'repeatability';
   if (/threshold|sweet ?spot|tempo|over.?under|2x15|3x12|3x15/i.test(label) || z4 >= 20 * 60 || (np >= 330 && load >= 110)) return 'threshold_support';
-  if (/points|scratch|race|stochastic|attacks|sprint/i.test(label) || (z5 >= 6 * 60 && load >= 100)) return 'race_like';
+  if (raceSpecific || ((z5 >= 6 * 60 || z6Plus >= 2 * 60) && load >= 100)) return 'race_like';
   if (duration <= 75 * 60 && load <= 40) return 'recovery';
   if (z2 >= 90 * 60 || duration >= 2.5 * 3600 || load >= 80) return 'endurance';
   return 'endurance';
@@ -137,10 +150,10 @@ export function buildTrainingNeedsSummary(
     : objective === 'race_specificity'
       ? (systemStatus.race_specificity === 'needs_focus' ? 'race_specificity' : systemStatus.repeatability === 'needs_focus' ? 'repeatability' : 'threshold_support')
       : (priorities.find((key) => key !== 'anaerobic_support' && systemStatus[key] === 'needs_focus') as TrainingNeedsSummary['primaryLimiter'] | undefined) || 'repeatability';
-  const primaryLimiters = priorities.filter((key) => systemStatus[key] === 'needs_focus');
-  if (!primaryLimiters.includes(primaryLimiter)) {
-    primaryLimiters.unshift(primaryLimiter);
-  }
+  const primaryLimiters = [
+    primaryLimiter,
+    ...priorities.filter((key) => key !== primaryLimiter && systemStatus[key] === 'needs_focus'),
+  ];
   const protectedStrengths = (['repeatability', 'threshold_support', 'race_specificity', 'aerobic_durability'] as const)
     .filter((key) => systemStatus[key] === 'good');
 
