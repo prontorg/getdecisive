@@ -24,6 +24,8 @@ type Workout = {
   date: string;
   label: string;
   intervalLabel?: string;
+  familyIntent?: string;
+  selectionRationale?: string[];
   category: 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
   durationMinutes?: number;
   targetLoad?: number;
@@ -61,7 +63,8 @@ function shortCategoryLabel(category: Workout['category']) {
   }
 }
 
-function familyIntentLabel(workout: Pick<Workout, 'category' | 'label' | 'intervalLabel'>) {
+function familyIntentLabel(workout: Pick<Workout, 'category' | 'label' | 'intervalLabel' | 'familyIntent'>) {
+  if (workout.familyIntent) return workout.familyIntent;
   const text = `${workout.label} ${workout.intervalLabel || ''}`.toLowerCase();
   if (/standing-start|torque/.test(text)) return 'standing start';
   if (/sprint primer|neuromuscular sprint/.test(text)) return 'sprint';
@@ -72,6 +75,14 @@ function familyIntentLabel(workout: Pick<Workout, 'category' | 'label' | 'interv
   if (workout.category === 'endurance') return /long endurance/.test(text) ? 'long endurance' : 'endurance';
   if (workout.category === 'recovery') return 'recovery';
   return 'rest';
+}
+
+function selectionRationaleLabel(tags?: string[]) {
+  if (!tags?.length) return null;
+  return tags
+    .slice(0, 2)
+    .map((tag) => tag.replaceAll('_', ' '))
+    .join(' • ');
 }
 
 function weekdayLabel(date: string) {
@@ -426,7 +437,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>
-                      <span className="training-plan-session-card__tag training-plan-session-card__tag-family">{familyIntentLabel(workout)}</span>
+                      <span className="training-plan-session-card__tag training-plan-session-card__tag-family" title={selectionRationaleLabel(workout.selectionRationale) || undefined}>{familyIntentLabel(workout)}</span>
                       <span className="training-plan-session-card__tag">{shortCategoryLabel(workout.category)}</span>
                     </div>
                   </div>

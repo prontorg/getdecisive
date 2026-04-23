@@ -81,6 +81,8 @@ type MonthlyPlanWorkout = {
   date: string;
   label: string;
   intervalLabel?: string;
+  familyIntent?: string;
+  selectionRationale?: string[];
   category: 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
   durationMinutes?: number;
   targetLoad?: number;

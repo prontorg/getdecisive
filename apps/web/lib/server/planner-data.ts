@@ -160,6 +160,8 @@ export type MonthlyPlannerDraftPayload = {
       date: string;
       label: string;
       intervalLabel?: string;
+      familyIntent?: string;
+      selectionRationale?: string[];
       category: 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
       durationMinutes?: number;
       targetLoad?: number;
@@ -175,6 +177,8 @@ export type MonthlyPlannerDraftPayload = {
       date: string;
       label: string;
       intervalLabel?: string;
+      familyIntent?: string;
+      selectionRationale?: string[];
       category: 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
       durationMinutes?: number;
       targetLoad?: number;
@@ -542,8 +546,26 @@ type CatalogSelection = {
   category: PlannerWorkoutCategory;
   intervalLabel: string;
   family: PlannerWorkoutFamily;
+  familyIntent: string;
   rationaleTags: string[];
 };
+
+function familyIntentFromSelection(args: { family: PlannerWorkoutFamily; category: PlannerWorkoutCategory; label: string; intervalLabel: string }) {
+  const text = `${args.label} ${args.intervalLabel}`.toLowerCase();
+  if (args.family === 'standing_start') return 'standing start';
+  if (args.family === 'sprint_neuromuscular') return 'sprint';
+  if (args.family === 'opener' || /openers/.test(text)) return 'openers';
+  if (args.family === 'tempo') return 'tempo';
+  if (args.family === 'sweetspot') return 'sweetspot';
+  if (args.family === 'vo2_support') return 'vo2';
+  if (args.family === 'threshold_support') return 'threshold';
+  if (args.family === 'repeatability') return 'repeatability';
+  if (args.family === 'race_specific') return /bridge/.test(text) ? 'race bridge' : 'race specific';
+  if (args.family === 'endurance') return /long endurance/.test(text) ? 'long endurance' : 'endurance';
+  if (args.family === 'recovery') return 'recovery';
+  if (args.category === 'rest') return 'rest';
+  return 'support';
+}
 
 const SLOT_ALLOWED_FAMILIES: Record<WorkoutLibrarySlot, PlannerWorkoutFamily[]> = {
   support_primary: ['endurance', 'tempo', 'sweetspot', 'threshold_support', 'recovery'],
@@ -865,81 +887,53 @@ function scoreCatalogWorkout(entry: WorkoutCatalogEntry, context: CatalogSelecto
 function buildCatalogSelection(entry: WorkoutCatalogEntry, context: CatalogSelectorContext, rationaleTags: string[]): CatalogSelection {
   const family = entry.family;
   const category = plannerCategoryForFamily(family);
-  if (family === 'tempo') return { label: 'Tempo support', category, intervalLabel: '2x20min tempo @ 290-315w', family, rationaleTags };
-  if (family === 'sweetspot') return { label: 'Sweetspot support', category, intervalLabel: '3x15min sweetspot @ 320-340w', family, rationaleTags };
-  if (family === 'vo2_support') return { label: 'VO2 support', category, intervalLabel: '5x4min max aerobic support @ 390-410w', family, rationaleTags };
+  const withIntent = (label: string, intervalLabel: string): CatalogSelection => ({
+    label,
+    category,
+    intervalLabel,
+    family,
+    familyIntent: familyIntentFromSelection({ family, category, label, intervalLabel }),
+    rationaleTags,
+  });
+  if (family === 'tempo') return withIntent('Tempo support', '2x20min tempo @ 290-315w');
+  if (family === 'sweetspot') return withIntent('Sweetspot support', '3x15min sweetspot @ 320-340w');
+  if (family === 'vo2_support') return withIntent('VO2 support', '5x4min max aerobic support @ 390-410w');
   if (family === 'race_specific') {
     const label = context.weekFocus === 'repeatability' ? 'Race-pace bridge' : 'Race-like session';
     const intervalLabel = context.weekFocus === 'repeatability'
       ? 'race pace jumps + 4x2min stochastic bridge'
       : plannedIntervalLabel('race_like', context.index, context.intervalContext);
-    return { label, category, intervalLabel, family, rationaleTags };
+    return withIntent(label, intervalLabel);
   }
   if (family === 'recovery') {
-    return {
-      label: context.weekFocus === 'freshen' && context.isLighterWeek ? 'Recovery + openers' : 'Recovery spin',
-      category,
-      intervalLabel: plannedIntervalLabel('recovery', context.index, { ...context.intervalContext, taper: context.weekFocus === 'freshen' || context.isLighterWeek || context.eventPressure === 'taper' }),
-      family,
-      rationaleTags,
-    };
+    return withIntent(
+      context.weekFocus === 'freshen' && context.isLighterWeek ? 'Recovery + openers' : 'Recovery spin',
+      plannedIntervalLabel('recovery', context.index, { ...context.intervalContext, taper: context.weekFocus === 'freshen' || context.isLighterWeek || context.eventPressure === 'taper' }),
+    );
   }
-  if (family === 'opener') {
-    return {
-      label: 'Openers',
-      category,
-      intervalLabel: '3x1min progressive openers + flying efforts',
-      family,
-      rationaleTags,
-    };
-  }
+  if (family === 'opener') return withIntent('Openers', '3x1min progressive openers + flying efforts');
   if (family === 'sprint_neuromuscular') {
-    return {
-      label: 'Sprint primer',
-      category,
-      intervalLabel: context.weekFocus === 'freshen'
-        ? '6x8s sprint primer + fast-leg reset'
-        : '8x10s neuromuscular sprint set + rolling release',
-      family,
-      rationaleTags,
-    };
+    return withIntent(
+      'Sprint primer',
+      context.weekFocus === 'freshen' ? '6x8s sprint primer + fast-leg reset' : '8x10s neuromuscular sprint set + rolling release',
+    );
   }
-  if (family === 'standing_start') {
-    return {
-      label: 'Standing-start torque',
-      category,
-      intervalLabel: '6x12s standing-start torque + seated launch resets',
-      family,
-      rationaleTags,
-    };
-  }
+  if (family === 'standing_start') return withIntent('Standing-start torque', '6x12s standing-start torque + seated launch resets');
   if (family === 'threshold_support') {
-    return {
-      label: context.slot === 'quality_primary' ? 'Threshold support anchor' : context.weekFocus === 'freshen' && context.isLighterWeek ? 'Threshold opener set' : 'Threshold support',
-      category,
-      intervalLabel: context.weekFocus === 'freshen' && context.isLighterWeek
+    return withIntent(
+      context.slot === 'quality_primary' ? 'Threshold support anchor' : context.weekFocus === 'freshen' && context.isLighterWeek ? 'Threshold opener set' : 'Threshold support',
+      context.weekFocus === 'freshen' && context.isLighterWeek
         ? plannedIntervalLabel('threshold_support', context.index, { ...context.intervalContext, thresholdNeedsSupport: false, taper: true })
         : plannedIntervalLabel('threshold_support', context.index, context.intervalContext),
-      family,
-      rationaleTags,
-    };
+    );
   }
   if (family === 'endurance') {
-    return {
-      label: context.slot === 'long_endurance' ? (context.isLighterWeek ? 'Endurance support' : 'Long endurance support') : 'Support endurance',
-      category,
-      intervalLabel: plannedIntervalLabel('endurance', context.index, context.intervalContext),
-      family,
-      rationaleTags,
-    };
+    return withIntent(
+      context.slot === 'long_endurance' ? (context.isLighterWeek ? 'Endurance support' : 'Long endurance support') : 'Support endurance',
+      plannedIntervalLabel('endurance', context.index, context.intervalContext),
+    );
   }
-  return {
-    label: entry.label,
-    category,
-    intervalLabel: plannedIntervalLabel(category, context.index, context.intervalContext),
-    family,
-    rationaleTags,
-  };
+  return withIntent(entry.label, plannedIntervalLabel(category, context.index, context.intervalContext));
 }
 
 function selectCatalogWorkout(context: CatalogSelectorContext): CatalogSelection {
@@ -964,7 +958,7 @@ function selectWorkoutFromLibrary(args: {
   freshnessState: 'blocked' | 'constrained' | 'usable' | 'fresh';
   eventPressure: 'far' | 'medium' | 'near' | 'taper';
   alreadyChosenFamilies?: PlannerWorkoutFamily[];
-}): { label: string; category: PlannerWorkoutCategory; intervalLabel: string; family: PlannerWorkoutFamily | 'rest' } {
+}): { label: string; category: PlannerWorkoutCategory; intervalLabel: string; family: PlannerWorkoutFamily | 'rest'; familyIntent: string; selectionRationale: string[] } {
   const { weekFocus, slot, category, index, context, isLighterWeek, objective, freshnessState, eventPressure, alreadyChosenFamilies } = args;
 
   if (slot === 'rest') {
@@ -973,6 +967,8 @@ function selectWorkoutFromLibrary(args: {
       category: 'rest',
       intervalLabel: plannedIntervalLabel('rest', index, context),
       family: 'rest',
+      familyIntent: 'rest',
+      selectionRationale: ['rest_day'],
     };
   }
 
@@ -982,6 +978,8 @@ function selectWorkoutFromLibrary(args: {
       category: 'recovery',
       intervalLabel: plannedIntervalLabel('recovery', index, { ...context, taper: true }),
       family: 'recovery',
+      familyIntent: 'recovery',
+      selectionRationale: ['recovery_guardrail'],
     };
   }
 
@@ -1007,6 +1005,8 @@ function selectWorkoutFromLibrary(args: {
     category: selection.category,
     intervalLabel: selection.intervalLabel,
     family: selection.family,
+    familyIntent: selection.familyIntent,
+    selectionRationale: selection.rationaleTags,
   };
 }
 
@@ -1903,13 +1903,13 @@ export function buildMonthlyPlannerDraftPayload(
           : 92;
     const longEnduranceTargetLoad = longEnduranceWorkout.label === 'Endurance support' ? 50 : 85;
     const plannedWorkouts = placeWeeklyWorkouts(monday, [
-      { date: isoDate(monday), preferredOffset: 0, label: supportWorkout.label, intervalLabel: supportWorkout.intervalLabel, category: supportWorkout.category, durationMinutes: supportDurationMinutes, targetLoad: supportTargetLoad, locked: false },
-      { date: isoDate(new Date(monday.getTime() + 86400000)), preferredOffset: 1, label: qualityOneWorkout.label, intervalLabel: qualityOneWorkout.intervalLabel, category: qualityOneWorkout.category, durationMinutes: qualityOneMinutes, targetLoad: qualityOneTargetLoad, locked: false },
-      { date: isoDate(new Date(monday.getTime() + 2 * 86400000)), preferredOffset: 2, label: supportTwoWorkout.label, intervalLabel: supportTwoWorkout.intervalLabel, category: supportTwoWorkout.category, durationMinutes: supportTwoDurationMinutes, targetLoad: supportTwoTargetLoad, locked: false },
-      { date: isoDate(new Date(monday.getTime() + 4 * 86400000)), preferredOffset: 4, label: qualityTwoWorkout.label, intervalLabel: qualityTwoWorkout.intervalLabel, category: qualityTwoWorkout.category, durationMinutes: qualityTwoMinutes, targetLoad: qualityTwoTargetLoad, locked: false },
-      { date: isoDate(new Date(monday.getTime() + 6 * 86400000)), preferredOffset: 6, label: longEnduranceWorkout.label, intervalLabel: longEnduranceWorkout.intervalLabel, category: longEnduranceWorkout.category, durationMinutes: longMinutes, targetLoad: longEnduranceTargetLoad, locked: false },
-      { date: isoDate(new Date(monday.getTime() + restOffset * 86400000)), preferredOffset: restOffset, label: restWorkout.label, intervalLabel: restWorkout.intervalLabel, category: restWorkout.category, durationMinutes: 0, targetLoad: 0, locked: false },
-      ...(restDaysPerWeek >= 2 ? [{ date: isoDate(new Date(monday.getTime() + extraRestOffset * 86400000)), preferredOffset: extraRestOffset, label: restWorkout.label, intervalLabel: plannedIntervalLabel('rest', 6, intervalContext), category: restWorkout.category, durationMinutes: 0, targetLoad: 0, locked: false }] : []),
+      { date: isoDate(monday), preferredOffset: 0, label: supportWorkout.label, intervalLabel: supportWorkout.intervalLabel, familyIntent: supportWorkout.familyIntent, selectionRationale: supportWorkout.selectionRationale, category: supportWorkout.category, durationMinutes: supportDurationMinutes, targetLoad: supportTargetLoad, locked: false },
+      { date: isoDate(new Date(monday.getTime() + 86400000)), preferredOffset: 1, label: qualityOneWorkout.label, intervalLabel: qualityOneWorkout.intervalLabel, familyIntent: qualityOneWorkout.familyIntent, selectionRationale: qualityOneWorkout.selectionRationale, category: qualityOneWorkout.category, durationMinutes: qualityOneMinutes, targetLoad: qualityOneTargetLoad, locked: false },
+      { date: isoDate(new Date(monday.getTime() + 2 * 86400000)), preferredOffset: 2, label: supportTwoWorkout.label, intervalLabel: supportTwoWorkout.intervalLabel, familyIntent: supportTwoWorkout.familyIntent, selectionRationale: supportTwoWorkout.selectionRationale, category: supportTwoWorkout.category, durationMinutes: supportTwoDurationMinutes, targetLoad: supportTwoTargetLoad, locked: false },
+      { date: isoDate(new Date(monday.getTime() + 4 * 86400000)), preferredOffset: 4, label: qualityTwoWorkout.label, intervalLabel: qualityTwoWorkout.intervalLabel, familyIntent: qualityTwoWorkout.familyIntent, selectionRationale: qualityTwoWorkout.selectionRationale, category: qualityTwoWorkout.category, durationMinutes: qualityTwoMinutes, targetLoad: qualityTwoTargetLoad, locked: false },
+      { date: isoDate(new Date(monday.getTime() + 6 * 86400000)), preferredOffset: 6, label: longEnduranceWorkout.label, intervalLabel: longEnduranceWorkout.intervalLabel, familyIntent: longEnduranceWorkout.familyIntent, selectionRationale: longEnduranceWorkout.selectionRationale, category: longEnduranceWorkout.category, durationMinutes: longMinutes, targetLoad: longEnduranceTargetLoad, locked: false },
+      { date: isoDate(new Date(monday.getTime() + restOffset * 86400000)), preferredOffset: restOffset, label: restWorkout.label, intervalLabel: restWorkout.intervalLabel, familyIntent: restWorkout.familyIntent, selectionRationale: restWorkout.selectionRationale, category: restWorkout.category, durationMinutes: 0, targetLoad: 0, locked: false },
+      ...(restDaysPerWeek >= 2 ? [{ date: isoDate(new Date(monday.getTime() + extraRestOffset * 86400000)), preferredOffset: extraRestOffset, label: restWorkout.label, intervalLabel: plannedIntervalLabel('rest', 6, intervalContext), familyIntent: restWorkout.familyIntent, selectionRationale: restWorkout.selectionRationale, category: restWorkout.category, durationMinutes: 0, targetLoad: 0, locked: false }] : []),
     ], { restOffset, longOffset, noBackToBack });
     const workouts = ensureRestDayCount(
       capWorkoutsToTargetHours(

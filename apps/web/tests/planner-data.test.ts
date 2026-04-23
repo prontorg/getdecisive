@@ -1140,6 +1140,36 @@ test('monthly planner selector keeps sprint and standing-start families out of g
   assert.equal(Boolean(leakedSpecificity), false);
 });
 
+test('monthly planner draft payload persists family intent and selection rationale for planned workouts', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-20',
+    goal_race_date: '2026-05-03',
+    working_threshold_w: 365,
+    wellness: { ctl: 105, atl: 100 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-19T09:00:00', session_type: 'threshold / race-support ride', training_load: 132, duration_s: 6600, weighted_avg_watts: 352, summary: { short_label: '2x15 threshold' }, zone_times: { Z4: 2100 } },
+      { activity_id: '2', start_date_local: '2026-04-17T09:00:00', session_type: 'endurance / Z2 ride', training_load: 78, duration_s: 8400, summary: { short_label: 'Endurance' }, zone_times: { Z2: 7000 } },
+      { activity_id: '3', start_date_local: '2026-04-15T09:00:00', session_type: 'endurance / Z2 ride', training_load: 72, duration_s: 7200, summary: { short_label: 'Support endurance' }, zone_times: { Z2: 6000 } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen track racing with standing-start acceleration and sprint primer work',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 8.5 },
+  });
+
+  const specificityWorkout = payload.weeks
+    .slice(0, 2)
+    .flatMap((week) => week.workouts)
+    .find((workout) => /standing-start|sprint primer|neuromuscular sprint|torque/i.test(`${workout.label} ${workout.intervalLabel || ''}`));
+
+  assert.ok(specificityWorkout);
+  assert.equal(typeof specificityWorkout.familyIntent, 'string');
+  assert.equal((specificityWorkout.familyIntent || '').length > 0, true);
+  assert.equal(Array.isArray(specificityWorkout.selectionRationale), true);
+  assert.equal((specificityWorkout.selectionRationale || []).length > 0, true);
+});
+
 test('monthly planner draft payload starts from the current week and respects the remaining weekly-hour cap', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-23',

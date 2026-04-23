@@ -132,6 +132,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /planner-race-badge/i);
   assert.match(calendarSource, /planEventBadgeClass/i);
   assert.match(calendarSource, /intervalLabel/i);
+  assert.match(calendarSource, /familyIntent/i);
+  assert.match(calendarSource, /selectionRationale/i);
   assert.match(calendarSource, /training-plan-session-card__subhead/i);
   assert.match(calendarSource, /familyIntentLabel/i);
   assert.match(calendarSource, /training-plan-session-card__tag-family/i);
