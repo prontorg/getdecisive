@@ -30,7 +30,8 @@ type Workout = {
   durationMinutes?: number;
   targetLoad?: number;
   locked: boolean;
-  status: 'planned' | 'published_local' | 'published_intervals' | 'completed';
+  status: 'planned' | 'published_local' | 'published_intervals' | 'completed' | 'skipped' | 'replaced' | 'completed_modified';
+  reconciliationNote?: string;
 };
 
 type Week = {
@@ -97,6 +98,31 @@ function shiftDate(date: string, days: number) {
   const next = new Date(`${date}T00:00:00Z`);
   next.setUTCDate(next.getUTCDate() + days);
   return next.toISOString().slice(0, 10);
+}
+
+function statusTagLabel(status: Workout['status']) {
+  switch (status) {
+    case 'completed': return 'done';
+    case 'completed_modified': return 'done*';
+    case 'skipped': return 'skipped';
+    case 'replaced': return 'replaced';
+    case 'published_local': return 'local';
+    case 'published_intervals': return 'intervals';
+    default: return 'planned';
+  }
+}
+
+function isVisiblePastPlannedWorkout(workout: Workout) {
+  return workout.status === 'skipped' || workout.status === 'replaced' || workout.status === 'completed_modified';
+}
+
+function statusToneClass(status: Workout['status']) {
+  switch (status) {
+    case 'skipped': return 'training-plan-session-card-status-skipped';
+    case 'replaced': return 'training-plan-session-card-status-replaced';
+    case 'completed_modified': return 'training-plan-session-card-status-completed-modified';
+    default: return '';
+  }
 }
 
 function sessionToneClass(category: Workout['category'] | undefined) {
@@ -219,7 +245,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
     return { tone: 'safe' as const, text: 'Drop looks usable' };
   }
 
-  async function mutateWorkout(workoutId: string, action: 'lock' | 'easier' | 'harder' | 'remove', extra: Record<string, unknown> = {}) {
+  async function mutateWorkout(workoutId: string, action: 'lock' | 'easier' | 'harder' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified', extra: Record<string, unknown> = {}) {
     const workout = workoutsById.get(workoutId);
     if (!workout) return;
     setSuccessNotice(null);
@@ -247,7 +273,15 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
           ? `${workout.label} ${workout.locked ? 'unlocked' : 'locked'}`
           : action === 'easier'
             ? `${workout.label} made easier`
-            : `${workout.label} made harder`;
+            : action === 'harder'
+              ? `${workout.label} made harder`
+              : action === 'skip'
+                ? `${workout.label} marked skipped`
+                : action === 'replace_with_support'
+                  ? `${workout.label} replaced with support`
+                  : action === 'mark_done_modified'
+                    ? `${workout.label} marked done-modified`
+                    : `${workout.label} updated`;
       setSuccessNotice(nextNotice);
       router.refresh();
     } finally {
@@ -327,7 +361,7 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
         {calendarDays.map((date) => {
           const dayData = workoutsByDate.get(date) || { completed: [], planned: [], weekIndex: undefined };
           const isPastDay = Boolean(today) && date <= today;
-          const plannedForDisplay = isPastDay ? [] : dayData.planned;
+          const plannedForDisplay = isPastDay ? dayData.planned.filter((workout) => isVisiblePastPlannedWorkout(workout)) : dayData.planned;
           const isRestLike = !dayData.completed.length && !plannedForDisplay.length;
           const isOutsidePlannedRange = !workoutsByDate.has(date);
           const activeHint = dayHint(draggingWorkoutId, date);
@@ -370,12 +404,13 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
               {isHinted && activeHint ? <p className={`training-plan-day-card__drop-hint training-plan-day-card__drop-hint-${activeHint.tone}`}>{activeHint.text}</p> : null}
               <div className="training-plan-day-card__sessions">
                 {dayData.completed.map((workout) => (
-                  <div key={workout.id} className={`training-plan-session-card training-plan-session-card-completed ${sessionToneClass(workout.category)}`}>
+                  <div key={workout.id} className={`training-plan-session-card training-plan-session-card-completed ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)}`}>
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
-                      <span className="training-plan-session-card__tag">done</span>
+                      <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span>
                     </div>
                     {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
+                    {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>
@@ -396,16 +431,18 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
                       setDraggingWorkoutId(null);
                       setHoverDate(null);
                     }}
-                    className={`training-plan-session-card ${sessionToneClass(workout.category)} ${busyDate === date ? 'training-plan-session-card-busy' : ''}`}
+                    className={`training-plan-session-card ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)} ${busyDate === date ? 'training-plan-session-card-busy' : ''}`}
                   >
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
                       <div className="training-plan-session-card__actions">
                         {workout.locked ? <span className="training-plan-session-card__tag">lock</span> : null}
+                        {workout.status !== 'planned' ? <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span> : null}
                         <div className="training-plan-session-card__quick-actions">
                           <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'easier')}>Easier</button>
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'harder')}>Harder</button>
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'lock', { locked: !workout.locked })}>{workout.locked ? 'Unlock' : 'Lock'}</button>
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'skip')}>Skip</button>
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'replace_with_support')}>Replace</button>
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'mark_done_modified')}>Done*</button>
                         </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>
@@ -419,6 +456,9 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
                                 <option value="move_day">Move day</option>
                                 <option value="easier">Easier</option>
                                 <option value="harder">Harder</option>
+                                <option value="skip">Skip</option>
+                                <option value="replace_with_support">Replace with support</option>
+                                <option value="mark_done_modified">Mark done modified</option>
                                 <option value="lock">Lock / unlock</option>
                                 <option value="remove">Remove</option>
                               </select>
@@ -428,12 +468,18 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
                               <input type="date" name="moveDate" defaultValue={workout.date} />
                             </label>
                             <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'remove')}>Remove now</button>
+                            <div className="training-plan-inline-menu__reconcile-row">
+                              <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'skip')}>Skip now</button>
+                              <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'replace_with_support')}>Replace now</button>
+                              <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'mark_done_modified')}>Done* now</button>
+                            </div>
                             <button type="submit">Apply</button>
                           </form>
                         </details>
                       </div>
                     </div>
                     {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
+                    {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>

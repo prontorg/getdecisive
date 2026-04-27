@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import { replanCurrentWeekForScenario } from '../../../../../lib/server/planner-data';
+import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
 import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, replaceMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
@@ -60,24 +61,7 @@ export async function POST(request: Request) {
     }, scenario as 'missed_session' | 'fatigued' | 'fresher' | 'reduce_load' | 'increase_specificity');
 
     const existingWeek = draft.weeks.find((week) => week.weekIndex === nextWeek.weekIndex)!;
-    const updatedDraft = await replaceMonthlyPlanWeek(userId, draftId, {
-      ...existingWeek,
-      ...nextWeek,
-      completedThisWeek: (existingWeek.completedThisWeek || []).map((workout, index) => ({
-        ...workout,
-        id: workout.id || `cw_${existingWeek.weekIndex}_${index + 1}`,
-        source: workout.source || 'completed',
-        status: workout.status || 'completed',
-      })),
-      workouts: nextWeek.workouts.map((workout, index) => ({
-        ...existingWeek.workouts[index],
-        ...workout,
-        id: existingWeek.workouts[index]?.id || `${existingWeek.id}_replan_${index + 1}`,
-        source: existingWeek.workouts[index]?.source || 'user_modified',
-        status: existingWeek.workouts[index]?.status || 'planned',
-        locked: existingWeek.workouts[index]?.locked ?? false,
-      })),
-    });
+    const updatedDraft = await replaceMonthlyPlanWeek(userId, draftId, toStoredWeekFromGenerated(nextWeek, existingWeek));
 
     logRouteEvent(ROUTE, 'info', 'Current-week bridge replanned', {
       userId,

@@ -89,7 +89,8 @@ type MonthlyPlanWorkout = {
   notes?: string;
   locked: boolean;
   source: 'generated' | 'user_modified' | 'completed';
-  status: 'planned' | 'published_local' | 'published_intervals' | 'completed';
+  status: 'planned' | 'published_local' | 'published_intervals' | 'completed' | 'skipped' | 'replaced' | 'completed_modified';
+  reconciliationNote?: string;
 };
 
 type MonthlyPlanWeek = {

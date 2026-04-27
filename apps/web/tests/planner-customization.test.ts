@@ -115,6 +115,56 @@ test('monthly drafts can update workout lock state and mark user modifications',
   });
 });
 
+test('monthly drafts can record skipped, replaced, and done-modified reconciliation states', async () => {
+  await withPlannerCustomizationModule(async ({ saveMonthlyPlanDraft, getLatestMonthlyPlanDraft, updateMonthlyPlanWorkout }) => {
+    const drafts = await saveMonthlyPlanDraft('user_1', {
+      monthStart: '2026-04-01',
+      inputId: 'input_1',
+      assumptions: {
+        recentSummary: [],
+        availabilitySummary: [],
+        guardrailSummary: [],
+      },
+      weeks: [
+        {
+          id: 'week_1',
+          weekIndex: 1,
+          label: 'Reconcile',
+          intent: 'Keep the planner honest about what happened.',
+          targetHours: 8,
+          targetLoad: 360,
+          rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+          workouts: [
+            { id: 'w_1', date: '2026-04-07', label: 'Repeatability set', category: 'repeatability', locked: false, source: 'generated', status: 'planned', durationMinutes: 70, targetLoad: 92 },
+            { id: 'w_2', date: '2026-04-08', label: 'Threshold support', category: 'threshold_support', locked: false, source: 'generated', status: 'planned', durationMinutes: 85, targetLoad: 88 },
+            { id: 'w_3', date: '2026-04-09', label: 'Race-like bridge', category: 'race_like', locked: false, source: 'generated', status: 'planned', durationMinutes: 75, targetLoad: 90 },
+          ],
+        },
+      ],
+      publishState: 'draft',
+    });
+
+    const draftId = drafts[0]!.id;
+    await updateMonthlyPlanWorkout('user_1', draftId, 'w_1', { status: 'skipped', locked: true, reconciliationNote: 'Skipped instead of Repeatability set' });
+    await updateMonthlyPlanWorkout('user_1', draftId, 'w_2', { status: 'replaced', category: 'endurance', label: 'Support replacement', reconciliationNote: 'Replaced planned Threshold support with support work' });
+    await updateMonthlyPlanWorkout('user_1', draftId, 'w_3', { status: 'completed_modified', locked: true, reconciliationNote: 'Completed with modified execution vs planned Race-like bridge' });
+
+    const latest = await getLatestMonthlyPlanDraft('user_1');
+    const skipped = latest?.weeks[0]?.workouts.find((workout) => workout.id === 'w_1');
+    const replaced = latest?.weeks[0]?.workouts.find((workout) => workout.id === 'w_2');
+    const doneModified = latest?.weeks[0]?.workouts.find((workout) => workout.id === 'w_3');
+    assert.equal(skipped?.status, 'skipped');
+    assert.equal(skipped?.locked, true);
+    assert.match(skipped?.reconciliationNote || '', /Skipped instead/i);
+    assert.equal(replaced?.status, 'replaced');
+    assert.equal(replaced?.category, 'endurance');
+    assert.match(replaced?.reconciliationNote || '', /support work/i);
+    assert.equal(doneModified?.status, 'completed_modified');
+    assert.equal(doneModified?.locked, true);
+    assert.match(doneModified?.reconciliationNote || '', /modified execution/i);
+  });
+});
+
 test('monthly drafts can update a week block without replacing other weeks', async () => {
   await withPlannerCustomizationModule(async ({ saveMonthlyPlanDraft, updateMonthlyPlanWeek, getLatestMonthlyPlanDraft }) => {
     const drafts = await saveMonthlyPlanDraft('user_1', {

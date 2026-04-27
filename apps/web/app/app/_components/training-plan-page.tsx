@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { appRoutes } from '../../../lib/routes';
 import {
+  buildCurrentWeekReplanPayload,
   buildGoalPayload,
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
@@ -11,6 +12,7 @@ import {
   getAuthorizedPlannerLiveContext,
   replaceCurrentWeekWithRuntime,
 } from '../../../lib/server/planner-data';
+import { toStoredWeekFromGenerated } from '../../../lib/server/monthly-plan-persistence';
 import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, saveMonthlyPlanDraft, listPlanningEvents } from '../../../lib/server/planner-customization';
 import { getLatestIntervalsConnectionRecord } from '../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../lib/server/session';
@@ -117,9 +119,15 @@ export async function TrainingPlanPage({
       ambition: latestInput.ambition,
       currentDirection,
       successMarkers: latestInput.successMarkers,
+      sourceWindowDays: latestInput.sourceWindowDays,
+      ignoreSickWeek: latestInput.ignoreSickWeek,
+      ignoreVacationWeek: latestInput.ignoreVacationWeek,
+      excludeNonPrimarySport: latestInput.excludeNonPrimarySport,
       mustFollow: {
         noBackToBackHardDays: latestInput.mustFollow.noBackToBackHardDays,
         maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours,
+        maxWeekdayMinutes: latestInput.mustFollow.maxWeekdayMinutes,
+        unavailableDates: latestInput.mustFollow.unavailableDates,
       },
       preferences: {
         restDay: latestInput.preferences.restDay,
@@ -132,53 +140,18 @@ export async function TrainingPlanPage({
       monthStart: regenerated.monthStart,
       inputId: latestInput.id,
       assumptions: regenerated.assumptions,
-      weeks: regenerated.weeks.map((week) => ({
-        id: `week_${week.weekIndex}`,
-        weekIndex: week.weekIndex,
-        label: week.label,
-        intent: week.intent,
-        weekTypeLabel: week.weekTypeLabel,
-        targetHours: week.targetHours,
-        targetLoad: week.targetLoad,
-        availableHours: week.availableHours,
-        eventHours: week.eventHours,
-        longSessionDay: week.longSessionDay,
-        completedThisWeek: (week.completedThisWeek || []).map((workout, index) => ({
-          id: `cw_${week.weekIndex}_${index + 1}`,
-          date: workout.date,
-          label: workout.label,
-          intervalLabel: workout.intervalLabel,
-          familyIntent: workout.familyIntent,
-          selectionRationale: workout.selectionRationale,
-          category: workout.category,
-          durationMinutes: workout.durationMinutes,
-          targetLoad: workout.targetLoad,
-          locked: true,
-          source: 'completed',
-          status: 'completed',
-        })),
-        rationale: week.rationale,
-        workouts: week.workouts.map((workout, index) => ({
-          id: `w_${week.weekIndex}_${index + 1}`,
-          date: workout.date,
-          label: workout.label,
-          intervalLabel: workout.intervalLabel,
-          familyIntent: workout.familyIntent,
-          selectionRationale: workout.selectionRationale,
-          category: workout.category,
-          durationMinutes: workout.durationMinutes,
-          targetLoad: workout.targetLoad,
-          locked: workout.locked,
-          source: 'generated',
-          status: 'planned',
-        })),
-      })),
+      weeks: regenerated.weeks.map((week) => toStoredWeekFromGenerated(week, latestDraft?.weeks.find((existing) => existing.weekIndex === week.weekIndex))),
       publishState: latestDraft?.publishState === 'published' ? 'published' : 'draft',
     });
     latestDraft = savedDrafts[0] || null;
   }
 
-  const contextPayload = buildMonthlyPlannerContextPayload(planner.live, currentDirection);
+  const contextPayload = buildMonthlyPlannerContextPayload(planner.live, currentDirection, latestInput ? {
+    sourceWindowDays: latestInput.sourceWindowDays,
+    ignoreSickWeek: latestInput.ignoreSickWeek,
+    ignoreVacationWeek: latestInput.ignoreVacationWeek,
+    excludeNonPrimarySport: latestInput.excludeNonPrimarySport,
+  } : undefined);
   const comparePayload = buildMonthlyPlannerComparePayload(planner.live, latestDraft ? {
     monthStart: latestDraft.monthStart,
     objective: latestInput?.objective || 'repeatability',
@@ -193,6 +166,25 @@ export async function TrainingPlanPage({
     },
     weeks: latestDraft.weeks,
   } : null);
+  const currentWeekReplan = buildCurrentWeekReplanPayload(planner.live, latestDraft ? {
+    monthStart: latestDraft.monthStart,
+    objective: latestInput?.objective || 'repeatability',
+    ambition: latestInput?.ambition || 'balanced',
+    assumptions: {
+      ctl: latestDraft.assumptions.ctl || 0,
+      atl: latestDraft.assumptions.atl || 0,
+      form: latestDraft.assumptions.form || 0,
+      recentSummary: latestDraft.assumptions.recentSummary,
+      availabilitySummary: latestDraft.assumptions.availabilitySummary,
+      guardrailSummary: latestDraft.assumptions.guardrailSummary,
+    },
+    weeks: latestDraft.weeks,
+  } : null, latestInput ? {
+    objective: latestInput.objective,
+    ambition: latestInput.ambition,
+    currentDirection,
+    mustFollow: { maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours },
+  } : undefined);
   const isCalendarMode = mode === 'calendar';
   const heroTitle = isCalendarMode ? 'Calendar' : 'Plan';
   const heroEyebrow = isCalendarMode ? 'Calendar' : 'Plan';
@@ -215,7 +207,14 @@ const draftStatusLabel = latestDraft
       ? 'Draft saved and locally published'
       : 'Draft saved locally and still editable'
     : 'No draft saved yet';
-  const recommendationPayload = buildPlanningRecommendationPayload(planner.live, currentDirection);
+  const recommendationPayload = buildPlanningRecommendationPayload(planner.live, currentDirection, latestInput ? {
+    sourceWindowDays: latestInput.sourceWindowDays,
+    ignoreSickWeek: latestInput.ignoreSickWeek,
+    ignoreVacationWeek: latestInput.ignoreVacationWeek,
+    excludeNonPrimarySport: latestInput.excludeNonPrimarySport,
+    objective: latestInput.objective,
+    mustFollow: { maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours },
+  } : undefined);
   const selectedObjectiveValue = latestInput?.objective || recommendationPayload.primary.objective;
   const selectedDirectionLabel = objectiveOptions.find((item) => item.value === selectedObjectiveValue)?.label || selectedObjectiveValue || 'No direction selected yet';
   const selectedRecommendation = latestInput?.selectedRecommendation || (latestInput
@@ -282,6 +281,8 @@ const draftStatusLabel = latestDraft
                 <span className="training-plan-mini-fact"><strong>Main implication</strong>{contextPayload.statusQuo.mainImplication}</span>
                 <span className="training-plan-mini-fact"><strong>Event proximity</strong>{contextPayload.statusQuo.eventProximity}</span>
                 <span className="training-plan-mini-fact"><strong>Recent focus</strong>{contextPayload.statusQuo.recentFocus.join(' • ')}</span>
+                <span className="training-plan-mini-fact"><strong>Evidence window</strong>{contextPayload.statusQuo.evidenceSummary}</span>
+                <span className="training-plan-mini-fact"><strong>Excluded by filters</strong>{contextPayload.statusQuo.excludedRowSummary}</span>
               </div>
             </AppCard>
 
@@ -336,6 +337,36 @@ const draftStatusLabel = latestDraft
                 </div>
               </div>
 
+              {latestDraft ? (
+                <div className="training-plan-current-week-panel">
+                  <div className="training-plan-current-week-panel__header">
+                    <div>
+                      <div className="kicker">Current week repair</div>
+                      <strong>What should actually happen this week</strong>
+                    </div>
+                    <div className="chip-row">
+                      <span className="chip">Focus: {currentWeekReplan.recommendedFocus.replace('_', ' ')}</span>
+                      <span className="chip">{currentWeekReplan.remainingWeekHours.toFixed(1)} h left</span>
+                      <span className="chip">Quality budget: {currentWeekReplan.remainingQualityBudget}</span>
+                    </div>
+                  </div>
+                  <p className="training-plan-current-week-panel__summary">{currentWeekReplan.recommendationText}</p>
+                  <div className="training-plan-mini-facts">
+                    <span className="training-plan-mini-fact"><strong>Planned so far</strong>{currentWeekReplan.plannedSoFar.length || 0}</span>
+                    <span className="training-plan-mini-fact"><strong>Completed so far</strong>{currentWeekReplan.completedSoFar.length || 0}</span>
+                    <span className="training-plan-mini-fact"><strong>Missed</strong>{currentWeekReplan.missedSessions.length || 0}</span>
+                    <span className="training-plan-mini-fact"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
+                  </div>
+                  <div className="training-plan-current-week-panel__actions">
+                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="missed_session" /><button type="submit" className="button-secondary button-link">Repair</button></form>
+                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="fatigued" /><button type="submit" className="button-secondary button-link">Too fatigued</button></form>
+                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="fresher" /><button type="submit" className="button-secondary button-link">Use freshness</button></form>
+                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="reduce_load" /><button type="submit" className="button-secondary button-link">Cut load</button></form>
+                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="increase_specificity" /><button type="submit" className="button-secondary button-link">Race-like</button></form>
+                  </div>
+                </div>
+              ) : null}
+
               <TrainingPlanStatefulBuilderClient
                 objectiveOptions={objectiveOptions}
                 recommendationPrimary={recommendationPayload.primary}
@@ -351,15 +382,22 @@ const draftStatusLabel = latestDraft
                   objective: latestInput?.objective || recommendationPayload.primary.objective,
                   ambition: latestInput?.ambition || 'balanced',
                   maxWeeklyHours: latestInput?.mustFollow.maxWeeklyHours || 10.5,
+                  maxWeekdayMinutes: latestInput?.mustFollow.maxWeekdayMinutes || 75,
                   restDay: latestInput?.preferences.restDay || 'Saturday',
                   restDaysPerWeek: latestInput?.preferences.restDaysPerWeek || 1,
                   longRideDay: latestInput?.preferences.longRideDay || 'Sunday',
+                  unavailableDates: latestInput?.mustFollow.unavailableDates || [],
                   noDoubles: latestInput?.mustFollow.noDoubles ?? true,
                   noBackToBackHardDays: latestInput?.mustFollow.noBackToBackHardDays ?? true,
+                  useLast28DaysOnly: latestInput?.sourceWindowDays === 28,
+                  ignoreSickWeek: latestInput?.ignoreSickWeek ?? false,
+                  ignoreVacationWeek: latestInput?.ignoreVacationWeek ?? false,
+                  excludeNonPrimarySport: latestInput?.excludeNonPrimarySport ?? false,
                   successMarkers: latestInput?.successMarkers || [],
                   note: latestInput?.note || '',
                 }}
                 successOptions={successOptions}
+                notice={notice}
               />
             </div>
           </AppCard>
@@ -389,6 +427,7 @@ const draftStatusLabel = latestDraft
                     ) : (
                       <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
                     )}
+                    <span className="chip">Built from: {latestDraft.assumptions?.selectedRecommendationTitle || latestInput?.selectedRecommendation?.title || latestInput?.objective || 'latest planner inputs'} • {fmtHours(latestInput?.mustFollow.maxWeeklyHours || 10.5)} • {latestInput?.preferences.restDay || 'Saturday'} rest</span>
                     <details className="training-plan-inline-panel">
                       <summary title="More month actions">⋯</summary>
                       <div className="training-plan-inline-panel__content">

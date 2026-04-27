@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
+import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
 import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, listPlanningEvents, replaceMonthlyPlanWeek, updateMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
@@ -116,37 +117,25 @@ export async function POST(request: Request) {
         ambition: latestInput?.ambition || 'balanced',
         currentDirection,
         successMarkers: latestInput?.successMarkers || [],
+        sourceWindowDays: latestInput?.sourceWindowDays,
+        ignoreSickWeek: latestInput?.ignoreSickWeek,
+        ignoreVacationWeek: latestInput?.ignoreVacationWeek,
+        excludeNonPrimarySport: latestInput?.excludeNonPrimarySport,
         mustFollow: {
           noBackToBackHardDays: latestInput?.mustFollow.noBackToBackHardDays,
           maxWeeklyHours: latestInput?.mustFollow.maxWeeklyHours,
+          maxWeekdayMinutes: latestInput?.mustFollow.maxWeekdayMinutes,
+          unavailableDates: latestInput?.mustFollow.unavailableDates,
+        },
+        preferences: {
+          restDay: latestInput?.preferences.restDay,
+          restDaysPerWeek: latestInput?.preferences.restDaysPerWeek,
+          longRideDay: latestInput?.preferences.longRideDay,
         },
         planEvents,
       }).weeks[week.weekIndex - 1];
       if (!regenerated) return routeErrorResponse(ROUTE, 500, 'Could not regenerate week', { userId, draftId, weekId, action });
-      nextDraft = await replaceMonthlyPlanWeek(userId, draftId, {
-        id: week.id,
-        weekIndex: week.weekIndex,
-        label: regenerated.label,
-        intent: regenerated.intent,
-        targetHours: regenerated.targetHours,
-        targetLoad: regenerated.targetLoad,
-        longSessionDay: regenerated.longSessionDay,
-        rationale: regenerated.rationale,
-        workouts: regenerated.workouts.map((workout, index) => ({
-          id: `${week.id}_regen_${index + 1}`,
-          date: workout.date,
-          label: workout.label,
-          intervalLabel: workout.intervalLabel,
-          familyIntent: workout.familyIntent,
-          selectionRationale: workout.selectionRationale,
-          category: workout.category,
-          durationMinutes: workout.durationMinutes,
-          targetLoad: workout.targetLoad,
-          locked: false,
-          source: 'generated',
-          status: 'planned',
-        })),
-      });
+      nextDraft = await replaceMonthlyPlanWeek(userId, draftId, toStoredWeekFromGenerated(regenerated, week));
     } else {
       nextDraft = await updateMonthlyPlanWeek(userId, draftId, weekId, tuneWeekFromAction(week, action));
     }

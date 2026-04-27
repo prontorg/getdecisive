@@ -14,6 +14,8 @@ import { getSessionUserId } from '../../../../../lib/server/session';
 const hardCategories = new Set(['repeatability', 'threshold_support', 'race_like']);
 const ROUTE = '/api/planner/month/workout';
 
+type WorkoutAction = 'lock' | 'easier' | 'harder' | 'move_day' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified';
+
 function workoutConflictSummary(
   draft: NonNullable<Awaited<ReturnType<typeof getLatestMonthlyPlanDraft>>>,
   workoutId: string,
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
   const pick = (key: string) => parsed instanceof FormData ? parsed.get(key) : parsed[key];
   const draftId = String(pick('draftId') || '');
   const workoutId = String(pick('workoutId') || '');
-  const action = String(pick('action') || '');
+  const action = String(pick('action') || '') as WorkoutAction;
   if (!draftId || !workoutId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, workoutId, action });
 
   try {
@@ -115,6 +117,29 @@ export async function POST(request: Request) {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
         date: moveDate,
         label: `${workout.label} - moved`,
+      });
+    } else if (action === 'skip') {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+        status: 'skipped',
+        locked: true,
+        reconciliationNote: `Skipped instead of ${workout.label}`,
+      });
+    } else if (action === 'replace_with_support') {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+        label: hardCategories.has(workout.category) ? 'Support replacement' : 'Recovery support replacement',
+        intervalLabel: `Replaced from ${workout.label}`,
+        familyIntent: 'support replacement',
+        category: hardCategories.has(workout.category) ? 'endurance' : 'recovery',
+        status: 'replaced',
+        reconciliationNote: `Replaced planned ${workout.label} with support work`,
+        targetLoad: workout.targetLoad ? Math.max(20, Math.round(workout.targetLoad * 0.62)) : workout.targetLoad,
+        durationMinutes: workout.durationMinutes ? Math.max(45, Math.round(workout.durationMinutes * 0.75)) : workout.durationMinutes,
+      });
+    } else if (action === 'mark_done_modified') {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+        status: 'completed_modified',
+        locked: true,
+        reconciliationNote: `Completed with modified execution vs planned ${workout.label}`,
       });
     } else if (action === 'remove') {
       nextDraft = await removeMonthlyPlanWorkout(userId, draftId, workoutId);

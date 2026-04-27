@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
+import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
 import { getUserGoalEntries, listPlanningEvents, saveMonthlyPlanDraft, saveMonthlyPlanInput } from '../../../../../lib/server/planner-customization';
 import { normalizeMonthlyPlanRequestBody } from '../../../../../lib/server/monthly-plan-request';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
@@ -32,9 +33,15 @@ export async function POST(request: Request) {
       ambition: latestInput?.ambition || 'balanced',
       currentDirection,
       successMarkers: latestInput?.successMarkers || [],
+      sourceWindowDays: latestInput?.sourceWindowDays,
+      ignoreSickWeek: latestInput?.ignoreSickWeek,
+      ignoreVacationWeek: latestInput?.ignoreVacationWeek,
+      excludeNonPrimarySport: latestInput?.excludeNonPrimarySport,
       mustFollow: {
         noBackToBackHardDays: latestInput?.mustFollow.noBackToBackHardDays,
         maxWeeklyHours: latestInput?.mustFollow.maxWeeklyHours,
+        maxWeekdayMinutes: latestInput?.mustFollow.maxWeekdayMinutes,
+        unavailableDates: latestInput?.mustFollow.unavailableDates,
       },
       preferences: {
         restDay: latestInput?.preferences.restDay,
@@ -54,47 +61,7 @@ export async function POST(request: Request) {
         selectedRecommendationReason: latestInput?.selectedRecommendation?.reason,
         selectedRecommendationConfidence: latestInput?.selectedRecommendation?.confidence,
       },
-      weeks: generated.weeks.map((week) => ({
-        id: `week_${week.weekIndex}`,
-        weekIndex: week.weekIndex,
-        label: week.label,
-        intent: week.intent,
-        weekTypeLabel: week.weekTypeLabel,
-        targetHours: week.targetHours,
-        targetLoad: week.targetLoad,
-        availableHours: week.availableHours,
-        eventHours: week.eventHours,
-        longSessionDay: week.longSessionDay,
-        completedThisWeek: (week.completedThisWeek || []).map((workout, index) => ({
-          id: `cw_${week.weekIndex}_${index + 1}`,
-          date: workout.date,
-          label: workout.label,
-          intervalLabel: workout.intervalLabel,
-          familyIntent: workout.familyIntent,
-          selectionRationale: workout.selectionRationale,
-          category: workout.category,
-          durationMinutes: workout.durationMinutes,
-          targetLoad: workout.targetLoad,
-          locked: true,
-          source: 'completed',
-          status: 'completed',
-        })),
-        rationale: week.rationale,
-        workouts: week.workouts.map((workout, index) => ({
-          id: `w_${week.weekIndex}_${index + 1}`,
-          date: workout.date,
-          label: workout.label,
-          intervalLabel: workout.intervalLabel,
-          familyIntent: workout.familyIntent,
-          selectionRationale: workout.selectionRationale,
-          category: workout.category,
-          durationMinutes: workout.durationMinutes,
-          targetLoad: workout.targetLoad,
-          locked: workout.locked,
-          source: 'generated',
-          status: 'planned',
-        })),
-      })),
+      weeks: generated.weeks.map((week) => toStoredWeekFromGenerated(week)),
       publishState: 'draft',
     });
 
