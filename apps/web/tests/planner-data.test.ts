@@ -8,6 +8,7 @@ import {
   buildCurrentWeekReplanPayload,
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
+  buildPlanningRecommendationPayload,
   buildMonthlyPlannerDraftPayload,
   buildTrainingNeedsSummary,
   buildWeeklyDecisionPayload,
@@ -222,6 +223,113 @@ test('monthly planner context payload exposes trust-building assumptions and com
   assert.match(payload.statusQuo.mainImplication, /month|build|specificity|freshness|repeatability/i);
   assert.match(payload.statusQuo.eventProximity, /event|days/i);
   assert.equal(payload.statusQuo.recentFocus.length >= 2, true);
+  assert.match(payload.statusQuo.evidenceSummary, /filtered session|evidence window/i);
+  assert.match(payload.statusQuo.excludedRowSummary, /excluded by active filters|No recent rows excluded/i);
+});
+
+test('monthly planner context payload reflects saved data-filter toggles when present', () => {
+  const payload = buildMonthlyPlannerContextPayload({
+    today: '2026-04-24',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [],
+  }, 'Raise repeatability for track racing', {
+    sourceWindowDays: 28,
+    ignoreSickWeek: true,
+    ignoreVacationWeek: true,
+    excludeNonPrimarySport: true,
+  });
+
+  assert.equal(payload.toggles.useLast28DaysOnly, true);
+  assert.equal(payload.toggles.ignoreSickWeek, true);
+  assert.equal(payload.toggles.ignoreVacationWeek, true);
+  assert.equal(payload.toggles.excludeNonPrimarySport, true);
+});
+
+test('training-needs summary filters sick, vacation, non-primary, and old rows before diagnosis', () => {
+  const summary = buildTrainingNeedsSummary({
+    today: '2026-04-24',
+    goal_race_date: '2026-05-20',
+    working_threshold_w: 365,
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: 'recent_repeat', start_date_local: '2026-04-22T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 126, duration_s: 5400, summary: { short_label: '30/15 set' }, zone_times: { Z5: 840 } },
+      { activity_id: 'recent_threshold', start_date_local: '2026-04-20T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 6900, weighted_avg_watts: 356, summary: { short_label: '2x15 threshold' }, zone_times: { Z4: 2300 } },
+      { activity_id: 'sick_week', start_date_local: '2026-04-18T09:00:00', session_type: 'sick day', training_load: 10, duration_s: 1800, summary: { short_label: 'Illness' } },
+      { activity_id: 'vacation_week', start_date_local: '2026-04-17T09:00:00', session_type: 'vacation spin', training_load: 25, duration_s: 3600, summary: { short_label: 'Vacation' }, zone_times: { Z2: 1800 } },
+      { activity_id: 'run_day', start_date_local: '2026-04-16T09:00:00', session_type: 'run workout', training_load: 82, duration_s: 4200, summary: { short_label: 'Run' } },
+      { activity_id: 'old_threshold', start_date_local: '2026-03-10T09:00:00', session_type: 'threshold / race-support ride', training_load: 140, duration_s: 7200, summary: { short_label: 'Old threshold' }, zone_times: { Z4: 2600 } },
+    ],
+  }, {
+    objective: 'repeatability',
+    currentDirection: 'Raise repeatability for track racing',
+    sourceWindowDays: 28,
+    ignoreSickWeek: true,
+    ignoreVacationWeek: true,
+    excludeNonPrimarySport: true,
+    mustFollow: { maxWeeklyHours: 10 },
+  });
+
+  assert.equal(summary.counts.repeatability, 1);
+  assert.equal(summary.counts.threshold_support, 1);
+  assert.equal(summary.counts.endurance, 0);
+  assert.equal(summary.primaryLimiter, 'repeatability');
+});
+
+test('planning recommendation becomes safer when filters remove misleading support rows from the diagnosis', () => {
+  const recommendation = buildPlanningRecommendationPayload({
+    today: '2026-04-24',
+    goal_race_date: '2026-05-20',
+    working_threshold_w: 365,
+    wellness: { ctl: 103, atl: 121 },
+    recent_rows: [
+      { activity_id: 'repeat_1', start_date_local: '2026-04-22T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 128, duration_s: 5400, summary: { short_label: '30/15 set' }, zone_times: { Z5: 900 } },
+      { activity_id: 'repeat_2', start_date_local: '2026-04-20T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 124, duration_s: 5100, summary: { short_label: '40/20 set' }, zone_times: { Z5: 780 } },
+      { activity_id: 'sick_week', start_date_local: '2026-04-19T09:00:00', session_type: 'sick day', training_load: 5, duration_s: 1200, summary: { short_label: 'Illness' } },
+      { activity_id: 'vacation_week', start_date_local: '2026-04-18T09:00:00', session_type: 'vacation spin', training_load: 20, duration_s: 3600, summary: { short_label: 'Vacation spin' }, zone_times: { Z2: 2400 } },
+      { activity_id: 'run_day', start_date_local: '2026-04-17T09:00:00', session_type: 'run workout', training_load: 76, duration_s: 3600, summary: { short_label: 'Run tempo' } },
+    ],
+  }, 'Raise repeatability for track racing', {
+    sourceWindowDays: 28,
+    ignoreSickWeek: true,
+    ignoreVacationWeek: true,
+    excludeNonPrimarySport: true,
+    objective: 'repeatability',
+    mustFollow: { maxWeeklyHours: 10 },
+  });
+
+  assert.equal(recommendation.primary.objective, 'consistency');
+  assert.match(recommendation.primary.explanation, /Freshness is constrained|protect/i);
+  assert.match(recommendation.evidenceSummary, /filtered session|28-day evidence window/i);
+  assert.match(recommendation.excludedRowSummary, /excluded by active filters/i);
+});
+
+test('monthly planner context and recommendation expose filter evidence summaries for planner traceability', () => {
+  const live = {
+    today: '2026-04-24',
+    goal_race_date: '2026-05-20',
+    wellness: { ctl: 103, atl: 121 },
+    recent_rows: [
+      { activity_id: 'repeat_1', start_date_local: '2026-04-22T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 128, duration_s: 5400, summary: { short_label: '30/15 set' }, zone_times: { Z5: 900 } },
+      { activity_id: 'sick_week', start_date_local: '2026-04-19T09:00:00', session_type: 'sick day', training_load: 5, duration_s: 1200, summary: { short_label: 'Illness' } },
+    ],
+  } as const;
+  const input = {
+    sourceWindowDays: 28 as const,
+    ignoreSickWeek: true,
+    ignoreVacationWeek: false,
+    excludeNonPrimarySport: false,
+    objective: 'repeatability',
+    mustFollow: { maxWeeklyHours: 10 },
+  };
+
+  const context = buildMonthlyPlannerContextPayload(live as any, 'Raise repeatability for track racing', input);
+  const recommendation = buildPlanningRecommendationPayload(live as any, 'Raise repeatability for track racing', input);
+
+  assert.match(context.statusQuo.evidenceSummary, /1 filtered session|28-day evidence window/i);
+  assert.match(context.statusQuo.excludedRowSummary, /1 row excluded by active filters/i);
+  assert.equal(recommendation.evidenceSummary, context.statusQuo.evidenceSummary);
+  assert.equal(recommendation.excludedRowSummary, context.statusQuo.excludedRowSummary);
 });
 
 test('monthly planner draft payload keeps week 4 lighter, respects max weekly hours, and starts from the current week while accounting for current-week completed work', () => {
@@ -375,6 +483,106 @@ test('monthly planner draft payload applies selected rest day, configurable rest
   assert.equal(configuredWeek.longSessionDay, 'Thursday');
   assert.equal(firstWeek.completedThisWeek?.length, 2);
   assert.match(configuredWeek.intent, /^Race-like focus\.|^Threshold focus\.|^Repeatability focus\.|^Lighter week\./i);
+});
+
+test('monthly planner draft payload avoids unavailable dates and caps weekday durations', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 104, atl: 109 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 130, duration_s: 5400, summary: { short_label: '30/15 set' } },
+      { activity_id: '2', start_date_local: '2026-04-14T09:00:00', session_type: 'threshold / race-support ride', training_load: 145, duration_s: 7200, summary: { short_label: '2x15 threshold' } },
+      { activity_id: '3', start_date_local: '2026-04-13T09:00:00', session_type: 'endurance / Z2 ride', training_load: 95, duration_s: 10800, summary: { short_label: 'Endurance' } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Raise repeatability for track racing',
+    mustFollow: {
+      noBackToBackHardDays: true,
+      maxWeeklyHours: 10,
+      maxWeekdayMinutes: 75,
+      unavailableDates: ['2026-04-22'],
+    },
+    preferences: { restDay: 'Friday', restDaysPerWeek: 2, longRideDay: 'Sunday' },
+  });
+
+  const configuredWeek = payload.weeks[1]!;
+  assert.equal(configuredWeek.workouts.some((workout) => workout.date === '2026-04-22'), false);
+  assert.equal(
+    configuredWeek.workouts
+      .filter((workout) => {
+        const day = new Date(`${workout.date}T00:00:00Z`).getUTCDay();
+        return day >= 1 && day <= 5 && workout.category !== 'rest';
+      })
+      .every((workout) => Number(workout.durationMinutes || 0) <= 75),
+    true,
+  );
+  const fridayWorkouts = configuredWeek.workouts.filter((workout) => workout.date === '2026-04-24');
+  assert.equal(fridayWorkouts.every((workout) => workout.category === 'rest' || workout.category === 'recovery'), true);
+  assert.equal(configuredWeek.workouts.filter((workout) => workout.category === 'rest').length >= 2, true);
+});
+
+test('monthly planner treats maxWeeklyHours as a ceiling while keeping block progression below the cap when appropriate', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-06-20',
+    working_threshold_w: 365,
+    wellness: { ctl: 102, atl: 105 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 7200, summary: { short_label: '3x12 threshold' }, weighted_avg_watts: 352 },
+      { activity_id: '2', start_date_local: '2026-04-13T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 122, duration_s: 5100, summary: { short_label: '30/15 set' }, weighted_avg_watts: 398 },
+      { activity_id: '3', start_date_local: '2026-04-12T09:00:00', session_type: 'endurance / Z2 ride', training_load: 82, duration_s: 9900, summary: { short_label: 'Endurance' } },
+      { activity_id: '4', start_date_local: '2026-04-10T09:00:00', session_type: 'endurance / Z2 ride', training_load: 76, duration_s: 8400, summary: { short_label: 'Support endurance' } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build repeatability with good progression for track racing',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 9 },
+    preferences: { restDay: 'Saturday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+  });
+
+  const targetHours = payload.weeks.map((week) => week.targetHours);
+  assert.equal(targetHours.every((hours) => hours <= 9), true);
+  assert.equal(targetHours.some((hours) => hours < 9), true);
+  assert.equal(payload.weeks[3]!.targetHours < payload.weeks[1]!.targetHours, true);
+  assert.equal(payload.weeks[1]!.targetHours >= payload.weeks[0]!.targetHours, true);
+});
+
+test('monthly planner uses maxWeeklyHours to shape build-week volume instead of only acting as a passive ceiling', () => {
+  const live = {
+    today: '2026-04-16',
+    goal_race_date: '2026-06-20',
+    working_threshold_w: 365,
+    wellness: { ctl: 104, atl: 106 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 7200, summary: { short_label: '3x12 threshold' }, weighted_avg_watts: 352 },
+      { activity_id: '2', start_date_local: '2026-04-13T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 122, duration_s: 5100, summary: { short_label: '30/15 set' }, weighted_avg_watts: 398 },
+      { activity_id: '3', start_date_local: '2026-04-12T09:00:00', session_type: 'endurance / Z2 ride', training_load: 82, duration_s: 9900, summary: { short_label: 'Endurance' } },
+      { activity_id: '4', start_date_local: '2026-04-10T09:00:00', session_type: 'endurance / Z2 ride', training_load: 76, duration_s: 8400, summary: { short_label: 'Support endurance' } },
+    ],
+  };
+
+  const lowCap = buildMonthlyPlannerDraftPayload(live, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build repeatability with good progression for track racing',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 9 },
+    preferences: { restDay: 'Saturday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+  });
+  const highCap = buildMonthlyPlannerDraftPayload(live, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build repeatability with good progression for track racing',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 12 },
+    preferences: { restDay: 'Saturday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+  });
+
+  assert.equal(lowCap.weeks[1]!.targetHours < highCap.weeks[1]!.targetHours, true);
+  assert.equal(lowCap.weeks[2]!.targetHours < highCap.weeks[2]!.targetHours, true);
+  assert.equal(lowCap.weeks[1]!.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0) < highCap.weeks[1]!.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0), true);
 });
 
 test('training-needs summary identifies primary limiter, freshness state, and event pressure from live context', () => {

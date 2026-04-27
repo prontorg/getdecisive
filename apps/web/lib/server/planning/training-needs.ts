@@ -58,6 +58,10 @@ export type TrainingNeedsSummary = {
 type BuildTrainingNeedsInput = {
   objective?: string;
   currentDirection?: string;
+  sourceWindowDays?: 28 | 42;
+  ignoreSickWeek?: boolean;
+  ignoreVacationWeek?: boolean;
+  excludeNonPrimarySport?: boolean;
   mustFollow?: { maxWeeklyHours?: number };
 };
 
@@ -79,6 +83,37 @@ function hasRepeatabilityMarkers(text: string) {
 
 function parseDate(value: string | undefined) {
   return value ? new Date(`${value.slice(0, 10)}T00:00:00Z`) : null;
+}
+
+function rowText(row: LiveRow) {
+  return `${row.session_type || ''} ${row.name || ''} ${row.summary?.short_label || ''}`.toLowerCase();
+}
+
+function isSickRow(row: LiveRow) {
+  return /\bsick\b|illness|flu|fever|cold/i.test(rowText(row));
+}
+
+function isVacationRow(row: LiveRow) {
+  return /vacation|holiday|travel day|travel spin/i.test(rowText(row));
+}
+
+function isNonPrimarySportRow(row: LiveRow) {
+  return /\brun\b|running|trail run|jog|walk|hike|swim|strength/i.test(rowText(row));
+}
+
+export function filterRecentRows(rows: LiveRow[], today: string | undefined, input?: BuildTrainingNeedsInput) {
+  const anchor = parseDate(today || todayIso())!;
+  const windowDays = input?.sourceWindowDays === 28 ? 28 : 42;
+  const earliest = new Date(anchor.getTime() - (windowDays - 1) * 86400000);
+  return rows.filter((row) => {
+    const rowDate = parseDate(row.start_date_local);
+    if (!rowDate) return false;
+    if (rowDate < earliest || rowDate > anchor) return false;
+    if (input?.ignoreSickWeek && isSickRow(row)) return false;
+    if (input?.ignoreVacationWeek && isVacationRow(row)) return false;
+    if (input?.excludeNonPrimarySport && isNonPrimarySportRow(row)) return false;
+    return true;
+  });
 }
 
 export function classifyRecentRow(row: LiveRow): RecentRowCategory {
@@ -292,7 +327,7 @@ export function buildTrainingNeedsSummary(
   live: LiveState | null | undefined,
   input?: BuildTrainingNeedsInput,
 ): TrainingNeedsSummary {
-  const rows = live?.recent_rows || [];
+  const rows = filterRecentRows(live?.recent_rows || [], live?.today, input);
   const classified = buildClassifiedRows(rows);
   const counts = {
     repeatability: classified.filter(({ category }) => category === 'repeatability').length,

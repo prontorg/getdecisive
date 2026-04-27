@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { buildGoalPayload, buildMonthlyPlannerContextPayload, getAuthorizedPlannerLiveContext } from '../../../../../lib/server/planner-data';
-import { getUserGoalEntries } from '../../../../../lib/server/planner-customization';
+import { getUserGoalEntries, getLatestMonthlyPlanInput } from '../../../../../lib/server/planner-customization';
 import { getSessionUserId } from '../../../../../lib/server/session';
 
 export async function GET() {
@@ -13,5 +13,11 @@ export async function GET() {
 
   const goals = await getUserGoalEntries(userId);
   const currentDirection = buildGoalPayload(planner.live, goals).goalHistory[0]?.title;
-  return NextResponse.json(buildMonthlyPlannerContextPayload(planner.live, currentDirection));
+  const latestInput = await getLatestMonthlyPlanInput(userId);
+  return NextResponse.json(buildMonthlyPlannerContextPayload(planner.live, currentDirection, latestInput ? {
+    sourceWindowDays: latestInput.sourceWindowDays,
+    ignoreSickWeek: latestInput.ignoreSickWeek,
+    ignoreVacationWeek: latestInput.ignoreVacationWeek,
+    excludeNonPrimarySport: latestInput.excludeNonPrimarySport,
+  } : undefined));
 }

@@ -15,7 +15,7 @@ import {
   type UserRecord,
 } from './platform-state';
 import { getLatestSnapshotForUser, getLatestSyncJobForUser } from './sync-store';
-import { buildTrainingNeedsSummary, classifyRecentRow } from './planning/training-needs';
+import { buildTrainingNeedsSummary, classifyRecentRow, filterRecentRows } from './planning/training-needs';
 import { ensureCurrentPlanningContext } from './planning/planning-store';
 import type { TrainingNeedsSummary } from './planning/training-needs';
 import type { DailyDecision, PlanningCycle } from './planning/types';
@@ -121,6 +121,8 @@ export type MonthlyPlannerContextPayload = {
     recentFocus: string[];
     eventProximity: string;
     mainImplication: string;
+    evidenceSummary: string;
+    excludedRowSummary: string;
   };
   availability: { summary: string[] };
   guardrails: { summary: string[] };
@@ -226,6 +228,8 @@ export type PlanningRecommendationPayload = {
   rationaleBullets: string[];
   riskFlags: string[];
   recommendedConstraints: string[];
+  evidenceSummary: string;
+  excludedRowSummary: string;
 };
 
 export type { TrainingNeedsSummary } from './planning/training-needs';
@@ -1368,8 +1372,16 @@ export function buildAdaptationPayload(
 export function buildMonthlyPlannerContextPayload(
   live?: LiveState | null,
   currentDirection?: string,
+  input?: {
+    sourceWindowDays?: 28 | 42;
+    ignoreSickWeek?: boolean;
+    ignoreVacationWeek?: boolean;
+    excludeNonPrimarySport?: boolean;
+  },
 ): MonthlyPlannerContextPayload {
-  const rows = live?.recent_rows || [];
+  const rows = filterRecentRows(live?.recent_rows || [], live?.today, input);
+  const rawRows = live?.recent_rows || [];
+  const excludedRows = Math.max(0, rawRows.length - rows.length);
   const ctl = Number(live?.wellness?.ctl || 0);
   const atl = Number(live?.wellness?.atl || 0);
   const form = ctl - atl;
@@ -1399,6 +1411,10 @@ export function buildMonthlyPlannerContextPayload(
       : repeatabilityHits < thresholdHits
         ? 'The month should lift repeatability so threshold support becomes more usable under pressure.'
         : 'The month can keep building support without overloading the first week.';
+  const evidenceSummary = `${rows.length} filtered session${rows.length === 1 ? '' : 's'} inside a ${input?.sourceWindowDays === 28 ? '28' : '42'}-day evidence window.`;
+  const excludedRowSummary = excludedRows
+    ? `${excludedRows} row${excludedRows === 1 ? '' : 's'} excluded by active filters.`
+    : 'No recent rows excluded by active filters.';
 
   return {
     goalEvent: {
@@ -1429,6 +1445,8 @@ export function buildMonthlyPlannerContextPayload(
       recentFocus,
       eventProximity,
       mainImplication,
+      evidenceSummary,
+      excludedRowSummary,
     },
     availability: {
       summary: [
@@ -1443,10 +1461,10 @@ export function buildMonthlyPlannerContextPayload(
       ],
     },
     toggles: {
-      ignoreSickWeek: false,
-      ignoreVacationWeek: false,
-      useLast28DaysOnly: false,
-      excludeNonPrimarySport: false,
+      ignoreSickWeek: input?.ignoreSickWeek === true,
+      ignoreVacationWeek: input?.ignoreVacationWeek === true,
+      useLast28DaysOnly: input?.sourceWindowDays === 28,
+      excludeNonPrimarySport: input?.excludeNonPrimarySport === true,
     },
   };
 }
@@ -1454,11 +1472,28 @@ export function buildMonthlyPlannerContextPayload(
 export function buildPlanningRecommendationPayload(
   live?: LiveState | null,
   currentDirection?: string,
+  input?: {
+    sourceWindowDays?: 28 | 42;
+    ignoreSickWeek?: boolean;
+    ignoreVacationWeek?: boolean;
+    excludeNonPrimarySport?: boolean;
+    objective?: string;
+    mustFollow?: { maxWeeklyHours?: number };
+  },
 ): PlanningRecommendationPayload {
-  const context = buildMonthlyPlannerContextPayload(live, currentDirection);
+  const context = buildMonthlyPlannerContextPayload(live, currentDirection, input);
+  const needs = buildTrainingNeedsSummary(live, {
+    objective: input?.objective,
+    currentDirection,
+    sourceWindowDays: input?.sourceWindowDays,
+    ignoreSickWeek: input?.ignoreSickWeek,
+    ignoreVacationWeek: input?.ignoreVacationWeek,
+    excludeNonPrimarySport: input?.excludeNonPrimarySport,
+    mustFollow: input?.mustFollow,
+  });
   const form = context.currentState.form;
-  const repeatabilityGap = /repeatability density still needs rebuilding/i.test(context.recentHistory.repeatablePattern);
-  const thresholdGap = /threshold support still needs clearer reinforcement/i.test(context.recentHistory.repeatablePattern);
+  const repeatabilityGap = needs.systemStatus.repeatability !== 'good';
+  const thresholdGap = needs.systemStatus.threshold_support !== 'good';
   const daysToGoal = live?.goal_race_date
     ? Math.round((new Date(`${live.goal_race_date}T00:00:00Z`).getTime() - new Date(`${(live?.today || todayIso())}T00:00:00Z`).getTime()) / 86400000)
     : null;
@@ -1530,6 +1565,8 @@ export function buildPlanningRecommendationPayload(
       'Protect the day after a hard session unless you explicitly override it.',
       'Let blank days stay endurance support unless you make them true rest.',
     ],
+    evidenceSummary: context.statusQuo.evidenceSummary,
+    excludedRowSummary: context.statusQuo.excludedRowSummary,
   };
 }
 
@@ -1542,15 +1579,26 @@ function normalizeWeekday(day?: string, fallback = 'Sunday') {
 function placeWeeklyWorkouts(
   monday: Date,
   workouts: PlannedWorkout[],
-  options: { restOffset: number; longOffset: number; noBackToBack: boolean },
+  options: {
+    restOffset: number;
+    extraRestOffset?: number;
+    longOffset: number;
+    noBackToBack: boolean;
+    blockedOffsets?: number[];
+    protectedRestOffsets?: number[];
+  },
 ): PlannedWorkout[] {
   const assigned = new Map<number, PlannedWorkout>();
   const hardCategories = new Set<PlannerWorkoutCategory>(['repeatability', 'threshold_support', 'race_like']);
+  const blockedOffsets = new Set(options.blockedOffsets || []);
+  const protectedRestOffsets = new Set([options.restOffset, ...(options.protectedRestOffsets || []), ...(options.extraRestOffset == null ? [] : [options.extraRestOffset])]);
   const searchOrder = [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6];
 
   const canUseOffset = (offset: number, workout: PlannedWorkout) => {
     if (offset < 0 || offset > 6) return false;
+    if (blockedOffsets.has(offset)) return false;
     if (assigned.has(offset)) return false;
+    if (protectedRestOffsets.has(offset) && workout.category !== 'rest' && workout.category !== 'recovery') return false;
     if (workout.category === 'rest') return true;
     if (!options.noBackToBack || !hardCategories.has(workout.category)) return true;
     for (const [otherOffset, otherWorkout] of assigned.entries()) {
@@ -1572,10 +1620,9 @@ function placeWeeklyWorkouts(
       return;
     }
     for (let candidate = 0; candidate <= 6; candidate += 1) {
-      if (!assigned.has(candidate)) {
-        assigned.set(candidate, { ...workout, date: isoDate(new Date(monday.getTime() + candidate * 86400000)) });
-        return;
-      }
+      if (!canUseOffset(candidate, workout)) continue;
+      assigned.set(candidate, { ...workout, date: isoDate(new Date(monday.getTime() + candidate * 86400000)) });
+      return;
     }
   };
 
@@ -1643,6 +1690,18 @@ function capWorkoutsToTargetHours(
     totalMinutes -= reduction;
   }
 
+  if (totalMinutes > targetMinutes) {
+    for (const workout of [...adjusted].sort((a, b) => priority(a) - priority(b))) {
+      if (totalMinutes <= targetMinutes) break;
+      if (workout.category === 'rest') continue;
+      const currentMinutes = Number(workout.durationMinutes || 0);
+      if (currentMinutes <= 0) continue;
+      workout.durationMinutes = 0;
+      workout.targetLoad = 0;
+      totalMinutes -= currentMinutes;
+    }
+  }
+
   return adjusted.filter((workout) => workout.category === 'rest' || Number(workout.durationMinutes || 0) > 0);
 }
 
@@ -1685,7 +1744,16 @@ export function buildMonthlyPlannerDraftPayload(
     ambition: string;
     currentDirection?: string;
     successMarkers?: string[];
-    mustFollow?: { noBackToBackHardDays?: boolean; maxWeeklyHours?: number };
+    sourceWindowDays?: 28 | 42;
+    ignoreSickWeek?: boolean;
+    ignoreVacationWeek?: boolean;
+    excludeNonPrimarySport?: boolean;
+    mustFollow?: {
+      noBackToBackHardDays?: boolean;
+      maxWeeklyHours?: number;
+      maxWeekdayMinutes?: number;
+      unavailableDates?: string[];
+    };
     preferences?: { restDay?: string; restDaysPerWeek?: number; longRideDay?: string };
     planEvents?: Array<{ id?: string; date: string; type?: string; title?: string; priority?: string; durationHours?: number }>;
   },
@@ -1709,6 +1777,8 @@ export function buildMonthlyPlannerDraftPayload(
   const preferredRestDay = normalizeWeekday(input.preferences?.restDay, 'Saturday');
   const preferredLongRideDay = normalizeWeekday(input.preferences?.longRideDay, 'Sunday');
   const restDaysPerWeek = Math.max(0, Math.min(3, Number(input.preferences?.restDaysPerWeek ?? 1)));
+  const blockedDateSet = new Set((input.mustFollow?.unavailableDates || []).filter(Boolean));
+  const maxWeekdayMinutes = Number(input.mustFollow?.maxWeekdayMinutes || 0);
   const successMarkers = input.successMarkers || [];
   const wantsFresherKeySessions = successMarkers.some((marker) => /fresher/i.test(marker));
   const weekdayOffsets: Record<string, number> = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
@@ -1780,7 +1850,18 @@ export function buildMonthlyPlannerDraftPayload(
             : raceSpecificityBias && index >= 1 && !fatigueBlocked
               ? 'race_like'
               : 'threshold_support';
-    const baseHours = Math.min(weeklyCap, Math.max(6.5, Number((Math.min(weeklyCap, recentWeeklyHours * (index === 3 ? 0.78 : index === 2 ? 1.04 : index === 1 ? 1 : 0.94))).toFixed(1))));
+    const recentVolumeBaseline = Math.min(weeklyCap, Math.max(4.5, recentWeeklyHours));
+    const recentVolumeFactor = index === 3 ? 0.78 : index === 2 ? 1.04 : index === 1 ? 1 : 0.94;
+    const ambitionTowardCap = ambition === 'ambitious' ? 0.86 : ambition === 'conservative' ? 0.52 : 0.68;
+    const weekTowardCapFactor = index === 3 ? 0.36 : index === 2 ? 0.74 : index === 1 ? 0.62 : 0.45;
+    const progressionTowardCap = Math.max(0, weeklyCap - recentVolumeBaseline) * ambitionTowardCap * weekTowardCapFactor;
+    const baseHours = Math.min(
+      weeklyCap,
+      Math.max(
+        Math.min(6.5, weeklyCap),
+        Number((Math.min(weeklyCap, recentVolumeBaseline * recentVolumeFactor + progressionTowardCap)).toFixed(1)),
+      ),
+    );
     const rawWeekHours = Number(Math.min(weeklyCap, Number((baseHours * weekLoads[index]).toFixed(1))).toFixed(1));
     const isCurrentWeek = index === 0;
     const weekStartIso = isoDate(monday);
@@ -1796,7 +1877,7 @@ export function buildMonthlyPlannerDraftPayload(
     const isRaceLikeWeek = objective === 'race_specificity' || hardTwo === 'race_like';
     const qualitySessionCap = isLighterWeek ? 85 : isRaceLikeWeek ? 90 : 95;
     const longSessionFloor = isLighterWeek ? 90 : targetHours >= 9.5 ? 150 : 120;
-    const longSessionCeiling = isLighterWeek ? 120 : enduranceNeedsSupport ? 210 : 180;
+    const longSessionCeiling = isLighterWeek ? 120 : isRaceLikeWeek ? 150 : enduranceNeedsSupport ? 210 : 180;
     const longSessionShare = isLighterWeek ? 0.24 : enduranceNeedsSupport ? 0.34 : 0.3;
     const supportSessionCap = isLighterWeek ? 90 : 105;
     const supportSessionShare = isLighterWeek ? 0.12 : isRaceLikeWeek ? 0.13 : 0.14;
@@ -1910,7 +1991,30 @@ export function buildMonthlyPlannerDraftPayload(
       { date: isoDate(new Date(monday.getTime() + 6 * 86400000)), preferredOffset: 6, label: longEnduranceWorkout.label, intervalLabel: longEnduranceWorkout.intervalLabel, familyIntent: longEnduranceWorkout.familyIntent, selectionRationale: longEnduranceWorkout.selectionRationale, category: longEnduranceWorkout.category, durationMinutes: longMinutes, targetLoad: longEnduranceTargetLoad, locked: false },
       { date: isoDate(new Date(monday.getTime() + restOffset * 86400000)), preferredOffset: restOffset, label: restWorkout.label, intervalLabel: restWorkout.intervalLabel, familyIntent: restWorkout.familyIntent, selectionRationale: restWorkout.selectionRationale, category: restWorkout.category, durationMinutes: 0, targetLoad: 0, locked: false },
       ...(restDaysPerWeek >= 2 ? [{ date: isoDate(new Date(monday.getTime() + extraRestOffset * 86400000)), preferredOffset: extraRestOffset, label: restWorkout.label, intervalLabel: plannedIntervalLabel('rest', 6, intervalContext), familyIntent: restWorkout.familyIntent, selectionRationale: restWorkout.selectionRationale, category: restWorkout.category, durationMinutes: 0, targetLoad: 0, locked: false }] : []),
-    ], { restOffset, longOffset, noBackToBack });
+    ], {
+      restOffset,
+      extraRestOffset,
+      longOffset,
+      noBackToBack,
+      blockedOffsets: Array.from(blockedDateSet)
+        .filter((date) => date >= weekStartIso && date <= weekEndIso)
+        .map((date) => Math.round((new Date(`${date}T00:00:00Z`).getTime() - monday.getTime()) / 86400000))
+        .filter((offset) => offset >= 0 && offset <= 6),
+      protectedRestOffsets: restDaysPerWeek >= 2 ? [extraRestOffset] : [],
+    }).map((workout) => {
+      if (!maxWeekdayMinutes) return workout;
+      const day = new Date(`${workout.date}T00:00:00Z`).getUTCDay();
+      if (day === 0 || day === 6 || workout.category === 'rest') return workout;
+      if (Number(workout.durationMinutes || 0) <= maxWeekdayMinutes) return workout;
+      const currentMinutes = Number(workout.durationMinutes || 0);
+      const nextDurationMinutes = maxWeekdayMinutes;
+      const loadPerMinute = currentMinutes > 0 ? Number(workout.targetLoad || 0) / currentMinutes : 0;
+      return {
+        ...workout,
+        durationMinutes: nextDurationMinutes,
+        targetLoad: Math.max(0, Math.round(nextDurationMinutes * loadPerMinute)),
+      };
+    });
     const workouts = ensureRestDayCount(
       capWorkoutsToTargetHours(
         isCurrentWeek
@@ -1990,9 +2094,9 @@ export function buildMonthlyPlannerDraftPayload(
       ctl,
       atl,
       form,
-      recentSummary: buildMonthlyPlannerContextPayload(live, input.currentDirection).recentHistory.keySessions,
-      availabilitySummary: buildMonthlyPlannerContextPayload(live, input.currentDirection).availability.summary,
-      guardrailSummary: buildMonthlyPlannerContextPayload(live, input.currentDirection).guardrails.summary,
+      recentSummary: buildMonthlyPlannerContextPayload(live, input.currentDirection, input).recentHistory.keySessions,
+      availabilitySummary: buildMonthlyPlannerContextPayload(live, input.currentDirection, input).availability.summary,
+      guardrailSummary: buildMonthlyPlannerContextPayload(live, input.currentDirection, input).guardrails.summary,
     },
     weeks,
   };

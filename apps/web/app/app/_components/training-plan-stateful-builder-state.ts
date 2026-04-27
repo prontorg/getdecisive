@@ -1,5 +1,7 @@
 export type RecommendationSource = 'primary' | 'alternative' | 'manual';
 
+const PLANNER_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 export type RecommendationPrimary = {
   title: string;
   objective: string;
@@ -21,11 +23,17 @@ export type BuilderFormState = {
   recommendationConfidence: string;
   ambition: string;
   maxWeeklyHours: string;
+  maxWeekdayMinutes: string;
   restDay: string;
   restDaysPerWeek: string;
   longRideDay: string;
+  unavailableDates: string[];
   noDoubles: boolean;
   noBackToBackHardDays: boolean;
+  useLast28DaysOnly: boolean;
+  ignoreSickWeek: boolean;
+  ignoreVacationWeek: boolean;
+  excludeNonPrimarySport: boolean;
   successMarkers: string[];
   note: string;
 };
@@ -73,6 +81,22 @@ export function applyManualObjectiveOverride(
   };
 }
 
+export function parseUnavailableDatesInput(value: string) {
+  const uniqueDates = new Set<string>();
+  for (const token of value.split(/[\s,]+/)) {
+    const trimmed = token.trim();
+    if (!PLANNER_DATE_REGEX.test(trimmed)) continue;
+    uniqueDates.add(trimmed);
+  }
+  return Array.from(uniqueDates);
+}
+
+export function areBuilderInputsDirty(initialState: BuilderFormState, currentState: BuilderFormState) {
+  const initialPayload = buildBuilderSubmitPayload(initialState);
+  const currentPayload = buildBuilderSubmitPayload(currentState);
+  return JSON.stringify(initialPayload) !== JSON.stringify(currentPayload);
+}
+
 export function buildBuilderSubmitPayload(state: BuilderFormState) {
   return {
     objective: state.objective,
@@ -82,9 +106,15 @@ export function buildBuilderSubmitPayload(state: BuilderFormState) {
     selectedRecommendationConfidence: state.recommendationConfidence,
     ambition: state.ambition,
     maxWeeklyHours: state.maxWeeklyHours,
+    maxWeekdayMinutes: state.maxWeekdayMinutes,
     restDay: state.restDay,
     restDaysPerWeek: state.restDaysPerWeek,
     longRideDay: state.longRideDay,
+    unavailableDates: state.unavailableDates,
+    useLast28DaysOnly: state.useLast28DaysOnly,
+    ignoreSickWeek: state.ignoreSickWeek,
+    ignoreVacationWeek: state.ignoreVacationWeek,
+    excludeNonPrimarySport: state.excludeNonPrimarySport,
     note: state.note,
     successMarkers: state.successMarkers,
     noDoubles: state.noDoubles,

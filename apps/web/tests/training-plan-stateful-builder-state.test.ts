@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   applyManualObjectiveOverride,
+  areBuilderInputsDirty,
   buildBuilderSubmitPayload,
+  parseUnavailableDatesInput,
   selectAlternativeRecommendation,
   selectPrimaryRecommendation,
   type BuilderFormState,
@@ -33,11 +35,17 @@ function baseState(): BuilderFormState {
     recommendationConfidence: recommendationPrimary.confidence,
     ambition: 'balanced',
     maxWeeklyHours: '10.5',
+    maxWeekdayMinutes: '75',
     restDay: 'Saturday',
     restDaysPerWeek: '1',
     longRideDay: 'Sunday',
+    unavailableDates: ['2026-04-30'],
     noDoubles: true,
     noBackToBackHardDays: true,
+    useLast28DaysOnly: false,
+    ignoreSickWeek: false,
+    ignoreVacationWeek: false,
+    excludeNonPrimarySport: false,
     successMarkers: ['Complete 4 consistent weeks'],
     note: 'Keep Tuesday open for track access',
   };
@@ -56,6 +64,9 @@ test('selecting an alternative chip keeps advanced edits while updating the fina
   assert.equal(payload.objective, 'threshold_support');
   assert.equal(payload.selectedRecommendationSource, 'alternative');
   assert.equal(payload.selectedRecommendationTitle, 'Raise threshold support');
+  assert.equal(payload.maxWeekdayMinutes, '75');
+  assert.deepEqual(payload.unavailableDates, ['2026-04-30']);
+  assert.equal(payload.useLast28DaysOnly, false);
 });
 
 test('manual month focus override wins final submit objective while keeping advanced edits intact', () => {
@@ -87,4 +98,31 @@ test('reselecting the primary chip restores primary recommendation metadata afte
   assert.equal(payload.objective, 'repeatability');
   assert.equal(payload.selectedRecommendationSource, 'primary');
   assert.equal(payload.selectedRecommendationConfidence, 'high');
+});
+
+test('parseUnavailableDatesInput keeps only unique valid planner dates', () => {
+  assert.deepEqual(
+    parseUnavailableDatesInput('2026-04-30, 2026-04-30\n2026-05-01\ninvalid'),
+    ['2026-04-30', '2026-05-01'],
+  );
+});
+
+test('dirty detection only flips when builder inputs materially change', () => {
+  assert.equal(areBuilderInputsDirty(baseState(), baseState()), false);
+
+  assert.equal(
+    areBuilderInputsDirty(baseState(), {
+      ...baseState(),
+      maxWeekdayMinutes: '90',
+    }),
+    true,
+  );
+
+  assert.equal(
+    areBuilderInputsDirty(baseState(), {
+      ...baseState(),
+      unavailableDates: ['2026-04-30', '2026-05-01'],
+    }),
+    true,
+  );
 });

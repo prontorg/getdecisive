@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 
 import {
   applyManualObjectiveOverride,
+  areBuilderInputsDirty,
   buildBuilderSubmitPayload,
+  parseUnavailableDatesInput,
   selectAlternativeRecommendation,
   selectPrimaryRecommendation,
   type BuilderFormState,
@@ -26,11 +28,17 @@ type BuilderDefaults = {
   objective: string;
   ambition: string;
   maxWeeklyHours: number;
+  maxWeekdayMinutes: number;
   restDay: string;
   restDaysPerWeek: number;
   longRideDay: string;
+  unavailableDates: string[];
   noDoubles: boolean;
   noBackToBackHardDays: boolean;
+  useLast28DaysOnly: boolean;
+  ignoreSickWeek: boolean;
+  ignoreVacationWeek: boolean;
+  excludeNonPrimarySport: boolean;
   successMarkers: string[];
   note: string;
 };
@@ -42,6 +50,7 @@ export function TrainingPlanStatefulBuilderClient({
   initialSelection,
   initialValues,
   successOptions,
+  notice,
 }: {
   objectiveOptions: readonly ObjectiveOption[];
   recommendationPrimary: RecommendationPrimary;
@@ -49,6 +58,7 @@ export function TrainingPlanStatefulBuilderClient({
   initialSelection?: RecommendationSelection;
   initialValues: BuilderDefaults;
   successOptions: readonly string[];
+  notice?: string;
 }) {
   const initialObjective = initialSelection?.objective || initialValues.objective || recommendationPrimary.objective;
   const [selectedFocusObjective, setSelectedFocusObjective] = useState(initialObjective);
@@ -58,11 +68,18 @@ export function TrainingPlanStatefulBuilderClient({
   const [selectedRecommendationConfidence, setSelectedRecommendationConfidence] = useState(initialSelection?.confidence || recommendationPrimary.confidence || '');
   const [ambition, setAmbition] = useState(initialValues.ambition);
   const [maxWeeklyHours, setMaxWeeklyHours] = useState(String(initialValues.maxWeeklyHours));
+  const [maxWeekdayMinutes, setMaxWeekdayMinutes] = useState(String(initialValues.maxWeekdayMinutes));
   const [restDay, setRestDay] = useState(initialValues.restDay);
   const [restDaysPerWeek, setRestDaysPerWeek] = useState(String(initialValues.restDaysPerWeek));
   const [longRideDay, setLongRideDay] = useState(initialValues.longRideDay);
+  const [unavailableDates, setUnavailableDates] = useState<string[]>(initialValues.unavailableDates);
+  const [unavailableDatesInput, setUnavailableDatesInput] = useState(initialValues.unavailableDates.join('\n'));
   const [noDoubles, setNoDoubles] = useState(initialValues.noDoubles);
   const [noBackToBackHardDays, setNoBackToBackHardDays] = useState(initialValues.noBackToBackHardDays);
+  const [useLast28DaysOnly, setUseLast28DaysOnly] = useState(initialValues.useLast28DaysOnly);
+  const [ignoreSickWeek, setIgnoreSickWeek] = useState(initialValues.ignoreSickWeek);
+  const [ignoreVacationWeek, setIgnoreVacationWeek] = useState(initialValues.ignoreVacationWeek);
+  const [excludeNonPrimarySport, setExcludeNonPrimarySport] = useState(initialValues.excludeNonPrimarySport);
   const [note, setNote] = useState(initialValues.note);
   const [selectedSuccessMarkers, setSelectedSuccessMarkers] = useState<string[]>(initialValues.successMarkers);
 
@@ -74,16 +91,48 @@ export function TrainingPlanStatefulBuilderClient({
     recommendationConfidence: selectedRecommendationConfidence,
     ambition,
     maxWeeklyHours,
+    maxWeekdayMinutes,
     restDay,
     restDaysPerWeek,
     longRideDay,
+    unavailableDates,
     noDoubles,
     noBackToBackHardDays,
+    useLast28DaysOnly,
+    ignoreSickWeek,
+    ignoreVacationWeek,
+    excludeNonPrimarySport,
     successMarkers: selectedSuccessMarkers,
     note,
   };
 
+  const initialBuilderState: BuilderFormState = {
+    objective: initialObjective,
+    recommendationSource: initialSelection?.source || 'manual',
+    recommendationTitle: initialSelection?.title || objectiveOptions.find((item) => item.value === initialObjective)?.label || initialObjective,
+    recommendationReason: initialSelection?.reason || recommendationPrimary.explanation,
+    recommendationConfidence: initialSelection?.confidence || recommendationPrimary.confidence || '',
+    ambition: initialValues.ambition,
+    maxWeeklyHours: String(initialValues.maxWeeklyHours),
+    maxWeekdayMinutes: String(initialValues.maxWeekdayMinutes),
+    restDay: initialValues.restDay,
+    restDaysPerWeek: String(initialValues.restDaysPerWeek),
+    longRideDay: initialValues.longRideDay,
+    unavailableDates: initialValues.unavailableDates,
+    noDoubles: initialValues.noDoubles,
+    noBackToBackHardDays: initialValues.noBackToBackHardDays,
+    useLast28DaysOnly: initialValues.useLast28DaysOnly,
+    ignoreSickWeek: initialValues.ignoreSickWeek,
+    ignoreVacationWeek: initialValues.ignoreVacationWeek,
+    excludeNonPrimarySport: initialValues.excludeNonPrimarySport,
+    successMarkers: initialValues.successMarkers,
+    note: initialValues.note,
+  };
+
   const submitPayload = buildBuilderSubmitPayload(builderState);
+  const isDirty = areBuilderInputsDirty(initialBuilderState, builderState);
+  const builderStatusLabel = isDirty ? 'Unsaved changes' : 'Saved';
+  const buildNotice = notice || 'Draft updated';
 
   const selectedSummary = useMemo(() => {
     if (selectedRecommendationSource === 'primary') return recommendationPrimary.title;
@@ -119,6 +168,20 @@ export function TrainingPlanStatefulBuilderClient({
     setSelectedSuccessMarkers((current) => checked ? Array.from(new Set([...current, marker])) : current.filter((item) => item !== marker));
   }
 
+  function updateUnavailableDates(value: string) {
+    setUnavailableDatesInput(value);
+    setUnavailableDates(parseUnavailableDatesInput(value));
+  }
+
+  const activeConstraints = [
+    `Weekday cap ${maxWeekdayMinutes} min`,
+    unavailableDates.length ? `${unavailableDates.length} blocked date${unavailableDates.length === 1 ? '' : 's'}` : 'No blocked dates',
+    useLast28DaysOnly ? 'Last 28 days only' : '42-day source window',
+    ignoreSickWeek ? 'Ignore sick week' : null,
+    ignoreVacationWeek ? 'Ignore vacation week' : null,
+    excludeNonPrimarySport ? 'Exclude non-primary sport' : null,
+  ].filter((item): item is string => Boolean(item));
+
   return (
     <form action="/api/planner/month/draft" method="post" className="training-plan-stateful-builder-client">
       <input type="hidden" name="objective" value={submitPayload.objective} />
@@ -126,6 +189,12 @@ export function TrainingPlanStatefulBuilderClient({
       <input type="hidden" name="selectedRecommendationTitle" value={submitPayload.selectedRecommendationTitle} />
       <input type="hidden" name="selectedRecommendationReason" value={submitPayload.selectedRecommendationReason} />
       {submitPayload.selectedRecommendationConfidence ? <input type="hidden" name="selectedRecommendationConfidence" value={submitPayload.selectedRecommendationConfidence} /> : null}
+      <input type="hidden" name="maxWeekdayMinutes" value={submitPayload.maxWeekdayMinutes} />
+      {submitPayload.unavailableDates.map((date) => <input key={date} type="hidden" name="unavailableDates" value={date} />)}
+      {submitPayload.useLast28DaysOnly ? <input type="hidden" name="useLast28DaysOnly" value="true" /> : null}
+      {submitPayload.ignoreSickWeek ? <input type="hidden" name="ignoreSickWeek" value="true" /> : null}
+      {submitPayload.ignoreVacationWeek ? <input type="hidden" name="ignoreVacationWeek" value="true" /> : null}
+      {submitPayload.excludeNonPrimarySport ? <input type="hidden" name="excludeNonPrimarySport" value="true" /> : null}
 
       <div className="training-plan-builder-bar">
         <div className="training-plan-focus-row">
@@ -173,7 +242,7 @@ export function TrainingPlanStatefulBuilderClient({
         <input type="hidden" name="objectiveVisible" value={selectedFocusObjective} />
         <input type="hidden" name="longRideDay" value={longRideDay} />
         <label>
-          <span>Hours</span>
+          <span>Max hours / week</span>
           <input name="maxWeeklyHours" type="number" min="4" max="20" step="0.5" value={maxWeeklyHours} onChange={(event) => setMaxWeeklyHours(event.target.value)} />
         </label>
         <label>
@@ -185,17 +254,32 @@ export function TrainingPlanStatefulBuilderClient({
         <input type="hidden" name="restDaysPerWeek" value={restDaysPerWeek} />
         <button type="submit">Generate next month</button>
 
+        <div className="training-plan-quick-notes">
+          <div className="training-plan-quick-note">
+            <strong>Compact builder</strong>
+            <p>{selectedSummary}</p>
+          </div>
+          <div className="training-plan-quick-note">
+            <strong>{builderStatusLabel}</strong>
+            <p>{buildNotice}</p>
+          </div>
+          <div className="training-plan-quick-note">
+            <strong>Active constraints</strong>
+            <p>{activeConstraints.join(' • ')}</p>
+          </div>
+        </div>
+
         <details className="training-plan-builder-advanced">
           <summary>More options</summary>
           <div className="training-plan-builder-advanced__body">
             <div className="training-plan-quick-notes">
               <div className="training-plan-quick-note">
-                <strong>Compact builder</strong>
-                <p>{selectedSummary}</p>
-              </div>
-              <div className="training-plan-quick-note">
                 <strong>Why</strong>
                 <p>{selectedRecommendationReason}</p>
+              </div>
+              <div className="training-plan-quick-note">
+                <strong>Evidence</strong>
+                <p>{activeConstraints.join(' • ')}</p>
               </div>
             </div>
             <div className="training-plan-direction-grid">
@@ -222,11 +306,42 @@ export function TrainingPlanStatefulBuilderClient({
                   {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day) => <option key={day} value={day}>{day}</option>)}
                 </select>
               </label>
+              <label>
+                <span>Weekday cap</span>
+                <input name="maxWeekdayMinutes" type="number" min="45" max="240" step="5" value={maxWeekdayMinutes} onChange={(event) => setMaxWeekdayMinutes(event.target.value)} />
+              </label>
+              <label>
+                <span>Unavailable dates</span>
+                <textarea
+                  name="unavailableDatesEditor"
+                  rows={3}
+                  value={unavailableDatesInput}
+                  onChange={(event) => updateUnavailableDates(event.target.value)}
+                  placeholder="YYYY-MM-DD"
+                />
+              </label>
             </div>
             <div className="training-plan-inline-flags">
               <label className="training-plan-compact-check"><input name="noDoubles" type="checkbox" checked={noDoubles} onChange={(event) => setNoDoubles(event.target.checked)} /> <span>No doubles</span></label>
               <label className="training-plan-compact-check"><input name="noBackToBackHardDays" type="checkbox" checked={noBackToBackHardDays} onChange={(event) => setNoBackToBackHardDays(event.target.checked)} /> <span>Hard spacing</span></label>
             </div>
+            <fieldset className="training-plan-success-fieldset">
+              <legend>Data filters</legend>
+              <div className="chip-row">
+                <label className="chip">
+                  <input type="checkbox" name="useLast28DaysOnly" checked={useLast28DaysOnly} onChange={(event) => setUseLast28DaysOnly(event.target.checked)} /> Last 28 days only
+                </label>
+                <label className="chip">
+                  <input type="checkbox" name="ignoreSickWeek" checked={ignoreSickWeek} onChange={(event) => setIgnoreSickWeek(event.target.checked)} /> Ignore sick week
+                </label>
+                <label className="chip">
+                  <input type="checkbox" name="ignoreVacationWeek" checked={ignoreVacationWeek} onChange={(event) => setIgnoreVacationWeek(event.target.checked)} /> Ignore vacation week
+                </label>
+                <label className="chip">
+                  <input type="checkbox" name="excludeNonPrimarySport" checked={excludeNonPrimarySport} onChange={(event) => setExcludeNonPrimarySport(event.target.checked)} /> Exclude non-primary sport
+                </label>
+              </div>
+            </fieldset>
             <fieldset className="training-plan-success-fieldset">
               <legend>Success</legend>
               <div className="chip-row">
