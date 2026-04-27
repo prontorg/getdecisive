@@ -7,6 +7,7 @@ import {
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
   buildMonthlyPlannerDraftPayload,
+  buildPlannerTruthSummaryPayload,
   buildPlanningRecommendationPayload,
   getActivePlanningContext,
   getAuthorizedPlannerLiveContext,
@@ -185,6 +186,7 @@ export async function TrainingPlanPage({
     currentDirection,
     mustFollow: { maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours },
   } : undefined);
+  const truthSummary = latestDraft ? await buildPlannerTruthSummaryPayload(userId, latestDraft, planner.live) : null;
   const isCalendarMode = mode === 'calendar';
   const heroTitle = isCalendarMode ? 'Calendar' : 'Plan';
   const heroEyebrow = isCalendarMode ? 'Calendar' : 'Plan';
@@ -363,6 +365,35 @@ const draftStatusLabel = latestDraft
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="fresher" /><button type="submit" className="button-secondary button-link">Use freshness</button></form>
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="reduce_load" /><button type="submit" className="button-secondary button-link">Cut load</button></form>
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="increase_specificity" /><button type="submit" className="button-secondary button-link">Race-like</button></form>
+                  </div>
+                </div>
+              ) : null}
+
+              {truthSummary ? (
+                <div className="training-plan-execution-changes">
+                  <div className="training-plan-execution-changes__header">
+                    <div>
+                      <div className="kicker">Execution changes</div>
+                      <strong>Planned vs done truth</strong>
+                    </div>
+                    <div className="chip-row">
+                      <span className="chip">Skipped: {truthSummary.counters.skipped}</span>
+                      <span className="chip">Replaced: {truthSummary.counters.replaced}</span>
+                      <span className="chip">Done*: {truthSummary.counters.completedModified}</span>
+                      <span className="chip">Moved: {truthSummary.counters.moved}</span>
+                      <span className="chip">Repairs: {truthSummary.counters.repaired}</span>
+                    </div>
+                  </div>
+                  <p className="training-plan-execution-changes__summary">{truthSummary.summary}</p>
+                  <p className="training-plan-execution-changes__signal">{truthSummary.currentWeekSignal}</p>
+                  <div className="training-plan-execution-changes__events">
+                    {truthSummary.recentEvents.map((event) => (
+                      <div key={event.id} className="training-plan-execution-changes__event-row status-item">
+                        <strong>{event.title}</strong>
+                        <p>{event.detail}</p>
+                        <span className="training-plan-execution-changes__event-meta">{event.date} • {event.source === 'planner_runtime' ? 'planner runtime' : 'manual change'}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : null}

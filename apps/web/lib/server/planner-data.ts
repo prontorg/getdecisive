@@ -19,6 +19,8 @@ import { buildTrainingNeedsSummary, classifyRecentRow, filterRecentRows } from '
 import { ensureCurrentPlanningContext } from './planning/planning-store';
 import type { TrainingNeedsSummary } from './planning/training-needs';
 import type { DailyDecision, PlanningCycle } from './planning/types';
+import { listRecentMonthlyPlanReconciliationEvents } from './planner-customization';
+import type { MonthlyPlanDraft, MonthlyPlanReconciliationEvent, MonthlyPlanWorkout } from './planner-customization';
 
 const execFileAsync = promisify(execFile);
 const HERMES_HOME = process.env.HERMES_HOME || '/root/.hermes/profiles/profdecisive';
@@ -46,6 +48,19 @@ export type MonthlyPlannerComparePayload = {
   }>;
   freshnessWarnings: string[];
   summary: string;
+};
+
+export type PlannerTruthSummaryPayload = {
+  summary: string;
+  counters: {
+    skipped: number;
+    replaced: number;
+    completedModified: number;
+    moved: number;
+    repaired: number;
+  };
+  currentWeekSignal: string;
+  recentEvents: MonthlyPlanReconciliationEvent[];
 };
 
 export type PlannerDayPayload = {
@@ -167,7 +182,7 @@ export type MonthlyPlannerDraftPayload = {
       category: 'recovery' | 'endurance' | 'threshold_support' | 'repeatability' | 'race_like' | 'rest';
       durationMinutes?: number;
       targetLoad?: number;
-      status: string;
+      status: MonthlyPlanWorkout['status'];
       locked: boolean;
     }>;
     rationale: {
@@ -1080,6 +1095,94 @@ function currentWeekDraftWeek(draft?: MonthlyPlannerDraftPayload | null, today?:
     const span = weekSpanFromDraftWeek(week, current);
     return liveWindow.start <= span.end && liveWindow.end >= span.start;
   }) || draft.weeks[0] || null;
+}
+
+function formatTruthCounter(label: string, count: number) {
+  return `${count} ${label}${count === 1 ? '' : 's'}`;
+}
+
+function currentWeekTruthSignal(
+  weekEvents: MonthlyPlanReconciliationEvent[],
+  counters: PlannerTruthSummaryPayload['counters'],
+) {
+  const hardDisruptions = counters.skipped + counters.replaced + counters.completedModified;
+  const movedOnly = counters.moved > 0 && hardDisruptions === 0 && counters.repaired === 0;
+  const runtimeRepair = weekEvents.some((event) => event.eventType === 'week_replanned');
+
+  if (!weekEvents.length) return 'Current week drift is low and the block intent is still intact.';
+  if (hardDisruptions >= 3 || (hardDisruptions >= 2 && runtimeRepair)) {
+    return 'Current week drift is high and the block intent needs a cleaner repair.';
+  }
+  if (runtimeRepair || hardDisruptions >= 1) {
+    return 'Current week drift is moderate but still recoverable if the next key session lands cleanly.';
+  }
+  if (movedOnly) {
+    return 'Current week drift is low; changes are mostly scheduling moves rather than intent loss.';
+  }
+  return 'Current week drift is present but the block intent still looks mostly intact.';
+}
+
+export async function buildPlannerTruthSummaryPayload(
+  userId: string,
+  draft?: MonthlyPlanDraft | null,
+  live?: LiveState | null,
+  eventsOverride?: MonthlyPlanReconciliationEvent[] | null,
+): Promise<PlannerTruthSummaryPayload> {
+  const empty: PlannerTruthSummaryPayload = {
+    summary: 'No execution changes recorded yet. Block intent is still intact.',
+    counters: { skipped: 0, replaced: 0, completedModified: 0, moved: 0, repaired: 0 },
+    currentWeekSignal: 'Current week drift is low and the block intent is still intact.',
+    recentEvents: [],
+  };
+  if (!draft?.id) return empty;
+
+  let allEvents: MonthlyPlanReconciliationEvent[] = [];
+  try {
+    allEvents = eventsOverride || await listRecentMonthlyPlanReconciliationEvents(userId, draft.id, 200);
+  } catch {
+    allEvents = eventsOverride || [];
+  }
+  const recentEvents = allEvents
+    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 5);
+  const workoutStatuses = draft.weeks.flatMap((week) => week.workouts);
+  const counters: PlannerTruthSummaryPayload['counters'] = {
+    skipped: workoutStatuses.filter((workout) => workout.status === 'skipped').length,
+    replaced: workoutStatuses.filter((workout) => workout.status === 'replaced').length,
+    completedModified: workoutStatuses.filter((workout) => workout.status === 'completed_modified').length,
+    moved: allEvents.filter((event) => event.eventType === 'workout_moved').length,
+    repaired: allEvents.filter((event) => event.eventType === 'week_replanned').length,
+  };
+
+  const today = live?.today || todayIso();
+  const currentWeek = draft.weeks.find((week) => {
+    const dates = week.workouts.map((workout) => workout.date).filter(Boolean).sort();
+    if (!dates.length) return false;
+    const span = weekWindowForToday(dates[0]!);
+    const liveWindow = weekWindowForToday(today);
+    return liveWindow.start <= span.end && liveWindow.end >= span.start;
+  }) || draft.weeks[0];
+  const weekEventIds = new Set([currentWeek?.id].filter(Boolean));
+  const currentWeekEvents = recentEvents.filter((event) => (event.weekId && weekEventIds.has(event.weekId)) || event.date === today || event.date <= weekWindowForToday(today).end && event.date >= weekWindowForToday(today).start);
+
+  const summaryBits = [
+    formatTruthCounter('skipped', counters.skipped),
+    formatTruthCounter('replaced', counters.replaced),
+    formatTruthCounter('modified', counters.completedModified),
+  ].filter((bit) => !bit.startsWith('0 '));
+  if (counters.repaired) summaryBits.push(formatTruthCounter('repair', counters.repaired));
+  if (counters.moved) summaryBits.push(formatTruthCounter('move', counters.moved));
+
+  const summary = summaryBits.length
+    ? `${summaryBits.join(', ')}, block intent still mostly intact.`
+    : empty.summary;
+
+  return {
+    summary,
+    counters,
+    currentWeekSignal: currentWeekTruthSignal(currentWeekEvents, counters),
+    recentEvents,
+  };
 }
 
 export function replaceCurrentWeekWithRuntime(args: {

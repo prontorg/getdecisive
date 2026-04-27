@@ -8,6 +8,7 @@ import {
   buildCurrentWeekReplanPayload,
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
+  buildPlannerTruthSummaryPayload,
   buildPlanningRecommendationPayload,
   buildMonthlyPlannerDraftPayload,
   buildTrainingNeedsSummary,
@@ -1598,6 +1599,192 @@ test('runtime current-week override respects monday rollover when today is monda
   assert.equal(week.workouts.some((workout: any) => workout.date === '2026-04-20'), true);
   assert.equal(week.workouts.some((workout: any) => workout.date === '2026-04-21'), true);
   assert.match(week.intent || '', /threshold_support/i);
+});
+
+test('planner truth summary payload counts execution changes and reports current-week drift compactly', async () => {
+  const { appendMonthlyPlanReconciliationEvent } = await import('../lib/server/planner-customization');
+
+  const previousDatabase = process.env.DATABASE_URL;
+  const previousStore = process.env.DECISIVE_PLATFORM_STORE_PATH;
+  const storePath = `/tmp/decisive-planner-truth-summary-${Date.now()}.json`;
+  delete process.env.DATABASE_URL;
+  process.env.DECISIVE_PLATFORM_STORE_PATH = storePath;
+
+  try {
+    const draft = {
+      id: 'draft_truth_1',
+      monthStart: '2026-04-01',
+      objective: 'repeatability',
+      ambition: 'balanced',
+      assumptions: {
+        ctl: 104,
+        atl: 109,
+        form: -5,
+        recentSummary: [],
+        availabilitySummary: [],
+        guardrailSummary: [],
+      },
+      weeks: [
+        {
+          id: 'week_1',
+          weekIndex: 1,
+          label: 'Week 1',
+          intent: 'Hold repeatability while keeping threshold support intact.',
+          targetHours: 8.5,
+          targetLoad: 410,
+          rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+          workouts: [
+            { id: 'w_1', date: '2026-04-14', label: 'Repeatability anchor', category: 'repeatability', durationMinutes: 85, targetLoad: 92, locked: false, status: 'planned' },
+            { id: 'w_2', date: '2026-04-16', label: 'Threshold support', category: 'threshold_support', durationMinutes: 90, targetLoad: 88, locked: true, status: 'skipped', reconciliationNote: 'Skipped instead of Threshold support' },
+            { id: 'w_3', date: '2026-04-18', label: 'Race-like bridge', category: 'race_like', durationMinutes: 80, targetLoad: 86, locked: false, status: 'completed_modified', reconciliationNote: 'Completed with modified execution' },
+          ],
+        },
+        {
+          id: 'week_2',
+          weekIndex: 2,
+          label: 'Week 2',
+          intent: 'Rebuild density carefully.',
+          targetHours: 8,
+          targetLoad: 390,
+          rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+          workouts: [
+            { id: 'w_4', date: '2026-04-21', label: 'Support replacement', category: 'endurance', durationMinutes: 75, targetLoad: 52, locked: false, status: 'replaced', reconciliationNote: 'Replaced planned Repeatability anchor with support work' },
+            { id: 'w_5', date: '2026-04-23', label: 'Endurance support', category: 'endurance', durationMinutes: 150, targetLoad: 75, locked: false, status: 'planned' },
+          ],
+        },
+      ],
+    } as any;
+
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: draft.id,
+      workoutId: 'w_2',
+      weekId: 'week_1',
+      date: '2026-04-16',
+      eventType: 'workout_skipped',
+      title: 'Threshold support skipped',
+      detail: 'Skipped instead of the originally planned session on 2026-04-16.',
+      source: 'user_action',
+    });
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: draft.id,
+      workoutId: 'w_3',
+      weekId: 'week_1',
+      date: '2026-04-18',
+      eventType: 'workout_completed_modified',
+      title: 'Race-like bridge completed modified',
+      detail: 'Completed with modified execution versus the original planned structure.',
+      source: 'user_action',
+    });
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: draft.id,
+      weekId: 'week_1',
+      date: '2026-04-18',
+      eventType: 'week_replanned',
+      title: 'Current week repaired',
+      detail: 'Current week replanned after fatigue warning.',
+      source: 'planner_runtime',
+    });
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: draft.id,
+      workoutId: 'w_4',
+      weekId: 'week_2',
+      date: '2026-04-21',
+      eventType: 'workout_replaced',
+      title: 'Repeatability anchor replaced',
+      detail: 'Replaced with support work on 2026-04-21.',
+      source: 'user_action',
+    });
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: draft.id,
+      workoutId: 'w_1',
+      weekId: 'week_1',
+      date: '2026-04-15',
+      eventType: 'workout_moved',
+      title: 'Repeatability anchor moved',
+      detail: 'Moved from 2026-04-14 to 2026-04-15.',
+      source: 'user_action',
+    });
+
+    const explicitEvents = [
+      {
+        id: 'evt_skip',
+        draftId: draft.id,
+        workoutId: 'w_2',
+        weekId: 'week_1',
+        date: '2026-04-16',
+        eventType: 'workout_skipped',
+        title: 'Threshold support skipped',
+        detail: 'Skipped instead of the originally planned session on 2026-04-16.',
+        source: 'user_action',
+        createdAt: '2026-04-16T12:00:00Z',
+      },
+      {
+        id: 'evt_done_mod',
+        draftId: draft.id,
+        workoutId: 'w_3',
+        weekId: 'week_1',
+        date: '2026-04-18',
+        eventType: 'workout_completed_modified',
+        title: 'Race-like bridge completed modified',
+        detail: 'Completed with modified execution versus the original planned structure.',
+        source: 'user_action',
+        createdAt: '2026-04-18T12:00:00Z',
+      },
+      {
+        id: 'evt_replan',
+        draftId: draft.id,
+        weekId: 'week_1',
+        date: '2026-04-18',
+        eventType: 'week_replanned',
+        title: 'Current week repaired',
+        detail: 'Current week replanned after fatigue warning.',
+        source: 'planner_runtime',
+        createdAt: '2026-04-18T18:00:00Z',
+      },
+      {
+        id: 'evt_replace',
+        draftId: draft.id,
+        workoutId: 'w_4',
+        weekId: 'week_2',
+        date: '2026-04-21',
+        eventType: 'workout_replaced',
+        title: 'Repeatability anchor replaced',
+        detail: 'Replaced with support work on 2026-04-21.',
+        source: 'user_action',
+        createdAt: '2026-04-21T12:00:00Z',
+      },
+      {
+        id: 'evt_move',
+        draftId: draft.id,
+        workoutId: 'w_1',
+        weekId: 'week_1',
+        date: '2026-04-15',
+        eventType: 'workout_moved',
+        title: 'Repeatability anchor moved',
+        detail: 'Moved from 2026-04-14 to 2026-04-15.',
+        source: 'user_action',
+        createdAt: '2026-04-15T12:00:00Z',
+      },
+    ] as any;
+
+    const payload = await buildPlannerTruthSummaryPayload('user_1', draft, { today: '2026-04-18' } as any, explicitEvents);
+
+    assert.equal(payload.counters.skipped, 1);
+    assert.equal(payload.counters.replaced, 1);
+    assert.equal(payload.counters.completedModified, 1);
+    assert.equal(payload.counters.moved, 1);
+    assert.equal(payload.counters.repaired, 1);
+    assert.match(payload.summary, /1 skipped/i);
+    assert.match(payload.summary, /1 replaced/i);
+    assert.match(payload.summary, /block intent/i);
+    assert.match(payload.currentWeekSignal, /current week drift/i);
+    assert.equal(payload.recentEvents.length, 5);
+    assert.equal(payload.recentEvents[0]?.eventType, 'workout_replaced');
+    assert.equal(payload.recentEvents.some((event) => event.source === 'planner_runtime'), true);
+  } finally {
+    if (previousDatabase) process.env.DATABASE_URL = previousDatabase; else delete process.env.DATABASE_URL;
+    if (previousStore) process.env.DECISIVE_PLATFORM_STORE_PATH = previousStore; else delete process.env.DECISIVE_PLATFORM_STORE_PATH;
+  }
 });
 
 test('monthly planner compare payload contrasts draft against the recent 4 weeks and surfaces freshness-risk warnings', () => {

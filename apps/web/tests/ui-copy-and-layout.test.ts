@@ -251,6 +251,18 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Use freshness/i);
   assert.match(source, /Race-like/i);
   assert.match(source, /Too fatigued/i);
+  assert.match(source, /buildPlannerTruthSummaryPayload/i);
+  assert.match(source, /Execution changes/i);
+  assert.match(source, /truthSummary\.summary/i);
+  assert.match(source, /truthSummary\.currentWeekSignal/i);
+  assert.match(source, /truthSummary\.recentEvents\.map/i);
+  assert.match(source, /truthSummary\.counters\.skipped/i);
+  assert.match(source, /truthSummary\.counters\.replaced/i);
+  assert.match(source, /truthSummary\.counters\.completedModified/i);
+  assert.match(source, /truthSummary\.counters\.moved/i);
+  assert.match(source, /truthSummary\.counters\.repaired/i);
+  assert.match(calendarStyles, /training-plan-execution-changes/i);
+  assert.match(calendarStyles, /training-plan-execution-changes__events/i);
   assert.doesNotMatch(source, /<strong>Planned today<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Do today<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Planned tomorrow<\/strong>/i);
