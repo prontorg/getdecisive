@@ -433,17 +433,21 @@ export async function removeMonthlyPlanWorkout(
 export async function publishMonthlyPlanDraftLocally(
   userId: string,
   draftId: string,
+  today?: string,
 ): Promise<MonthlyPlanDraft | null> {
   const store = await loadStore();
   const drafts = store.monthlyDraftsByUser[userId] || [];
   const target = drafts.find((item) => item.id === draftId);
   if (!target) return null;
+  const publishFrom = today || new Date().toISOString().slice(0, 10);
   target.publishState = 'published';
   target.weeks = target.weeks.map((week) => ({
     ...week,
     workouts: week.workouts.map((workout) => ({
       ...workout,
-      status: workout.status === 'published_intervals' ? 'published_intervals' : 'published_local',
+      status: workout.date > publishFrom
+        ? (workout.status === 'published_intervals' ? 'published_intervals' : 'published_local')
+        : workout.status,
     })),
   }));
   target.updatedAt = nowIso();

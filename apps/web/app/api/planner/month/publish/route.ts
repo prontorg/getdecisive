@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
+import { getAuthorizedPlannerLiveContext } from '../../../../../lib/server/planner-data';
 import { getLatestMonthlyPlanDraft, publishMonthlyPlanDraftLocally } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
@@ -24,11 +25,13 @@ export async function POST(request: Request) {
     const draft = await getLatestMonthlyPlanDraft(userId);
     if (!draft || draft.id !== draftId) return routeErrorResponse(ROUTE, 404, 'Draft not found', { userId, draftId });
 
-    const nextDraft = await publishMonthlyPlanDraftLocally(userId, draftId);
-    logRouteEvent(ROUTE, 'info', 'Monthly draft published locally', { userId, draftId, isJson });
+    const planner = await getAuthorizedPlannerLiveContext(userId);
+    const publishToday = planner?.live?.today || new Date().toISOString().slice(0, 10);
+    const nextDraft = await publishMonthlyPlanDraftLocally(userId, draftId, publishToday);
+    logRouteEvent(ROUTE, 'info', 'Monthly draft future weeks published locally', { userId, draftId, publishToday, isJson });
     revalidatePath(appRoutes.plan);
     if (parsed instanceof FormData) {
-      return redirectWithNotice(ROUTE, request, `${appRoutes.plan}?notice=${encodeURIComponent('Draft published locally')}`, { userId, draftId });
+      return redirectWithNotice(ROUTE, request, `${appRoutes.plan}?notice=${encodeURIComponent('Future draft published locally')}`, { userId, draftId, publishToday });
     }
     return NextResponse.json(nextDraft);
   } catch (error) {

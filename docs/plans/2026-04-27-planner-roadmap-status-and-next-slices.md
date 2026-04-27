@@ -62,6 +62,28 @@ Added a shared persistence mapper so these paths use the same stored week/workou
 
 This reduces metadata drift across save paths.
 
+### Slice 4 — deeper planned-vs-done truth model
+Now implemented.
+
+Added:
+- first-class persisted reconciliation history
+- planner truth summary payload with counters, recent events, and current-week drift signal
+- compact `Execution changes` surface in `/app/plan`
+
+This means the planner now answers, in one place:
+- what changed this week
+- what was skipped / replaced / completed modified / moved
+- whether current-week drift is still recoverable
+
+### Slice 5 — publish semantics hardening
+Now started.
+
+Current publish semantics are explicitly future-only:
+- publish uses live `today`
+- past and same-day workouts keep their existing done/skip/truth state
+- only future draft workouts move to `published_local`
+- route copy now says `Future draft published locally`
+
 ## Current planner priorities
 The highest-value work now is not more intelligence first.
 The highest-value work is completing Milestone D cleanly.

@@ -302,7 +302,7 @@ test('monthly drafts can remove workouts, regenerate one week, move a workout da
       ],
     });
     await updateMonthlyPlanWorkout('user_1', draftId, 'w_new_1', { date: '2026-04-08' });
-    await publishMonthlyPlanDraftLocally('user_1', draftId);
+    await publishMonthlyPlanDraftLocally('user_1', draftId, '2026-04-01');
 
     const latest = await getLatestMonthlyPlanDraft('user_1');
     assert.equal(latest?.publishState, 'published');
@@ -311,6 +311,59 @@ test('monthly drafts can remove workouts, regenerate one week, move a workout da
     assert.equal(latest?.weeks[0]?.workouts[0]?.date, '2026-04-08');
     assert.equal(latest?.weeks[0]?.workouts[0]?.status, 'published_local');
     assert.equal(latest?.weeks[0]?.workouts[0]?.source, 'user_modified');
+  });
+});
+
+test('monthly drafts publish only future workouts locally while leaving live-week history untouched', async () => {
+  await withPlannerCustomizationModule(async ({ saveMonthlyPlanDraft, getLatestMonthlyPlanDraft, publishMonthlyPlanDraftLocally }) => {
+    const drafts = await saveMonthlyPlanDraft('user_1', {
+      monthStart: '2026-04-01',
+      inputId: 'input_future_publish',
+      assumptions: {
+        recentSummary: [],
+        availabilitySummary: [],
+        guardrailSummary: [],
+      },
+      weeks: [
+        {
+          id: 'week_live',
+          weekIndex: 1,
+          label: 'Live week',
+          intent: 'Runtime-backed current week',
+          targetHours: 8,
+          targetLoad: 380,
+          rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+          workouts: [
+            { id: 'past_done', date: '2026-04-14', label: 'Completed support', category: 'threshold_support', locked: true, source: 'completed', status: 'completed', durationMinutes: 80, targetLoad: 82 },
+            { id: 'today_skipped', date: '2026-04-18', label: 'Skipped anchor', category: 'repeatability', locked: true, source: 'user_modified', status: 'skipped', durationMinutes: 75, targetLoad: 90 },
+            { id: 'future_live', date: '2026-04-19', label: 'Future bridge', category: 'endurance', locked: false, source: 'generated', status: 'planned', durationMinutes: 120, targetLoad: 60 },
+          ],
+        },
+        {
+          id: 'week_future',
+          weekIndex: 2,
+          label: 'Future week',
+          intent: 'Future editable block',
+          targetHours: 9,
+          targetLoad: 420,
+          rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+          workouts: [
+            { id: 'future_1', date: '2026-04-21', label: 'Future repeatability', category: 'repeatability', locked: false, source: 'generated', status: 'planned', durationMinutes: 80, targetLoad: 92 },
+          ],
+        },
+      ],
+      publishState: 'draft',
+    });
+
+    const draftId = drafts[0]!.id;
+    await publishMonthlyPlanDraftLocally('user_1', draftId, '2026-04-18');
+
+    const latest = await getLatestMonthlyPlanDraft('user_1');
+    assert.equal(latest?.publishState, 'published');
+    assert.equal(latest?.weeks[0]?.workouts.find((item) => item.id === 'past_done')?.status, 'completed');
+    assert.equal(latest?.weeks[0]?.workouts.find((item) => item.id === 'today_skipped')?.status, 'skipped');
+    assert.equal(latest?.weeks[0]?.workouts.find((item) => item.id === 'future_live')?.status, 'published_local');
+    assert.equal(latest?.weeks[1]?.workouts.find((item) => item.id === 'future_1')?.status, 'published_local');
   });
 });
 
