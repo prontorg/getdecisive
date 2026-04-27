@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
 import {
+  appendMonthlyPlanReconciliationEvent,
   getLatestMonthlyPlanDraft,
   lockMonthlyPlanWorkout,
   removeMonthlyPlanWorkout,
@@ -76,8 +77,23 @@ export async function POST(request: Request) {
     if (workout.locked && action !== 'lock') return routeErrorResponse(ROUTE, 409, 'Workout is locked', { userId, draftId, workoutId, action });
 
     let nextDraft = null;
+    let reconciliationEvent:
+      | {
+          eventType: 'workout_skipped' | 'workout_replaced' | 'workout_completed_modified' | 'workout_moved' | 'workout_locked';
+          title: string;
+          detail: string;
+          date: string;
+        }
+      | null = null;
     if (action === 'lock') {
-      nextDraft = await lockMonthlyPlanWorkout(userId, draftId, workoutId, pick('locked') !== 'false' && pick('locked') !== false);
+      const nextLocked = pick('locked') !== 'false' && pick('locked') !== false;
+      nextDraft = await lockMonthlyPlanWorkout(userId, draftId, workoutId, nextLocked);
+      reconciliationEvent = {
+        eventType: 'workout_locked',
+        title: nextLocked ? `${workout.label} locked` : `${workout.label} unlocked`,
+        detail: nextLocked ? 'Workout was locked to preserve the current plan.' : 'Workout was unlocked for further edits.',
+        date: workout.date,
+      };
     } else if (action === 'easier') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
         label: `${workout.label} - easier`,
@@ -118,12 +134,24 @@ export async function POST(request: Request) {
         date: moveDate,
         label: `${workout.label} - moved`,
       });
+      reconciliationEvent = {
+        eventType: 'workout_moved',
+        title: `${workout.label} moved`,
+        detail: `Moved from ${workout.date} to ${moveDate}.`,
+        date: moveDate,
+      };
     } else if (action === 'skip') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
         status: 'skipped',
         locked: true,
         reconciliationNote: `Skipped instead of ${workout.label}`,
       });
+      reconciliationEvent = {
+        eventType: 'workout_skipped',
+        title: `${workout.label} skipped`,
+        detail: `Skipped instead of the originally planned session on ${workout.date}.`,
+        date: workout.date,
+      };
     } else if (action === 'replace_with_support') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
         label: hardCategories.has(workout.category) ? 'Support replacement' : 'Recovery support replacement',
@@ -135,12 +163,24 @@ export async function POST(request: Request) {
         targetLoad: workout.targetLoad ? Math.max(20, Math.round(workout.targetLoad * 0.62)) : workout.targetLoad,
         durationMinutes: workout.durationMinutes ? Math.max(45, Math.round(workout.durationMinutes * 0.75)) : workout.durationMinutes,
       });
+      reconciliationEvent = {
+        eventType: 'workout_replaced',
+        title: `${workout.label} replaced`,
+        detail: `Replaced with support work on ${workout.date}.`,
+        date: workout.date,
+      };
     } else if (action === 'mark_done_modified') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
         status: 'completed_modified',
         locked: true,
         reconciliationNote: `Completed with modified execution vs planned ${workout.label}`,
       });
+      reconciliationEvent = {
+        eventType: 'workout_completed_modified',
+        title: `${workout.label} completed modified`,
+        detail: `Completed with modified execution versus the original planned structure.`,
+        date: workout.date,
+      };
     } else if (action === 'remove') {
       nextDraft = await removeMonthlyPlanWorkout(userId, draftId, workoutId);
     } else {
@@ -148,6 +188,17 @@ export async function POST(request: Request) {
     }
 
     logRouteEvent(ROUTE, 'info', 'Workout mutation applied', { userId, draftId, workoutId, action, isJson });
+    if (reconciliationEvent) {
+      await appendMonthlyPlanReconciliationEvent(userId, {
+        draftId,
+        workoutId,
+        date: reconciliationEvent.date,
+        eventType: reconciliationEvent.eventType,
+        title: reconciliationEvent.title,
+        detail: reconciliationEvent.detail,
+        source: 'user_action',
+      });
+    }
     revalidatePath(appRoutes.plan);
     if (parsed instanceof FormData) {
       const redirectUrl = new URL(appRoutes.plan, request.url);

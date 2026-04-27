@@ -18,6 +18,13 @@ test('workout move conflict route redirects form submissions back to plan with c
   assert.match(source, /Workout moved to/i);
   assert.match(source, /request\.headers\.get\('content-type'\)/i);
   assert.match(source, /application\/json/i);
+  assert.match(source, /appendMonthlyPlanReconciliationEvent/i);
+  assert.match(source, /eventType: 'workout_skipped'/i);
+  assert.match(source, /eventType: 'workout_replaced'/i);
+  assert.match(source, /eventType: 'workout_completed_modified'/i);
+  assert.match(source, /eventType: 'workout_moved'/i);
+  assert.match(source, /eventType: 'workout_locked'/i);
+  assert.match(source, /source: 'user_action'/i);
   assert.match(source, /type WorkoutAction = 'lock' \| 'easier' \| 'harder' \| 'move_day' \| 'remove' \| 'skip' \| 'replace_with_support' \| 'mark_done_modified'/i);
   assert.match(source, /status: 'skipped'/i);
   assert.match(source, /status: 'replaced'/i);

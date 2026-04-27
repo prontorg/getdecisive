@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { appRoutes } from '../../../../../lib/routes';
 import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
 import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
-import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, listPlanningEvents, replaceMonthlyPlanWeek, updateMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
+import { appendMonthlyPlanReconciliationEvent, getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, listPlanningEvents, replaceMonthlyPlanWeek, updateMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
 
@@ -141,6 +141,17 @@ export async function POST(request: Request) {
     }
 
     logRouteEvent(ROUTE, 'info', 'Week mutation applied', { userId, draftId, weekId, action, isJson });
+    await appendMonthlyPlanReconciliationEvent(userId, {
+      draftId,
+      weekId,
+      date: week.workouts[0]?.date || planner.live?.today || new Date().toISOString().slice(0, 10),
+      eventType: action === 'regenerate' ? 'week_regenerated' : 'week_replanned',
+      title: action === 'regenerate' ? `${week.label} regenerated` : `${week.label} adjusted`,
+      detail: action === 'regenerate'
+        ? 'Week was regenerated from the latest planner inputs and live context.'
+        : `Week mutation applied via ${action}.`,
+      source: action === 'regenerate' ? 'planner_runtime' : 'user_action',
+    });
     revalidatePath(appRoutes.plan);
     if (parsed instanceof FormData) {
       return redirectWithNotice(ROUTE, request, appRoutes.plan, { userId, draftId, weekId, action });

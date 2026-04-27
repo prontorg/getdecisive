@@ -149,6 +149,26 @@ type PlanningEvent = {
   updatedAt: string;
 };
 
+type MonthlyPlanReconciliationEvent = {
+  id: string;
+  draftId: string;
+  workoutId?: string;
+  weekId?: string;
+  date: string;
+  eventType:
+    | 'workout_skipped'
+    | 'workout_replaced'
+    | 'workout_completed_modified'
+    | 'workout_moved'
+    | 'workout_locked'
+    | 'week_regenerated'
+    | 'week_replanned';
+  title: string;
+  detail: string;
+  source: 'user_action' | 'planner_runtime';
+  createdAt: string;
+};
+
 type PlannerCustomizationStore = {
   goalsByUser: Record<string, GoalEntry[]>;
   adaptationByUser: Record<string, AdaptationEntry[]>;
@@ -159,9 +179,10 @@ type PlannerCustomizationStore = {
   monthlyInputsByUser: Record<string, MonthlyPlanInput[]>;
   monthlyDraftsByUser: Record<string, MonthlyPlanDraft[]>;
   planningEventsByUser: Record<string, PlanningEvent[]>;
+  monthlyPlanReconciliationEventsByUser: Record<string, MonthlyPlanReconciliationEvent[]>;
 };
 
-export type { GoalEntry, AdaptationEntry, MonthlyPlanInput, MonthlyPlanWorkout, MonthlyPlanWeek, MonthlyPlanDraft, PlanningEvent, PlannerCustomizationStore };
+export type { GoalEntry, AdaptationEntry, MonthlyPlanInput, MonthlyPlanWorkout, MonthlyPlanWeek, MonthlyPlanDraft, PlanningEvent, MonthlyPlanReconciliationEvent, PlannerCustomizationStore };
 
 function nowIso() {
   return new Date().toISOString();
@@ -182,6 +203,7 @@ function createSeedStore(): PlannerCustomizationStore {
     monthlyInputsByUser: {},
     monthlyDraftsByUser: {},
     planningEventsByUser: {},
+    monthlyPlanReconciliationEventsByUser: {},
   };
 }
 
@@ -208,6 +230,7 @@ export async function loadPlannerCustomizationStore(): Promise<PlannerCustomizat
     monthlyInputsByUser: parsed.monthlyInputsByUser || {},
     monthlyDraftsByUser: parsed.monthlyDraftsByUser || {},
     planningEventsByUser: parsed.planningEventsByUser || {},
+    monthlyPlanReconciliationEventsByUser: parsed.monthlyPlanReconciliationEventsByUser || {},
   };
 }
 
@@ -480,4 +503,35 @@ export async function listPlanningEventsInWindow(userId: string, startDate: stri
   return events
     .filter((item) => item.date >= startDate && item.date <= endDate)
     .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+}
+
+export async function listMonthlyPlanReconciliationEvents(userId: string, draftId: string): Promise<MonthlyPlanReconciliationEvent[]> {
+  const store = await loadStore();
+  return (store.monthlyPlanReconciliationEventsByUser[userId] || [])
+    .filter((item) => item.draftId === draftId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function appendMonthlyPlanReconciliationEvent(
+  userId: string,
+  input: Omit<MonthlyPlanReconciliationEvent, 'id' | 'createdAt'> & { id?: string },
+): Promise<MonthlyPlanReconciliationEvent> {
+  const store = await loadStore();
+  const existing = store.monthlyPlanReconciliationEventsByUser[userId] || [];
+  const now = nowIso();
+  const nextEntry: MonthlyPlanReconciliationEvent = {
+    ...input,
+    id: input.id || makeId('plan_recon'),
+    createdAt: now,
+  };
+  store.monthlyPlanReconciliationEventsByUser[userId] = [nextEntry, ...existing]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 200);
+  await saveStore(store);
+  return nextEntry;
+}
+
+export async function listRecentMonthlyPlanReconciliationEvents(userId: string, draftId: string, limit = 5): Promise<MonthlyPlanReconciliationEvent[]> {
+  const events = await listMonthlyPlanReconciliationEvents(userId, draftId);
+  return events.slice(0, limit);
 }

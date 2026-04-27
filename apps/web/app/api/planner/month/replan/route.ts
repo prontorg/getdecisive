@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { appRoutes } from '../../../../../lib/routes';
 import { replanCurrentWeekForScenario } from '../../../../../lib/server/planner-data';
 import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
-import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, replaceMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
+import { appendMonthlyPlanReconciliationEvent, getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, replaceMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
 
@@ -69,6 +69,16 @@ export async function POST(request: Request) {
       scenario,
       weekIndex: nextWeek.weekIndex,
       isJson,
+    });
+
+    await appendMonthlyPlanReconciliationEvent(userId, {
+      draftId,
+      weekId: existingWeek.id,
+      date: planner.live?.today || new Date().toISOString().slice(0, 10),
+      eventType: 'week_replanned',
+      title: `Current week repaired: ${scenario}`,
+      detail: `Current-week runtime repair applied via scenario ${scenario}.`,
+      source: 'planner_runtime',
     });
 
     revalidatePath(appRoutes.plan);

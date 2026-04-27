@@ -165,6 +165,47 @@ test('monthly drafts can record skipped, replaced, and done-modified reconciliat
   });
 });
 
+test('planner reconciliation events append newest-first and stay draft-scoped', async () => {
+  await withPlannerCustomizationModule(async ({ appendMonthlyPlanReconciliationEvent, listMonthlyPlanReconciliationEvents, listRecentMonthlyPlanReconciliationEvents }) => {
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: 'draft_a',
+      workoutId: 'w_1',
+      date: '2026-04-22',
+      eventType: 'workout_skipped',
+      title: 'Repeatability set skipped',
+      detail: 'Skipped after fatigue warning.',
+      source: 'user_action',
+    });
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: 'draft_b',
+      workoutId: 'w_9',
+      date: '2026-04-23',
+      eventType: 'workout_replaced',
+      title: 'Threshold replaced',
+      detail: 'Replaced with endurance support.',
+      source: 'user_action',
+    });
+    await appendMonthlyPlanReconciliationEvent('user_1', {
+      draftId: 'draft_a',
+      weekId: 'week_1',
+      date: '2026-04-24',
+      eventType: 'week_replanned',
+      title: 'Current week repaired',
+      detail: 'Planner shifted remaining work after a missed day.',
+      source: 'planner_runtime',
+    });
+
+    const allForDraft = await listMonthlyPlanReconciliationEvents('user_1', 'draft_a');
+    const recent = await listRecentMonthlyPlanReconciliationEvents('user_1', 'draft_a', 1);
+    assert.equal(allForDraft.length, 2);
+    assert.equal(allForDraft[0]?.draftId, 'draft_a');
+    assert.equal(allForDraft[0]?.eventType, 'week_replanned');
+    assert.equal(allForDraft[1]?.eventType, 'workout_skipped');
+    assert.equal(recent.length, 1);
+    assert.equal(recent[0]?.title, 'Current week repaired');
+  });
+});
+
 test('monthly drafts can update a week block without replacing other weeks', async () => {
   await withPlannerCustomizationModule(async ({ saveMonthlyPlanDraft, updateMonthlyPlanWeek, getLatestMonthlyPlanDraft }) => {
     const drafts = await saveMonthlyPlanDraft('user_1', {

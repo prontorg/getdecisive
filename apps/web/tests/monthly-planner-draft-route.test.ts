@@ -84,4 +84,10 @@ test('draft generation entry points keep the same advanced month inputs across g
   for (const source of [draftRouteSource, trainingPlanPageSource, weekRouteSource, replanRouteSource]) {
     assert.match(source, /toStoredWeekFromGenerated/i);
   }
+
+  for (const source of [weekRouteSource, replanRouteSource]) {
+    assert.match(source, /appendMonthlyPlanReconciliationEvent/i);
+  }
+  assert.match(weekRouteSource, /eventType: action === 'regenerate' \? 'week_regenerated' : 'week_replanned'/i);
+  assert.match(replanRouteSource, /eventType: 'week_replanned'/i);
 });
