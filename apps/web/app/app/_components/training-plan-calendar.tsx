@@ -161,6 +161,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
   const [busyDate, setBusyDate] = useState<string | null>(null);
   const [moveFeedback, setMoveFeedback] = useState<MoveFeedback | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [menuActionByWorkout, setMenuActionByWorkout] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setWeeks(initialWeeks);
@@ -455,6 +456,8 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                 ))}
                 {plannedForDisplay.map((workout) => {
                   const inlineMoveFeedback = moveFeedback?.workoutId === workout.id ? moveFeedback : null;
+                  const selectedAction = menuActionByWorkout[workout.id] || 'move_day';
+                  const showMoveDateField = selectedAction === 'move_day';
                   return (
                   <div
                     key={workout.id}
@@ -486,7 +489,14 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                             <input type="hidden" name="workoutId" value={workout.id} />
                             <label>
                               <span>Action</span>
-                              <select name="action" defaultValue="move_day">
+                              <select
+                                name="action"
+                                value={selectedAction}
+                                onChange={(event) => setMenuActionByWorkout((current) => ({
+                                  ...current,
+                                  [workout.id]: event.target.value,
+                                }))}
+                              >
                                 <option value="move_day">Move day</option>
                                 <option value="skip">Skip</option>
                                 <option value="replace_with_support">Replace with support</option>
@@ -494,10 +504,12 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                                 <option value="remove">Remove</option>
                               </select>
                             </label>
-                            <label>
-                              <span>Move day</span>
-                              <input type="date" name="moveDate" defaultValue={workout.date} />
-                            </label>
+                            {showMoveDateField ? (
+                              <label>
+                                <span>Move day</span>
+                                <input type="date" name="moveDate" defaultValue={workout.date} />
+                              </label>
+                            ) : null}
                             <button type="submit">Apply</button>
                           </form>
                         </details>

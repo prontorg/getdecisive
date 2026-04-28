@@ -247,7 +247,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-day-card-drop-warning/i);
   assert.match(calendarStyles, /training-plan-day-card-drop-blocked/i);
   assert.match(calendarSource, /Move day/i);
-  assert.match(calendarSource, /moveDate/i);
+  assert.match(calendarSource, /showMoveDateField/i);
+  assert.match(calendarSource, /menuActionByWorkout/i);
+  assert.match(calendarSource, /event\.target\.value/i);
   assert.match(calendarSource, /statusTagLabel/i);
   assert.match(calendarSource, /statusToneClass/i);
   assert.match(calendarSource, /isVisiblePastPlannedWorkout/i);
