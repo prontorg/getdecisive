@@ -239,6 +239,9 @@ const draftStatusLabel = latestDraft
     : undefined);
   const draftOriginLabel = latestDraft?.assumptions.selectedRecommendationTitle || selectedRecommendation?.title || selectedDirectionLabel;
   const latestRuntimeRepair = truthSummary?.recentEvents.find((event) => event.source === 'planner_runtime' && /Current week repaired/i.test(event.title));
+  const completedTodayCount = (planner.live?.recent_rows || []).filter((row) => row.start_date_local.slice(0, 10) === today).length;
+  const keySessionProtected = Boolean(activePlanning.todayDecision?.recommendedNextKeyDay || currentWeekReplan.recommendedNextKeyDay);
+  const tomorrowFallbackIfTodayMisses = activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || 'Support endurance';
 
   return (
     <AppPageShell>
@@ -386,8 +389,14 @@ const draftStatusLabel = latestDraft
                   <div className="training-plan-mini-facts">
                     <span className="training-plan-mini-fact"><strong>Planned so far</strong>{currentWeekReplan.plannedSoFar.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Completed so far</strong>{currentWeekReplan.completedSoFar.length || 0}</span>
+                    <span className="training-plan-mini-fact"><strong>Completed today</strong>{completedTodayCount}</span>
                     <span className="training-plan-mini-fact"><strong>Missed</strong>{currentWeekReplan.missedSessions.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
+                    <span className="training-plan-mini-fact"><strong>Key session protected</strong>{keySessionProtected ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="training-plan-current-week-panel__consequence status-item">
+                    <strong>If today slips</strong>
+                    <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || 'the intended follow-through'}.</p>
                   </div>
                   {latestRuntimeRepair ? (
                     <div className="training-plan-current-week-panel__latest-repair status-item">
