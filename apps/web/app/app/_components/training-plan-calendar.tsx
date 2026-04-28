@@ -9,6 +9,14 @@ type MoveFeedback = {
   suggestedDate?: string | null;
 };
 
+type NoticeFeedback = {
+  title: string;
+  detail: string;
+  requestedDate?: string;
+  suggestedDate?: string | null;
+  workoutId?: string;
+};
+
 type PlanEvent = {
   id: string;
   title: string;
@@ -219,6 +227,35 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
     }
     return map;
   }, [weeks]);
+  const visiblePlannedWorkoutIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const [date, dayData] of workoutsByDate.entries()) {
+      const isPastDay = Boolean(today) && date <= today;
+      const plannedForDisplay = isPastDay
+        ? dayData.planned.filter((workout) => isVisiblePastPlannedWorkout(workout))
+        : dayData.planned;
+      for (const workout of plannedForDisplay) ids.add(workout.id);
+    }
+    return ids;
+  }, [today, workoutsByDate]);
+  const activeNotice = useMemo<NoticeFeedback | null>(() => {
+    if (moveFeedback && !visiblePlannedWorkoutIds.has(moveFeedback.workoutId)) {
+      return {
+        title: 'Move blocked',
+        detail: moveFeedback.reason,
+        requestedDate: moveFeedback.requestedDate,
+        suggestedDate: moveFeedback.suggestedDate,
+        workoutId: moveFeedback.workoutId,
+      };
+    }
+    if (successNotice) {
+      return {
+        title: 'Planner updated',
+        detail: successNotice,
+      };
+    }
+    return null;
+  }, [moveFeedback, successNotice, visiblePlannedWorkoutIds]);
   const planEventsByDate = useMemo(() => {
     const map = new Map<string, PlanEvent[]>();
     for (const event of planEvents) {
@@ -333,31 +370,27 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
   return (
     <div className="training-plan-review-layout">
       <div>
-        {(successNotice || moveFeedback) ? (
+        {activeNotice ? (
           <div className="status-list compact-status-list" style={{ marginBottom: 12 }}>
-            {successNotice ? (
-              <div className="status-item">
-                <strong>Calendar move applied</strong>
-                <p>{successNotice}</p>
-              </div>
-            ) : null}
-            {moveFeedback ? (
-              <div className="status-item">
-                <strong>Calendar move blocked</strong>
-                <p>{moveFeedback.reason}</p>
-                <p>Requested day: {moveFeedback.requestedDate}</p>
-                {moveFeedback.suggestedDate ? (
-                  <div className="button-row" style={{ marginTop: 8 }}>
-                    <button type="button" onClick={() => moveWorkout(moveFeedback.workoutId, moveFeedback.suggestedDate || '')}>Use suggested day {moveFeedback.suggestedDate}</button>
-                    <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
-                  </div>
-                ) : (
-                  <div className="button-row" style={{ marginTop: 8 }}>
-                    <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
-                  </div>
-                )}
-              </div>
-            ) : null}
+            <div className="status-item">
+              <strong>{activeNotice.title}</strong>
+              <p>{activeNotice.detail}</p>
+              {activeNotice.requestedDate ? (
+                <>
+                  <p>Requested day: {activeNotice.requestedDate}</p>
+                  {activeNotice.suggestedDate ? (
+                    <div className="button-row" style={{ marginTop: 8 }}>
+                      <button type="button" onClick={() => moveWorkout(activeNotice.workoutId || '', activeNotice.suggestedDate || '')}>Use suggested day {activeNotice.suggestedDate}</button>
+                      <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
+                    </div>
+                  ) : (
+                    <div className="button-row" style={{ marginTop: 8 }}>
+                      <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
           </div>
         ) : null}
       <div className="training-plan-month-grid">
@@ -420,7 +453,9 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                     </div>
                   </div>
                 ))}
-                {plannedForDisplay.map((workout) => (
+                {plannedForDisplay.map((workout) => {
+                  const inlineMoveFeedback = moveFeedback?.workoutId === workout.id ? moveFeedback : null;
+                  return (
                   <div
                     key={workout.id}
                     draggable={!workout.locked}
@@ -463,11 +498,6 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                               <span>Move day</span>
                               <input type="date" name="moveDate" defaultValue={workout.date} />
                             </label>
-                            <div className="training-plan-inline-menu__reconcile-row">
-                              <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'replace_with_support')}>Replace now</button>
-                              <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'mark_done_modified')}>Done* now</button>
-                            </div>
-                            <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'remove')}>Remove now</button>
                             <button type="submit">Apply</button>
                           </form>
                         </details>
@@ -475,6 +505,23 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                     </div>
                     {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
                     {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
+                    {inlineMoveFeedback ? (
+                      <div className="training-plan-session-card__inline-feedback">
+                        <strong>Move blocked</strong>
+                        <p>{inlineMoveFeedback.reason}</p>
+                        <p>Requested day: {inlineMoveFeedback.requestedDate}</p>
+                        {inlineMoveFeedback.suggestedDate ? (
+                          <div className="button-row training-plan-session-card__inline-feedback-actions">
+                            <button type="button" className="button-secondary" onClick={() => moveWorkout(workout.id, inlineMoveFeedback.suggestedDate || '')}>Use suggested day {inlineMoveFeedback.suggestedDate}</button>
+                            <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
+                          </div>
+                        ) : (
+                          <div className="button-row training-plan-session-card__inline-feedback-actions">
+                            <button type="button" className="button-secondary" onClick={() => setMoveFeedback(null)}>Dismiss</button>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>
@@ -482,7 +529,8 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                       <span className="training-plan-session-card__tag">{shortCategoryLabel(workout.category)}</span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

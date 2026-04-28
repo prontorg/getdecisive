@@ -929,10 +929,28 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   padding-top:6px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
-.training-plan-inline-menu__reconcile-row {
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+.training-plan-session-card__inline-feedback {
+  margin-top: 6px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(245,158,11,0.2);
+  background: rgba(245,158,11,0.08);
+  display: grid;
+  gap: 4px;
+}
+.training-plan-session-card__inline-feedback strong {
+  color: #fff2cf;
+  font-size: 10px;
+}
+.training-plan-session-card__inline-feedback p {
+  margin: 0;
+  color: #e7edf7;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.training-plan-session-card__inline-feedback-actions {
+  margin-top: 2px;
+  flex-wrap: wrap;
 }
 .training-plan-inline-panel-week-actions { align-self: stretch; }
 .training-plan-inline-panel-week-actions summary { align-self: stretch; }
