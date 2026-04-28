@@ -941,6 +941,26 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+.training-plan-inline-menu__action-summary {
+  display: grid;
+  gap: 4px;
+  margin-top: -2px;
+}
+.training-plan-inline-menu__panel-title {
+  color: #eef4ff;
+  font-size: 12px;
+}
+.training-plan-inline-menu__panel-copy,
+.training-plan-inline-menu__move-note {
+  margin: 0;
+  color: #cdd8e8;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.training-plan-inline-menu__move-note {
+  color: #9fb0c7;
+  margin-top: -3px;
+}
 .training-plan-session-card__inline-feedback {
   margin-top: 6px;
   padding: 7px 8px;

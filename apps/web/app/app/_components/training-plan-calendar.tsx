@@ -163,6 +163,42 @@ function actionConsequenceHint(action: string) {
   }
 }
 
+function actionPanelContent(action: string) {
+  switch (action) {
+    case 'move_day':
+      return {
+        title: 'Move day',
+        copy: 'Pick the day that best preserves freshness and key intent.',
+        note: 'Server checks still block same-day collisions and back-to-back hard-risk moves.',
+      };
+    case 'skip':
+      return {
+        title: 'Skip session',
+        copy: 'Use when the planned work should not happen and the draft should reflect that truth.',
+      };
+    case 'replace_with_support':
+      return {
+        title: 'Replace with support',
+        copy: 'Swap the planned quality for a lower-cost support version while keeping the training signal.',
+      };
+    case 'mark_done_modified':
+      return {
+        title: 'Mark done*',
+        copy: 'This keeps the day on the calendar but records that execution diverged.',
+      };
+    case 'remove':
+      return {
+        title: 'Remove from draft',
+        copy: 'This removes the planned session from the draft calendar.',
+      };
+    default:
+      return {
+        title: 'Action',
+        copy: 'Select the reconciliation path, then confirm.',
+      };
+  }
+}
+
 function actionSuccessNotice(action: string, workout: Pick<Workout, 'label' | 'locked'>) {
   switch (action) {
     case 'remove':
@@ -544,6 +580,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                   const actionHintClassName = destructiveActionSelected
                     ? 'training-plan-inline-menu__danger-hint'
                     : 'training-plan-inline-menu__action-hint';
+                  const panel = actionPanelContent(selectedAction);
                   return (
                   <div
                     key={workout.id}
@@ -604,11 +641,18 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                               <span className="training-plan-inline-menu__selected-action-label">Selected</span>
                               <span className="training-plan-session-card__tag">{actionSelectionLabel(selectedAction)}</span>
                             </div>
+                            <div className="training-plan-inline-menu__action-summary">
+                              <strong className="training-plan-inline-menu__panel-title">{panel.title}</strong>
+                              <p className="training-plan-inline-menu__panel-copy">{panel.copy}</p>
+                            </div>
                             {showMoveDateField ? (
                               <label>
                                 <span>Move day</span>
                                 <input type="date" name="moveDate" defaultValue={workout.date} />
                               </label>
+                            ) : null}
+                            {showMoveDateField ? (
+                              <p className="training-plan-inline-menu__move-note">{panel.note}</p>
                             ) : null}
                             {actionHint ? (
                               <p className={actionHintClassName}>{actionHint}</p>

@@ -244,6 +244,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-inline-menu__danger-hint/i);
   assert.match(calendarStyles, /training-plan-inline-menu__action-hint/i);
   assert.match(calendarStyles, /training-plan-inline-menu__selected-action-row/i);
+  assert.match(calendarStyles, /training-plan-inline-menu__panel-title/i);
+  assert.match(calendarStyles, /training-plan-inline-menu__panel-copy/i);
+  assert.match(calendarStyles, /training-plan-inline-menu__move-note/i);
   assert.match(calendarStyles, /training-plan-current-week-panel/i);
   assert.match(calendarStyles, /training-plan-session-card__tag-family/i);
   assert.match(calendarStyles, /training-plan-intent-compare-card__kicker/i);
@@ -268,6 +271,14 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /actionSuccessNotice/i);
   assert.match(calendarSource, /training-plan-inline-menu__selected-action-label/i);
   assert.match(calendarSource, /Selected/i);
+  assert.match(calendarSource, /training-plan-inline-menu__panel-title/i);
+  assert.match(calendarSource, /training-plan-inline-menu__panel-copy/i);
+  assert.match(calendarSource, /training-plan-inline-menu__action-summary/i);
+  assert.match(calendarSource, /training-plan-inline-menu__move-note/i);
+  assert.match(calendarSource, /Select the reconciliation path, then confirm\./i);
+  assert.match(calendarSource, /Pick the day that best preserves freshness and key intent\./i);
+  assert.match(calendarSource, /This keeps the day on the calendar but records that execution diverged\./i);
+  assert.match(calendarSource, /This removes the planned session from the draft calendar\./i);
   assert.match(calendarSource, /Replaced .* with support in the draft/i);
   assert.match(calendarSource, /Marked .* done\* in the draft/i);
   assert.match(calendarSource, /Removed .* from the draft/i);
