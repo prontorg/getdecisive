@@ -263,9 +263,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /training-plan-inline-menu__danger-hint/i);
   assert.match(calendarSource, /training-plan-inline-menu__action-hint/i);
   assert.match(calendarSource, /actionConsequenceHint/i);
-  assert.match(calendarSource, /Replaces this planned session with a support version in the draft\./i);
-  assert.match(calendarSource, /Keeps this session on the calendar but marks it done with modifications\./i);
-  assert.match(calendarSource, /Removes this planned session from the draft\./i);
+  assert.match(calendarSource, /actionSuccessNotice/i);
+  assert.match(calendarSource, /Replaced .* with support in the draft/i);
+  assert.match(calendarSource, /Marked .* done\* in the draft/i);
+  assert.match(calendarSource, /Removed .* from the draft/i);
   assert.match(calendarSource, /closest\('details'\)/i);
   assert.match(calendarSource, /HTMLDetailsElement/i);
   assert.match(calendarSource, /Move to day/i);

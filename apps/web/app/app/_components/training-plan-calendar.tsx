@@ -147,6 +147,27 @@ function actionConsequenceHint(action: string) {
   }
 }
 
+function actionSuccessNotice(action: string, workout: Pick<Workout, 'label' | 'locked'>) {
+  switch (action) {
+    case 'remove':
+      return `Removed ${workout.label} from the draft`;
+    case 'lock':
+      return `${workout.label} ${workout.locked ? 'unlocked' : 'locked'} in the draft`;
+    case 'easier':
+      return `Made ${workout.label} easier`;
+    case 'harder':
+      return `Made ${workout.label} harder`;
+    case 'skip':
+      return `Marked ${workout.label} skipped in the draft`;
+    case 'replace_with_support':
+      return `Replaced ${workout.label} with support in the draft`;
+    case 'mark_done_modified':
+      return `Marked ${workout.label} done* in the draft`;
+    default:
+      return `${workout.label} updated`;
+  }
+}
+
 function isVisiblePastPlannedWorkout(workout: Workout) {
   return workout.status === 'skipped' || workout.status === 'replaced' || workout.status === 'completed_modified';
 }
@@ -336,21 +357,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
         });
         return;
       }
-      const nextNotice = action === 'remove'
-        ? `${workout.label} removed`
-        : action === 'lock'
-          ? `${workout.label} ${workout.locked ? 'unlocked' : 'locked'}`
-          : action === 'easier'
-            ? `${workout.label} made easier`
-            : action === 'harder'
-              ? `${workout.label} made harder`
-              : action === 'skip'
-                ? `${workout.label} marked skipped`
-                : action === 'replace_with_support'
-                  ? `${workout.label} replaced with support`
-                  : action === 'mark_done_modified'
-                    ? `${workout.label} marked done-modified`
-                    : `${workout.label} updated`;
+      const nextNotice = actionSuccessNotice(action, workout);
       if (payload?.weeks) setWeeks(payload.weeks as Week[]);
       setSuccessNotice(nextNotice);
     } finally {
