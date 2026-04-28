@@ -333,7 +333,7 @@ const draftStatusLabel = latestDraft
                   <span className="training-plan-mini-fact"><strong>Next event</strong>{planEvents[0] ? `${planEvents[0].title} • ${planEvents[0].date}` : 'No events added yet'}</span>
                 </div>
                 <div className="training-plan-top-strip__actions">
-                  <a href={appRoutes.planRaces} className="button-secondary button-link">Open race calendar</a>
+                  <a href={appRoutes.planRaces} className="button-secondary button-link button-secondary-premium">Open race calendar</a>
                 </div>
               </AppCard>
             </div>
@@ -432,19 +432,19 @@ const draftStatusLabel = latestDraft
                     <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
                   </div>
                   {completedTodaySummary ? (
-                    <div className="training-plan-current-week-panel__completed-today status-item">
+                    <div className="training-plan-current-week-panel__completed-today training-plan-current-week-panel__support-card status-item">
                       <strong>Done today</strong>
                       <p>{completedTodaySummary}</p>
                     </div>
                   ) : null}
-                  <div className="training-plan-current-week-panel__consequence status-item">
+                  <div className="training-plan-current-week-panel__consequence training-plan-current-week-panel__support-card status-item">
                     <strong>If today slips</strong>
                     <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>
                     <span>{mismatchConsequence}</span>
                     <span>{protectionOutcome}</span>
                   </div>
                   {latestRuntimeRepair ? (
-                    <div className="training-plan-current-week-panel__latest-repair status-item">
+                    <div className="training-plan-current-week-panel__latest-repair training-plan-current-week-panel__support-card status-item">
                       <strong>Latest runtime repair</strong>
                       <p>{latestRuntimeRepair.title}</p>
                       <span>{latestRuntimeRepair.date} • {latestRuntimeRepair.detail}</span>

@@ -1218,6 +1218,11 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   display: grid;
   gap: 4px;
 }
+.training-plan-current-week-panel__support-card {
+  border-color: rgba(122,167,255,0.14);
+  background: linear-gradient(180deg, rgba(17,24,38,0.82), rgba(11,16,26,0.74));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
 .training-plan-current-week-panel__consequence span {
   color: #9fb0c7;
   font-size: 12px;

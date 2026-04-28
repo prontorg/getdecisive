@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
         <LoginPanel error={params.error} />
         {inviteHref ? (
           <div className="button-row auth-invite-row auth-invite-row-m3">
-            <a href={inviteHref} className="button-secondary button-link">Create account</a>
+            <a href={inviteHref} className="button-secondary button-secondary-premium button-link">Create account</a>
           </div>
         ) : null}
       </section>
