@@ -12,6 +12,9 @@ type GeneratedWorkout = {
   locked?: boolean;
   status?: MonthlyPlanWorkout['status'];
   reconciliationNote?: string;
+  matchedPlannedWorkoutId?: string;
+  matchedPlannedWorkoutLabel?: string;
+  completedLabel?: string;
 };
 
 type GeneratedWeek = {
@@ -44,6 +47,9 @@ export function toStoredCompletedWorkout(workout: GeneratedWorkout, weekIndex: n
     source: 'completed',
     status: workout.status || 'completed',
     reconciliationNote: workout.reconciliationNote,
+    matchedPlannedWorkoutId: workout.matchedPlannedWorkoutId,
+    matchedPlannedWorkoutLabel: workout.matchedPlannedWorkoutLabel,
+    completedLabel: workout.completedLabel,
   };
 }
 
@@ -62,6 +68,9 @@ export function toStoredPlannedWorkout(workout: GeneratedWorkout, weekIndex: num
     source: existing?.source || 'generated',
     status: workout.status || existing?.status || 'planned',
     reconciliationNote: workout.reconciliationNote || existing?.reconciliationNote,
+    matchedPlannedWorkoutId: workout.matchedPlannedWorkoutId || existing?.matchedPlannedWorkoutId,
+    matchedPlannedWorkoutLabel: workout.matchedPlannedWorkoutLabel || existing?.matchedPlannedWorkoutLabel,
+    completedLabel: workout.completedLabel || existing?.completedLabel,
   };
 }
 

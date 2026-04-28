@@ -168,10 +168,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /selectionRationale/i);
   assert.match(calendarSource, /reconciliationEvents/i);
   assert.match(calendarSource, /reconciliationEventByWorkoutId/i);
-  assert.match(calendarSource, /reconciliationAuditLabel/i);
-  assert.match(calendarSource, /training-plan-session-card__subhead-audit/i);
-  assert.match(calendarSource, /Planned ref:/i);
-  assert.match(calendarSource, /Completed as:/i);
+  assert.match(calendarSource, /reconciliationAuditLabel\(workout, reconciliationAudit\)/i);
+  assert.match(calendarSource, /workout\.matchedPlannedWorkoutLabel/i);
+  assert.match(calendarSource, /workout\.completedLabel/i);
+  assert.match(calendarSource, /reconciliationEvents/i);
   assert.match(calendarSource, /training-plan-session-card__subhead/i);
   assert.match(calendarSource, /familyIntentLabel/i);
   assert.match(calendarSource, /training-plan-session-card__tag-family/i);

@@ -95,6 +95,9 @@ test('monthly drafts can update workout lock state and mark user modifications',
               status: 'planned',
               durationMinutes: 90,
               targetLoad: 95,
+              matchedPlannedWorkoutId: 'w_1',
+              matchedPlannedWorkoutLabel: 'Threshold support',
+              completedLabel: '2x15 threshold',
             },
           ],
         },
@@ -112,6 +115,9 @@ test('monthly drafts can update workout lock state and mark user modifications',
     assert.equal(workout?.label, 'Threshold support - easier');
     assert.equal(workout?.targetLoad, 82);
     assert.equal(workout?.source, 'user_modified');
+    assert.equal(workout?.matchedPlannedWorkoutId, 'w_1');
+    assert.equal(workout?.matchedPlannedWorkoutLabel, 'Threshold support');
+    assert.equal(workout?.completedLabel, '2x15 threshold');
   });
 });
 
@@ -145,9 +151,29 @@ test('monthly drafts can record skipped, replaced, and done-modified reconciliat
     });
 
     const draftId = drafts[0]!.id;
-    await updateMonthlyPlanWorkout('user_1', draftId, 'w_1', { status: 'skipped', locked: true, reconciliationNote: 'Skipped instead of Repeatability set' });
-    await updateMonthlyPlanWorkout('user_1', draftId, 'w_2', { status: 'replaced', category: 'endurance', label: 'Support replacement', reconciliationNote: 'Replaced planned Threshold support with support work' });
-    await updateMonthlyPlanWorkout('user_1', draftId, 'w_3', { status: 'completed_modified', locked: true, reconciliationNote: 'Completed with modified execution vs planned Race-like bridge' });
+    await updateMonthlyPlanWorkout('user_1', draftId, 'w_1', {
+      status: 'skipped',
+      locked: true,
+      reconciliationNote: 'Skipped instead of Repeatability set',
+      matchedPlannedWorkoutId: 'w_1',
+      matchedPlannedWorkoutLabel: 'Repeatability set',
+    });
+    await updateMonthlyPlanWorkout('user_1', draftId, 'w_2', {
+      status: 'replaced',
+      category: 'endurance',
+      label: 'Support replacement',
+      reconciliationNote: 'Replaced planned Threshold support with support work',
+      matchedPlannedWorkoutId: 'w_2',
+      matchedPlannedWorkoutLabel: 'Threshold support',
+    });
+    await updateMonthlyPlanWorkout('user_1', draftId, 'w_3', {
+      status: 'completed_modified',
+      locked: true,
+      reconciliationNote: 'Completed with modified execution vs planned Race-like bridge',
+      matchedPlannedWorkoutId: 'w_3',
+      matchedPlannedWorkoutLabel: 'Race-like bridge',
+      completedLabel: 'Points-race set',
+    });
 
     const latest = await getLatestMonthlyPlanDraft('user_1');
     const skipped = latest?.weeks[0]?.workouts.find((workout) => workout.id === 'w_1');
@@ -156,12 +182,16 @@ test('monthly drafts can record skipped, replaced, and done-modified reconciliat
     assert.equal(skipped?.status, 'skipped');
     assert.equal(skipped?.locked, true);
     assert.match(skipped?.reconciliationNote || '', /Skipped instead/i);
+    assert.equal(skipped?.matchedPlannedWorkoutLabel, 'Repeatability set');
     assert.equal(replaced?.status, 'replaced');
     assert.equal(replaced?.category, 'endurance');
     assert.match(replaced?.reconciliationNote || '', /support work/i);
+    assert.equal(replaced?.matchedPlannedWorkoutLabel, 'Threshold support');
     assert.equal(doneModified?.status, 'completed_modified');
     assert.equal(doneModified?.locked, true);
     assert.match(doneModified?.reconciliationNote || '', /modified execution/i);
+    assert.equal(doneModified?.matchedPlannedWorkoutLabel, 'Race-like bridge');
+    assert.equal(doneModified?.completedLabel, 'Points-race set');
   });
 });
 

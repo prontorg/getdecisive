@@ -132,6 +132,9 @@ export async function POST(request: Request) {
         status: 'skipped',
         locked: true,
         reconciliationNote: `Skipped instead of ${workout.label}`,
+        matchedPlannedWorkoutId: workout.id,
+        matchedPlannedWorkoutLabel: workout.label,
+        completedLabel: undefined,
       });
       reconciliationEvent = {
         eventType: 'workout_skipped',
@@ -149,6 +152,9 @@ export async function POST(request: Request) {
         category: hardCategories.has(workout.category) ? 'endurance' : 'recovery',
         status: 'replaced',
         reconciliationNote: `Replaced planned ${workout.label} with support work`,
+        matchedPlannedWorkoutId: workout.id,
+        matchedPlannedWorkoutLabel: workout.label,
+        completedLabel: undefined,
         targetLoad: workout.targetLoad ? Math.max(20, Math.round(workout.targetLoad * 0.62)) : workout.targetLoad,
         durationMinutes: workout.durationMinutes ? Math.max(45, Math.round(workout.durationMinutes * 0.75)) : workout.durationMinutes,
       });
@@ -165,6 +171,9 @@ export async function POST(request: Request) {
         status: 'completed_modified',
         locked: true,
         reconciliationNote: `Completed with modified execution vs planned ${workout.label}`,
+        matchedPlannedWorkoutId: workout.id,
+        matchedPlannedWorkoutLabel: workout.label,
+        completedLabel: String(pick('completedLabel') || workout.label),
       });
       reconciliationEvent = {
         eventType: 'workout_completed_modified',
@@ -180,6 +189,9 @@ export async function POST(request: Request) {
         status: 'planned',
         locked: false,
         reconciliationNote: undefined,
+        matchedPlannedWorkoutId: undefined,
+        matchedPlannedWorkoutLabel: undefined,
+        completedLabel: undefined,
       });
     } else if (action === 'remove') {
       nextDraft = await removeMonthlyPlanWorkout(userId, draftId, workoutId);

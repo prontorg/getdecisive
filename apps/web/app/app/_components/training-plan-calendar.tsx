@@ -53,6 +53,9 @@ type Workout = {
   locked: boolean;
   status: 'planned' | 'published_local' | 'published_intervals' | 'completed' | 'skipped' | 'replaced' | 'completed_modified';
   reconciliationNote?: string;
+  matchedPlannedWorkoutId?: string;
+  matchedPlannedWorkoutLabel?: string;
+  completedLabel?: string;
 };
 
 type Week = {
@@ -282,17 +285,18 @@ function settledReconciliationLabel(status: Workout['status']) {
 }
 
 function reconciliationAuditLabel(
-  workout: Pick<Workout, 'id' | 'label' | 'status'>,
+  workout: Pick<Workout, 'id' | 'label' | 'status' | 'matchedPlannedWorkoutLabel' | 'completedLabel'>,
   auditEvent?: ReconciliationAuditEvent,
 ) {
-  if (!auditEvent) return null;
-  const plannedRef = auditEvent.matchedPlannedWorkoutLabel || workout.label;
-  if (workout.status === 'replaced' && plannedRef && plannedRef !== workout.label) {
+  const plannedRef = workout.matchedPlannedWorkoutLabel || auditEvent?.matchedPlannedWorkoutLabel || workout.label;
+  const completedRef = workout.completedLabel || auditEvent?.completedLabel;
+  if (!plannedRef || (workout.status !== 'skipped' && workout.status !== 'replaced' && workout.status !== 'completed_modified')) return null;
+  if (workout.status === 'replaced' && plannedRef !== workout.label) {
     return `Planned ref: ${plannedRef}`;
   }
   if (workout.status === 'completed_modified') {
-    return auditEvent.completedLabel
-      ? `Completed as: ${auditEvent.completedLabel} • planned ref: ${plannedRef}`
+    return completedRef
+      ? `Completed as: ${completedRef} • planned ref: ${plannedRef}`
       : `Planned ref: ${plannedRef}`;
   }
   if (workout.status === 'skipped') {

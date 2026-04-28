@@ -91,6 +91,9 @@ type MonthlyPlanWorkout = {
   source: 'generated' | 'user_modified' | 'completed';
   status: 'planned' | 'published_local' | 'published_intervals' | 'completed' | 'skipped' | 'replaced' | 'completed_modified';
   reconciliationNote?: string;
+  matchedPlannedWorkoutId?: string;
+  matchedPlannedWorkoutLabel?: string;
+  completedLabel?: string;
 };
 
 type MonthlyPlanWeek = {

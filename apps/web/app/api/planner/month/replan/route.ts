@@ -72,7 +72,18 @@ export async function POST(request: Request) {
     }, scenario as 'missed_session' | 'fatigued' | 'fresher' | 'reduce_load' | 'increase_specificity');
 
     const existingWeek = draft.weeks.find((week) => week.weekIndex === nextWeek.weekIndex)!;
-    const updatedDraft = await replaceMonthlyPlanWeek(userId, draftId, toStoredWeekFromGenerated(nextWeek, existingWeek));
+    const scenarioLabel = replanScenarioLabel(scenario);
+    const matchedPlannedWorkout = existingWeek.workouts.find((workout) => workout.date >= (planner.live?.today || '')) || existingWeek.workouts[0];
+    const nextStoredWeek = toStoredWeekFromGenerated(nextWeek, existingWeek);
+    nextStoredWeek.workouts = nextStoredWeek.workouts.map((workout) => {
+      if (workout.id !== matchedPlannedWorkout?.id) return workout;
+      return {
+        ...workout,
+        matchedPlannedWorkoutId: matchedPlannedWorkout.id,
+        matchedPlannedWorkoutLabel: matchedPlannedWorkout.label,
+      };
+    });
+    const updatedDraft = await replaceMonthlyPlanWeek(userId, draftId, nextStoredWeek);
 
     logRouteEvent(ROUTE, 'info', 'Current-week bridge replanned', {
       userId,
@@ -81,9 +92,6 @@ export async function POST(request: Request) {
       weekIndex: nextWeek.weekIndex,
       isJson,
     });
-
-    const scenarioLabel = replanScenarioLabel(scenario);
-    const matchedPlannedWorkout = existingWeek.workouts.find((workout) => workout.date >= (planner.live?.today || '')) || existingWeek.workouts[0];
 
     await appendMonthlyPlanReconciliationEvent(userId, {
       draftId,
