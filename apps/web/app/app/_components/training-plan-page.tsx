@@ -239,8 +239,11 @@ const draftStatusLabel = latestDraft
     : undefined);
   const draftOriginLabel = latestDraft?.assumptions.selectedRecommendationTitle || selectedRecommendation?.title || selectedDirectionLabel;
   const latestRuntimeRepair = truthSummary?.recentEvents.find((event) => event.source === 'planner_runtime' && /Current week repaired/i.test(event.title));
-  const completedTodayCount = (planner.live?.recent_rows || []).filter((row) => row.start_date_local.slice(0, 10) === today).length;
+  const completedTodayRows = (planner.live?.recent_rows || []).filter((row) => row.start_date_local.slice(0, 10) === today);
+  const completedTodayCount = completedTodayRows.length;
+  const completedTodaySummary = completedTodayRows.map((row) => row.summary?.short_label || row.session_type || row.name || 'Completed').slice(0, 2).join(' • ');
   const keySessionProtected = Boolean(activePlanning.todayDecision?.recommendedNextKeyDay || currentWeekReplan.recommendedNextKeyDay);
+  const protectedKeyDayLabel = activePlanning.todayDecision?.recommendedNextKeyDay || currentWeekReplan.recommendedNextKeyDay || 'Still resolving';
   const tomorrowFallbackIfTodayMisses = activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || 'Support endurance';
 
   return (
@@ -392,8 +395,14 @@ const draftStatusLabel = latestDraft
                     <span className="training-plan-mini-fact"><strong>Completed today</strong>{completedTodayCount}</span>
                     <span className="training-plan-mini-fact"><strong>Missed</strong>{currentWeekReplan.missedSessions.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
-                    <span className="training-plan-mini-fact"><strong>Key session protected</strong>{keySessionProtected ? 'Yes' : 'No'}</span>
+                    <span className="training-plan-mini-fact"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
                   </div>
+                  {completedTodaySummary ? (
+                    <div className="training-plan-current-week-panel__completed-today status-item">
+                      <strong>Done today</strong>
+                      <p>{completedTodaySummary}</p>
+                    </div>
+                  ) : null}
                   <div className="training-plan-current-week-panel__consequence status-item">
                     <strong>If today slips</strong>
                     <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || 'the intended follow-through'}.</p>

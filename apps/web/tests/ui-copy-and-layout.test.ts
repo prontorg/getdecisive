@@ -285,8 +285,12 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /<strong>Tomorrow if today lands<\/strong>/i);
   assert.match(source, /<strong>Completed today<\/strong>/i);
   assert.match(source, /<strong>Key session protected<\/strong>/i);
+  assert.match(source, /<strong>Done today<\/strong>/i);
+  assert.match(source, /protectedKeyDayLabel/i);
+  assert.match(source, /completedTodaySummary/i);
   assert.match(source, /If today slips/i);
   assert.match(source, /training-plan-current-week-panel__decision-grid/i);
+  assert.match(source, /training-plan-current-week-panel__completed-today/i);
   assert.match(source, /training-plan-current-week-panel__consequence/i);
   assert.doesNotMatch(source, /<strong>Hours left<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Key slots<\/strong>/i);
