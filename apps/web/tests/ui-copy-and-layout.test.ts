@@ -221,12 +221,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(calendarSource, /router\.refresh\(\)/i);
   assert.match(calendarSource, /training-plan-inline-menu/i);
   assert.match(calendarSource, /training-plan-session-card__quick-actions/i);
-  assert.match(calendarSource, /mutateWorkout\(workout\.id, 'easier'\)/i);
+  assert.doesNotMatch(calendarSource, /mutateWorkout\(workout\.id, 'easier'\)/i);
   assert.match(calendarSource, /mutateWorkout\(workout\.id, 'skip'\)/i);
   assert.match(calendarSource, /mutateWorkout\(workout\.id, 'replace_with_support'\)/i);
   assert.match(calendarSource, /mutateWorkout\(workout\.id, 'mark_done_modified'\)/i);
-  assert.match(calendarSource, /option value=\"harder\"/i);
-  assert.match(calendarSource, /option value=\"lock\"/i);
+  assert.doesNotMatch(calendarSource, /option value=\"harder\"/i);
+  assert.doesNotMatch(calendarSource, /option value=\"lock\"/i);
+  assert.match(calendarSource, /option value=\"remove\"/i);
   assert.match(calendarSource, /Remove now/i);
   assert.match(calendarSource, /dayHint\(draggingWorkoutId, date\)/i);
   assert.match(calendarSource, /Same-day conflict/i);
@@ -255,7 +256,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /Mark done modified/i);
   assert.match(calendarSource, /reconciliationNote/i);
   assert.match(calendarSource, /status !== 'planned'/i);
-  assert.match(calendarSource, /Skip now/i);
+  assert.doesNotMatch(calendarSource, /Skip now/i);
   assert.match(calendarSource, /Replace now/i);
   assert.match(calendarSource, /Done\* now/i);
   assert.doesNotMatch(source, /Week controls/i);

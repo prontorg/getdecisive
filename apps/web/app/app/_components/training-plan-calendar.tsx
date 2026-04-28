@@ -442,27 +442,20 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                         {workout.locked ? <span className="training-plan-session-card__tag">lock</span> : null}
                         {workout.status !== 'planned' ? <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span> : null}
                         <div className="training-plan-session-card__quick-actions">
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'easier')}>Easier</button>
                           <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'skip')}>Skip</button>
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'replace_with_support')}>Replace</button>
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'mark_done_modified')}>Done*</button>
                         </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>
                           <form action="/api/planner/month/workout" method="post" className="training-plan-inline-menu__content">
                             <input type="hidden" name="draftId" value={draftId} />
                             <input type="hidden" name="workoutId" value={workout.id} />
-                            <input type="hidden" name="locked" value={workout.locked ? 'false' : 'true'} />
                             <label>
                               <span>Action</span>
                               <select name="action" defaultValue="move_day">
                                 <option value="move_day">Move day</option>
-                                <option value="easier">Easier</option>
-                                <option value="harder">Harder</option>
                                 <option value="skip">Skip</option>
                                 <option value="replace_with_support">Replace with support</option>
                                 <option value="mark_done_modified">Mark done modified</option>
-                                <option value="lock">Lock / unlock</option>
                                 <option value="remove">Remove</option>
                               </select>
                             </label>
@@ -470,12 +463,11 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                               <span>Move day</span>
                               <input type="date" name="moveDate" defaultValue={workout.date} />
                             </label>
-                            <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'remove')}>Remove now</button>
                             <div className="training-plan-inline-menu__reconcile-row">
-                              <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'skip')}>Skip now</button>
                               <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'replace_with_support')}>Replace now</button>
                               <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'mark_done_modified')}>Done* now</button>
                             </div>
+                            <button type="button" className="button-secondary" onClick={() => mutateWorkout(workout.id, 'remove')}>Remove now</button>
                             <button type="submit">Apply</button>
                           </form>
                         </details>
