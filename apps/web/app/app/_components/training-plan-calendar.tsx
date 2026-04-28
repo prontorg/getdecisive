@@ -259,6 +259,25 @@ function statusToneClass(status: Workout['status']) {
   }
 }
 
+function quickActionState(
+  workout: Pick<Workout, 'status'>,
+  action: 'skip' | 'replace_with_support' | 'mark_done_modified',
+) {
+  if (action === 'skip') {
+    if (workout.status === 'skipped') return 'active';
+    if (workout.status === 'replaced' || workout.status === 'completed_modified') return 'disabled';
+    return 'idle';
+  }
+  if (action === 'replace_with_support') {
+    if (workout.status === 'replaced') return 'active';
+    if (workout.status === 'skipped' || workout.status === 'completed_modified') return 'disabled';
+    return 'idle';
+  }
+  if (workout.status === 'completed_modified') return 'active';
+  if (workout.status === 'skipped' || workout.status === 'replaced') return 'disabled';
+  return 'idle';
+}
+
 function sessionToneClass(category: Workout['category'] | undefined) {
   switch (category) {
     case 'repeatability': return 'session-tone-repeatability';
@@ -400,15 +419,12 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
     if (!workoutId) return null;
     const moving = workoutsById.get(workoutId);
     if (!moving) return null;
-    const dayData = workoutsByDate.get(targetDate);
-    const sameDayConflict = Boolean(dayData?.planned.some((item) => item.id !== workoutId));
     const movingHard = hardCategories.has(moving.category);
     const backToBackHard = movingHard && weeks.some((week) => week.workouts.some((item) => {
       if (item.id === workoutId || !hardCategories.has(item.category)) return false;
       const daysApart = Math.abs(Math.round((new Date(`${item.date}T00:00:00Z`).getTime() - new Date(`${targetDate}T00:00:00Z`).getTime()) / 86400000));
       return daysApart <= 1;
     }));
-    if (sameDayConflict) return { tone: 'blocked' as const, text: 'Same-day conflict' };
     if (backToBackHard) return { tone: 'warning' as const, text: 'Back-to-back hard risk' };
     return { tone: 'safe' as const, text: 'Drop looks usable' };
   }
@@ -522,9 +538,9 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
           const planEvents = planEventsByDate.get(date) || [];
           return (
             <div
-              key={date}
-              className={`training-plan-day-card ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''} ${isHinted && activeHint?.tone === 'blocked' ? 'training-plan-day-card-drop-blocked' : ''} ${isHinted && activeHint?.tone === 'warning' ? 'training-plan-day-card-drop-warning' : ''} ${isHinted && activeHint?.tone === 'safe' ? 'training-plan-day-card-drop-safe' : ''}`}
-              onDragOver={(event) => {
+                  key={date}
+                  className={`training-plan-day-card ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''} ${isHinted && activeHint?.tone === 'warning' ? 'training-plan-day-card-drop-warning' : ''} ${isHinted && activeHint?.tone === 'safe' ? 'training-plan-day-card-drop-safe' : ''}`}
+onDragOver={(event) => {
                 event.preventDefault();
                 setHoverDate(date);
                 event.dataTransfer.dropEffect = 'move';
@@ -582,6 +598,9 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                     ? 'training-plan-inline-menu__danger-hint'
                     : 'training-plan-inline-menu__action-hint';
                   const panel = actionPanelContent(selectedAction);
+                  const skipActionState = quickActionState(workout, 'skip');
+                  const supportActionState = quickActionState(workout, 'replace_with_support');
+                  const doneModifiedActionState = quickActionState(workout, 'mark_done_modified');
                   return (
                   <div
                     key={workout.id}
@@ -604,9 +623,34 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                         {workout.locked ? <span className="training-plan-session-card__tag">lock</span> : null}
                         {workout.status !== 'planned' ? <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span> : null}
                         <div className="training-plan-session-card__quick-actions">
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'skip')}>Skip</button>
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'replace_with_support')}>Support</button>
-                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'mark_done_modified')}>Done*</button>
+                          {[
+                            { action: 'skip' as const, label: 'Skip', state: skipActionState },
+                            { action: 'replace_with_support' as const, label: 'Support', state: supportActionState },
+                            { action: 'mark_done_modified' as const, label: 'Done*', state: doneModifiedActionState },
+                          ].map(({ action, label, state }) => {
+                            const quickActionDisabled = state === 'disabled';
+                            const quickActionClassName = [
+                              'button-secondary',
+                              'training-plan-session-card__quick-action',
+                              state === 'active' ? 'training-plan-session-card__quick-action-active' : '',
+                              quickActionDisabled ? 'training-plan-session-card__quick-action-disabled' : '',
+                            ].filter(Boolean).join(' ');
+                            return (
+                              <button
+                                key={action}
+                                type="button"
+                                className={quickActionClassName}
+                                disabled={quickActionDisabled}
+                                aria-disabled={quickActionDisabled}
+                                onClick={() => {
+                                  if (quickActionDisabled) return;
+                                  mutateWorkout(workout.id, action);
+                                }}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
                         </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>
