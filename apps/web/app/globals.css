@@ -1101,6 +1101,28 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
+.training-plan-current-week-panel__reconciliation-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.training-plan-current-week-panel__reconciliation-cell {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(122, 167, 255, 0.12);
+  background: rgba(12, 18, 28, 0.74);
+  color: #d7e2f0;
+  font-size: 12px;
+}
+.training-plan-current-week-panel__reconciliation-cell strong {
+  color: #eef4ff;
+}
+.training-plan-current-week-panel__reconciliation-cell-mismatch {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.08);
+}
 .training-plan-current-week-panel__summary {
   margin: 0;
   color: #d7e2f0;

@@ -247,6 +247,7 @@ const draftStatusLabel = latestDraft
   const tomorrowFallbackIfTodayMisses = activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || 'Support endurance';
   const tomorrowIfTodayLands = activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || 'the intended follow-through';
   const protectionOutcome = keySessionProtected ? `Key work stays protected for ${protectedKeyDayLabel}.` : 'Key work is no longer clearly protected.';
+  const plannedVsDoneMismatch = Boolean(truthSummary?.currentWeekToday.mismatch);
 
   return (
     <AppPageShell>
@@ -376,6 +377,11 @@ const draftStatusLabel = latestDraft
                     <span className="training-plan-mini-fact"><strong>Do today</strong>{activePlanning.todayDecision?.actualRecommendationForToday || activePlanning.summary?.actualToday || currentWeekReplan.recommendationText}</span>
                     <span className="training-plan-mini-fact"><strong>Planned tomorrow</strong>{activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
                     <span className="training-plan-mini-fact"><strong>Tomorrow if today lands</strong>{activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || '—'}</span>
+                  </div>
+                  <div className="training-plan-current-week-panel__reconciliation-strip">
+                    <span className={`training-plan-current-week-panel__reconciliation-cell${plannedVsDoneMismatch ? ' training-plan-current-week-panel__reconciliation-cell-mismatch' : ''}`}><strong>Do now</strong>{truthSummary?.currentWeekToday.shouldDoNow || activePlanning.todayDecision?.actualRecommendationForToday || 'Pending'}</span>
+                    <span className={`training-plan-current-week-panel__reconciliation-cell${plannedVsDoneMismatch ? ' training-plan-current-week-panel__reconciliation-cell-mismatch' : ''}`}><strong>Done so far</strong>{truthSummary?.currentWeekToday.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
+                    <span className={`training-plan-current-week-panel__reconciliation-cell${plannedVsDoneMismatch ? ' training-plan-current-week-panel__reconciliation-cell-mismatch' : ''}`}><strong>Mismatch</strong>{plannedVsDoneMismatch ? 'Yes • execution differs from prescription' : 'No • prescription still matches execution'}</span>
                   </div>
                   <p className="training-plan-current-week-panel__summary">{currentWeekReplan.recommendationText}</p>
                   <div className="training-plan-current-week-panel__trace training-plan-mini-facts">

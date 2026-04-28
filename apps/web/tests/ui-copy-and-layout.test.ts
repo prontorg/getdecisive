@@ -375,6 +375,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /<strong>Completed today<\/strong>/i);
   assert.match(source, /<strong>Key session protected<\/strong>/i);
   assert.match(source, /<strong>Done today<\/strong>/i);
+  assert.match(source, /plannedVsDoneMismatch/i);
+  assert.match(source, /Do now/i);
+  assert.match(source, /Done so far/i);
+  assert.match(source, /Mismatch/i);
+  assert.match(source, /training-plan-current-week-panel__reconciliation-strip/i);
+  assert.match(source, /training-plan-current-week-panel__reconciliation-cell/i);
+  assert.match(source, /training-plan-current-week-panel__reconciliation-cell-mismatch/i);
   assert.match(source, /protectedKeyDayLabel/i);
   assert.match(source, /completedTodaySummary/i);
   assert.match(source, /protectionOutcome/i);

@@ -64,6 +64,9 @@ export type PlannerTruthSummaryPayload = {
     planned: number;
     completed: number;
     changed: number;
+    mismatch: boolean;
+    shouldDoNow: string;
+    doneLabel: string;
     summary: string;
   };
   currentWeekSignal: string;
@@ -1152,11 +1155,17 @@ function currentWeekTodayTruth(
   const changed = todaysWorkouts.filter((workout) => workout.status !== 'planned' && workout.status !== 'published_local' && workout.status !== 'published_intervals').length;
   const completed = todaysWorkouts.filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified').length;
   const planned = todaysWorkouts.length;
+  const shouldDoNow = todaysWorkouts[0]?.label || 'No same-day draft session';
+  const doneLabel = todaysWorkouts
+    .filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified')
+    .map((workout) => workout.label)
+    .join(' • ') || 'Nothing completed yet';
+  const mismatch = changed > 0 || completed > planned || Boolean(todaysWorkouts.some((workout) => workout.status === 'completed_modified' || workout.status === 'skipped' || workout.status === 'replaced'));
   const summary = planned
     ? `Today truth: ${planned} planned • ${completed} completed • ${changed} changed.`
     : 'Today truth: no draft session sat on today.';
 
-  return { planned, completed, changed, summary };
+  return { planned, completed, changed, mismatch, shouldDoNow, doneLabel, summary };
 }
 
 export async function buildPlannerTruthSummaryPayload(
@@ -1173,6 +1182,9 @@ export async function buildPlannerTruthSummaryPayload(
       planned: 0,
       completed: 0,
       changed: 0,
+      mismatch: false,
+      shouldDoNow: 'No same-day draft session',
+      doneLabel: 'Nothing completed yet',
       summary: 'Today truth: no draft session sat on today.',
     },
     currentWeekSignal: 'Current week drift is low and the block intent is still intact.',
