@@ -1110,6 +1110,50 @@ function summarizeWorkout(workout: { date: string; label: string; category?: str
   return `${workout.date} • ${workout.label}${workout.durationMinutes ? ` • ${workout.durationMinutes}m` : ''}${workout.targetLoad ? ` • L${workout.targetLoad}` : ''}`;
 }
 
+function normalizeWorkoutText(value?: string) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function workoutTokens(value?: string) {
+  return normalizeWorkoutText(value)
+    .split(' ')
+    .filter((token) => token.length >= 4);
+}
+
+function labelsLookRelated(a?: string, b?: string) {
+  const aText = normalizeWorkoutText(a);
+  const bText = normalizeWorkoutText(b);
+  if (!aText || !bText) return false;
+  if (aText === bText) return true;
+  if (aText.includes(bText) || bText.includes(aText)) return true;
+  const aTokens = workoutTokens(aText);
+  const bTokenSet = new Set(workoutTokens(bText));
+  return aTokens.some((token) => bTokenSet.has(token));
+}
+
+function liveRowLabel(row: LiveRow) {
+  return row.summary?.short_label || row.summary?.structure_label || row.session_type || row.name || 'Completed';
+}
+
+function liveRowCategory(row: LiveRow) {
+  return runtimeWorkoutCategory(row.session_type || row.summary?.short_label || row.summary?.structure_label || row.name);
+}
+
+function plannedWorkoutMatchesLiveRow(
+  workout: Pick<MonthlyPlanWorkout, 'date' | 'label' | 'intervalLabel' | 'category'>,
+  row: LiveRow,
+) {
+  if (row.start_date_local.slice(0, 10) !== workout.date) return false;
+  const categoryMatch = liveRowCategory(row) === workout.category;
+  const labelMatch = labelsLookRelated(workout.label, liveRowLabel(row))
+    || labelsLookRelated(workout.intervalLabel, row.summary?.structure_label)
+    || labelsLookRelated(workout.intervalLabel, liveRowLabel(row));
+  return categoryMatch || labelMatch;
+}
+
 function runtimeWorkoutCategory(label?: string) {
   const text = (label || '').toLowerCase();
   if (text.includes('repeat')) return 'repeatability' as const;
@@ -1190,20 +1234,36 @@ function currentWeekTruthSeverity(
 function currentWeekTodayTruth(
   currentWeek: MonthlyPlanDraft['weeks'][number] | undefined,
   today: string,
+  live?: LiveState | null,
 ): PlannerTruthSummaryPayload['currentWeekToday'] {
   const todaysWorkouts = (currentWeek?.workouts || []).filter((workout) => workout.date === today);
-  const changed = todaysWorkouts.filter((workout) => workout.status !== 'planned' && workout.status !== 'published_local' && workout.status !== 'published_intervals').length;
-  const completed = todaysWorkouts.filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified').length;
+  const todaysRows = (live?.recent_rows || []).filter((row) => row.start_date_local.slice(0, 10) === today);
+  const statusChanged = todaysWorkouts.filter((workout) => workout.status !== 'planned' && workout.status !== 'published_local' && workout.status !== 'published_intervals').length;
+  const matchedWorkoutIds = new Set(
+    todaysWorkouts
+      .filter((workout) => todaysRows.some((row) => plannedWorkoutMatchesLiveRow(workout, row)))
+      .map((workout) => workout.id),
+  );
+  const unmatchedLiveRows = todaysRows.filter((row) => !todaysWorkouts.some((workout) => plannedWorkoutMatchesLiveRow(workout, row)));
+  const completed = todaysRows.length || todaysWorkouts.filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified').length;
   const planned = todaysWorkouts.length;
-  const shouldDoNow = todaysWorkouts[0]?.label || 'No same-day draft session';
-  const doneLabel = todaysWorkouts
-    .filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified')
-    .map((workout) => workout.label)
-    .join(' • ') || 'Nothing completed yet';
-  const mismatch = changed > 0 || completed > planned || Boolean(todaysWorkouts.some((workout) => workout.status === 'completed_modified' || workout.status === 'skipped' || workout.status === 'replaced'));
-  const mismatchReason = mismatch
-    ? 'Today changed enough that execution differs from the original prescription.'
-    : 'Today still matches the original prescription.';
+  const changed = statusChanged + unmatchedLiveRows.length;
+  const pendingPlanned = todaysWorkouts.filter((workout) => !matchedWorkoutIds.has(workout.id) && workout.status !== 'completed' && workout.status !== 'completed_modified');
+  const shouldDoNow = pendingPlanned[0]?.label || todaysWorkouts[0]?.label || 'No same-day draft session';
+  const doneLabel = todaysRows.map(liveRowLabel).join(' • ')
+    || todaysWorkouts
+      .filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified')
+      .map((workout) => workout.label)
+      .join(' • ')
+    || 'Nothing completed yet';
+  const mismatch = statusChanged > 0
+    || unmatchedLiveRows.length > 0
+    || Boolean(todaysWorkouts.some((workout) => workout.status === 'completed_modified' || workout.status === 'skipped' || workout.status === 'replaced'));
+  const mismatchReason = unmatchedLiveRows.length > 0
+    ? 'Today completed work does not cleanly match the planned session type or structure.'
+    : mismatch
+      ? 'Today changed enough that execution differs from the original prescription.'
+      : 'Today still matches the original prescription.';
   const tomorrowConsequence = mismatch
     ? 'Mismatch keeps tomorrow flexible until today is repaired.'
     : 'Key day can stay sharper tomorrow if today lands cleanly.';
@@ -1285,7 +1345,7 @@ export async function buildPlannerTruthSummaryPayload(
     summary,
     counters,
     currentWeekSeverity: currentWeekTruthSeverity(currentWeekEvents, counters),
-    currentWeekToday: currentWeekTodayTruth(currentWeek, today),
+    currentWeekToday: currentWeekTodayTruth(currentWeek, today, live),
     currentWeekSignal: currentWeekTruthSignal(currentWeekEvents, counters),
     recentEvents,
   };
@@ -2359,14 +2419,18 @@ export function buildCurrentWeekReplanPayload(
   const today = live?.today || todayIso();
   const week = currentWeekDraftWeek(draft, today);
   const decision = buildWeeklyDecisionPayload(live, draft, input);
-  const plannedSoFar = (week?.workouts || []).filter((workout) => workout.date <= today).map(summarizeWorkout);
-  const completedSoFar = currentWeekCompletedRows(live).map((row) => summarizeWorkout({
+  const plannedSoFarWorkouts = (week?.workouts || []).filter((workout) => workout.date <= today);
+  const plannedSoFar = plannedSoFarWorkouts.map(summarizeWorkout);
+  const completedRows = currentWeekCompletedRows(live);
+  const completedSoFar = completedRows.map((row) => summarizeWorkout({
     date: row.start_date_local.slice(0, 10),
-    label: row.summary?.short_label || row.session_type || row.name || 'Completed',
+    label: liveRowLabel(row),
     durationMinutes: Math.round(Number(row.duration_s || 0) / 60),
     targetLoad: Math.round(Number(row.training_load || 0)),
   }));
-  const missedSessions = plannedSoFar.filter((item) => !completedSoFar.some((done) => done.includes(item.split(' • ')[1] || '')));
+  const missedSessions = plannedSoFarWorkouts
+    .filter((workout) => !completedRows.some((row) => plannedWorkoutMatchesLiveRow(workout, row)))
+    .map(summarizeWorkout);
   const remainingWorkouts = (week?.workouts || []).filter((workout) => workout.date > today);
   const remainingDays = remainingWorkouts.map((workout) => workout.date);
   const recommendedNextKeyDay = remainingWorkouts.find((workout) => ['repeatability', 'threshold_support', 'race_like'].includes(workout.category))?.date || remainingWorkouts[0]?.date || today;

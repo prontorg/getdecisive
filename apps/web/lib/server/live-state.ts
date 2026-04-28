@@ -12,6 +12,7 @@ export type LiveRow = {
   zone_times?: Record<string, number>;
   summary?: {
     short_label?: string;
+    structure_label?: string;
   };
 };
 

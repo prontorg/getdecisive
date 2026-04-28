@@ -1490,6 +1490,129 @@ test('current-week replanning payload compares planned versus done and recommend
   assert.equal(typeof payload.recommendationText, 'string');
 });
 
+test('current-week replanning only clears missed sessions when completed work matches the same day and workout family', () => {
+  const draft = {
+    monthStart: '2026-04-01',
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    assumptions: { ctl: 106, atl: 118, form: -12, recentSummary: [], availabilitySummary: [], guardrailSummary: [] },
+    weeks: [{
+      weekIndex: 1,
+      label: 'Week 1',
+      intent: 'Race-like focus.',
+      targetHours: 9,
+      targetLoad: 420,
+      rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+      workouts: [
+        { date: '2026-04-15', label: 'Threshold support', intervalLabel: '2x15 threshold', category: 'threshold_support', durationMinutes: 80, targetLoad: 95, locked: false },
+        { date: '2026-04-16', label: 'Race-like bridge', intervalLabel: 'scratch/openers', category: 'race_like', durationMinutes: 70, targetLoad: 90, locked: false },
+      ],
+    }],
+  } as any;
+
+  const live = {
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 106, atl: 118 },
+    recent_rows: [
+      { activity_id: 'done_1', start_date_local: '2026-04-15T09:00:00', session_type: 'threshold / race-support ride', training_load: 132, duration_s: 5400, summary: { short_label: '2x15 threshold', structure_label: '2x15 threshold' } },
+      { activity_id: 'done_2', start_date_local: '2026-04-16T09:00:00', session_type: 'endurance / Z2 ride', training_load: 60, duration_s: 4200, summary: { short_label: 'Endurance spin' } },
+    ],
+  } as any;
+
+  const payload = buildCurrentWeekReplanPayload(live, draft, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen toward track racing',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 9.5 },
+    preferences: { restDay: 'Saturday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+  });
+
+  assert.equal(payload.completedSoFar.length, 2);
+  assert.equal(payload.missedSessions.length, 1);
+  assert.match(payload.missedSessions[0] || '', /2026-04-16 • Race-like bridge/i);
+});
+
+test('planner truth summary flags same-day completed work that does not match the planned workout family', async () => {
+  const draft = {
+    id: 'draft_truth_1',
+    monthStart: '2026-04-01',
+    inputId: 'input_1',
+    createdAt: '2026-04-16T00:00:00Z',
+    updatedAt: '2026-04-16T00:00:00Z',
+    assumptions: { recentSummary: [], availabilitySummary: [], guardrailSummary: [] },
+    publishState: 'draft',
+    weeks: [{
+      id: 'week_truth_1',
+      weekIndex: 1,
+      label: 'Week 1',
+      intent: 'Race-like focus.',
+      targetHours: 9,
+      targetLoad: 420,
+      rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+      workouts: [
+        { id: 'w_truth_1', date: '2026-04-16', label: 'Threshold support', intervalLabel: '2x15 threshold', category: 'threshold_support', durationMinutes: 80, targetLoad: 95, locked: false, source: 'generated', status: 'planned' },
+      ],
+    }],
+  } as any;
+
+  const live = {
+    today: '2026-04-16',
+    recent_rows: [
+      { activity_id: 'done_truth_1', start_date_local: '2026-04-16T09:00:00', session_type: 'endurance / Z2 ride', training_load: 60, duration_s: 4200, summary: { short_label: 'Endurance spin' } },
+    ],
+  } as any;
+
+  const payload = await buildPlannerTruthSummaryPayload('user_1', draft, live, []);
+
+  assert.equal(payload.currentWeekToday.planned, 1);
+  assert.equal(payload.currentWeekToday.completed, 1);
+  assert.equal(payload.currentWeekToday.changed, 1);
+  assert.equal(payload.currentWeekToday.mismatch, true);
+  assert.match(payload.currentWeekToday.doneLabel, /Endurance spin/i);
+  assert.match(payload.currentWeekToday.shouldDoNow, /Threshold support/i);
+  assert.match(payload.currentWeekToday.mismatchReason, /does not cleanly match the planned session type or structure/i);
+});
+
+test('planner truth summary counts same-day matching workout family as landed even when the live label differs', async () => {
+  const draft = {
+    id: 'draft_truth_2',
+    monthStart: '2026-04-01',
+    inputId: 'input_2',
+    createdAt: '2026-04-16T00:00:00Z',
+    updatedAt: '2026-04-16T00:00:00Z',
+    assumptions: { recentSummary: [], availabilitySummary: [], guardrailSummary: [] },
+    publishState: 'draft',
+    weeks: [{
+      id: 'week_truth_2',
+      weekIndex: 1,
+      label: 'Week 1',
+      intent: 'Threshold focus.',
+      targetHours: 9,
+      targetLoad: 420,
+      rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+      workouts: [
+        { id: 'w_truth_2', date: '2026-04-16', label: 'Threshold support', intervalLabel: '2x15 threshold', category: 'threshold_support', durationMinutes: 80, targetLoad: 95, locked: false, source: 'generated', status: 'planned' },
+      ],
+    }],
+  } as any;
+
+  const live = {
+    today: '2026-04-16',
+    recent_rows: [
+      { activity_id: 'done_truth_2', start_date_local: '2026-04-16T09:00:00', session_type: 'threshold / race-support ride', training_load: 132, duration_s: 5400, summary: { short_label: '2x15 set', structure_label: '2x15 threshold' } },
+    ],
+  } as any;
+
+  const payload = await buildPlannerTruthSummaryPayload('user_1', draft, live, []);
+
+  assert.equal(payload.currentWeekToday.completed, 1);
+  assert.equal(payload.currentWeekToday.changed, 0);
+  assert.equal(payload.currentWeekToday.mismatch, false);
+  assert.match(payload.currentWeekToday.doneLabel, /2x15 set/i);
+  assert.match(payload.currentWeekToday.mismatchReason, /still matches the original prescription/i);
+});
+
 test('runtime current-week override keeps completed and still-planned same-day sessions visible and handles moved or sparse draft dates', () => {
   const weeks = [{
     id: 'week_1',
