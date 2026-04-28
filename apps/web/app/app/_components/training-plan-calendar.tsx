@@ -146,6 +146,8 @@ function actionSelectionLabel(action: string) {
   }
 }
 
+const WORKOUT_ACTIONS = ['move_day', 'skip', 'replace_with_support', 'mark_done_modified', 'remove'] as const;
+
 function shouldCloseMenuAfterSubmit(action: string) {
   return action !== 'move_day';
 }
@@ -575,7 +577,6 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                   const submitLabel = actionSubmitLabel(selectedAction);
                   const closeMenuAfterSubmit = shouldCloseMenuAfterSubmit(selectedAction);
                   const destructiveActionSelected = selectedAction === 'remove';
-                  const actionSelectClassName = destructiveActionSelected ? 'training-plan-inline-menu__select-danger' : undefined;
                   const actionHint = actionConsequenceHint(selectedAction);
                   const actionHintClassName = destructiveActionSelected
                     ? 'training-plan-inline-menu__danger-hint'
@@ -619,24 +620,33 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                           >
                             <input type="hidden" name="draftId" value={draftId} />
                             <input type="hidden" name="workoutId" value={workout.id} />
-                            <label>
-                              <span>Action</span>
-                              <select
-                                name="action"
-                                className={actionSelectClassName}
-                                value={selectedAction}
-                                onChange={(event) => setMenuActionByWorkout((current) => ({
-                                  ...current,
-                                  [workout.id]: event.target.value,
-                                }))}
-                              >
-                                <option value="move_day">Move day</option>
-                                <option value="skip">Skip</option>
-                                <option value="replace_with_support">Replace with support</option>
-                                <option value="mark_done_modified">Mark done modified</option>
-                                <option value="remove">Remove</option>
-                              </select>
-                            </label>
+                            <div className="training-plan-inline-menu__action-list">
+                              {WORKOUT_ACTIONS.map((action) => {
+                                const actionActive = selectedAction === action;
+                                const actionDanger = action === 'remove';
+                                const actionPillClassName = [
+                                  'button-secondary',
+                                  'training-plan-inline-menu__action-pill',
+                                  actionActive ? 'training-plan-inline-menu__action-pill-active' : '',
+                                  actionDanger ? 'training-plan-inline-menu__action-pill-danger' : '',
+                                ].filter(Boolean).join(' ');
+                                return (
+                                  <button
+                                    key={action}
+                                    type="button"
+                                    className={actionPillClassName}
+                                    aria-pressed={actionActive ? 'true' : 'false'}
+                                    onClick={() => setMenuActionByWorkout((current) => ({
+                                      ...current,
+                                      [workout.id]: action,
+                                    }))}
+                                  >
+                                    {actionSelectionLabel(action)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <input type="hidden" name="action" value={selectedAction} />
                             <div className="training-plan-inline-menu__selected-action-row">
                               <span className="training-plan-inline-menu__selected-action-label">Selected</span>
                               <span className="training-plan-session-card__tag">{actionSelectionLabel(selectedAction)}</span>
