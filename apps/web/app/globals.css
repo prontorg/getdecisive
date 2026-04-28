@@ -968,6 +968,14 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   font-size: 13px;
   line-height: 1.45;
 }
+.training-plan-current-week-panel__trace {
+  margin-top: 0;
+}
+.training-plan-mini-fact-warning {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: rgba(245, 158, 11, 0.08);
+  color: #f6d28b;
+}
 .training-plan-current-week-panel__actions {
   display: flex;
   gap: 8px;

@@ -357,11 +357,25 @@ const draftStatusLabel = latestDraft
                     </div>
                     <div className="chip-row">
                       <span className="chip">Focus: {currentWeekReplan.recommendedFocus.replace('_', ' ')}</span>
+                      <span className="chip">Confidence: {activePlanning.todayDecision?.confidence || 'pending'}</span>
                       <span className="chip">{currentWeekReplan.remainingWeekHours.toFixed(1)} h left</span>
                       <span className="chip">Quality budget: {currentWeekReplan.remainingQualityBudget}</span>
                     </div>
                   </div>
                   <p className="training-plan-current-week-panel__summary">{currentWeekReplan.recommendationText}</p>
+                  <div className="training-plan-current-week-panel__trace training-plan-mini-facts">
+                    {[
+                      activePlanning.todayDecision?.reasonSummary,
+                      activePlanning.todayDecision?.decisionBasis?.weeklyBalance,
+                    ].filter(Boolean).slice(0, 2).map((reason) => (
+                      <span key={reason} className="training-plan-mini-fact">{reason}</span>
+                    ))}
+                    {((activePlanning.todayDecision?.risks?.length
+                      ? activePlanning.todayDecision.risks
+                      : ['No immediate runtime risk flags.']).slice(0, 2)).map((risk) => (
+                      <span key={risk} className="training-plan-mini-fact training-plan-mini-fact-warning">{risk}</span>
+                    ))}
+                  </div>
                   <div className="training-plan-mini-facts">
                     <span className="training-plan-mini-fact"><strong>Planned so far</strong>{currentWeekReplan.plannedSoFar.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Completed so far</strong>{currentWeekReplan.completedSoFar.length || 0}</span>

@@ -120,6 +120,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /currentWeekReplan/i);
   assert.match(source, /remainingWeekHours/i);
   assert.match(source, /remainingQualityBudget/i);
+  assert.match(source, /activePlanning\.todayDecision\?\.confidence/i);
+  assert.match(source, /activePlanning\.todayDecision\?\.reasonSummary/i);
+  assert.match(source, /activePlanning\.todayDecision\?\.decisionBasis\?\.weeklyBalance/i);
+  assert.match(source, /activePlanning\.todayDecision\?\.risks/i);
+  assert.match(source, /training-plan-current-week-panel__trace/i);
+  assert.match(source, /training-plan-mini-fact-warning/i);
+  assert.match(source, /No immediate runtime risk flags\./i);
   assert.match(source, /\/api\/planner\/month\/replan/i);
   assert.match(source, /Repair/i);
   assert.match(source, /Too fatigued/i);
