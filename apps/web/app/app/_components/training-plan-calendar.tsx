@@ -669,7 +669,7 @@ export function TrainingPlanCalendar({
   }
 
   return (
-    <div className="training-plan-review-layout">
+    <div className="training-plan-review-layout training-plan-workspace-calendar-shell">
       <div>
         {activeNotice ? (
           <div className="status-list compact-status-list" style={{ marginBottom: 12 }}>
@@ -694,7 +694,11 @@ export function TrainingPlanCalendar({
             </div>
           </div>
         ) : null}
-      <div className="training-plan-month-grid">
+        <div className="training-plan-workspace-calendar-header">
+          <div className="kicker">Month workspace</div>
+          <strong>Current planning month</strong>
+        </div>
+      <div className="training-plan-month-grid training-plan-month-grid-compact">
         {calendarDays.map((date) => {
           const dayData = workoutsByDate.get(date) || { completed: [], planned: [], weekIndex: undefined };
           const isPastDay = Boolean(today) && date <= today;
@@ -954,7 +958,7 @@ export function TrainingPlanCalendar({
       </div>
       </div>
 
-      <aside className="training-plan-week-summary-column">
+      <aside className="training-plan-week-summary-column training-plan-workspace-week-rail">
         {weeks.map((week) => {
           const completedMinutes = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
           const plannedMinutes = week.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);

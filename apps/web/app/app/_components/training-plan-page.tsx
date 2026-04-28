@@ -244,6 +244,12 @@ const draftStatusLabel = latestDraft
     { title: 'Goal direction', body: goalEntries[0]?.title || goalAlignment.currentPlanFitSummary || selectedDirectionLabel },
     { title: 'Adaptation state', body: adaptationPayload.userFacingExplanation },
   ];
+  const plannerWorkspaceCards = {
+    currentWeekRail: 'Current-week rail',
+    monthWorkspace: 'Month workspace',
+    builderPublish: 'Builder and publish',
+    builderPublishCopy: 'Builder, publish, analysis',
+  };
 
   return (
     <AppPageShell>
@@ -300,45 +306,47 @@ const draftStatusLabel = latestDraft
       ) : null}
 
       {!isCalendarMode ? (
-        <section className="training-plan-top-strip mt-18">
-          <div className="training-plan-step-grid">
-            <AppCard className="training-plan-step-card training-plan-step-card-status">
-              <div className="kicker">Status quo</div>
-              <h3>Status quo</h3>
-              <p>{contextPayload.recentHistory.loadSummary}</p>
-              <div className="training-plan-mini-facts">
-                <span className="training-plan-mini-fact"><strong>Freshness</strong>{contextPayload.currentState.freshnessSummary}</span>
-                <span className="training-plan-mini-fact"><strong>Main implication</strong>{contextPayload.statusQuo.mainImplication}</span>
-                <span className="training-plan-mini-fact"><strong>Event proximity</strong>{contextPayload.statusQuo.eventProximity}</span>
-                <span className="training-plan-mini-fact"><strong>Recent focus</strong>{contextPayload.statusQuo.recentFocus.join(' • ')}</span>
-                <span className="training-plan-mini-fact"><strong>Evidence window</strong>{contextPayload.statusQuo.evidenceSummary}</span>
-                <span className="training-plan-mini-fact"><strong>Excluded by filters</strong>{contextPayload.statusQuo.excludedRowSummary}</span>
-              </div>
-            </AppCard>
+        <section className="training-plan-workspace-shell mt-18">
+          <div className="training-plan-workspace-compact-grid">
+            <div className="training-plan-workspace-rail">
+              <AppCard className="training-plan-workspace-card">
+                <div className="kicker">{plannerWorkspaceCards.currentWeekRail}</div>
+                <h3>Status quo</h3>
+                <p>{contextPayload.recentHistory.loadSummary}</p>
+                <div className="training-plan-mini-facts">
+                  <span className="training-plan-mini-fact"><strong>Freshness</strong>{contextPayload.currentState.freshnessSummary}</span>
+                  <span className="training-plan-mini-fact"><strong>Main implication</strong>{contextPayload.statusQuo.mainImplication}</span>
+                  <span className="training-plan-mini-fact"><strong>Event proximity</strong>{contextPayload.statusQuo.eventProximity}</span>
+                  <span className="training-plan-mini-fact"><strong>Recent focus</strong>{contextPayload.statusQuo.recentFocus.join(' • ')}</span>
+                  <span className="training-plan-mini-fact"><strong>Evidence window</strong>{contextPayload.statusQuo.evidenceSummary}</span>
+                  <span className="training-plan-mini-fact"><strong>Excluded by filters</strong>{contextPayload.statusQuo.excludedRowSummary}</span>
+                </div>
+              </AppCard>
 
-            <AppCard className="training-plan-step-card training-plan-step-card-goals">
-              <div className="kicker">Goals and races</div>
-              <h3>Goals and races</h3>
-              <p>{draftOriginLabel}</p>
-              <div className="training-plan-mini-facts">
-                <span className="training-plan-mini-fact"><strong>Upcoming races</strong>{planEvents.length ? String(planEvents.length) : '0'}</span>
-                <span className="training-plan-mini-fact"><strong>Next event</strong>{planEvents[0] ? `${planEvents[0].title} • ${planEvents[0].date}` : 'No events added yet'}</span>
-              </div>
-              <div className="training-plan-top-strip__actions">
-                <a href={appRoutes.planRaces} className="button-secondary button-link">Open race calendar</a>
-              </div>
-            </AppCard>
-          </div>
+              <AppCard className="training-plan-workspace-card">
+                <div className="kicker">Goals and races</div>
+                <h3>Goals and races</h3>
+                <p>{draftOriginLabel}</p>
+                <div className="training-plan-mini-facts">
+                  <span className="training-plan-mini-fact"><strong>Upcoming races</strong>{planEvents.length ? String(planEvents.length) : '0'}</span>
+                  <span className="training-plan-mini-fact"><strong>Next event</strong>{planEvents[0] ? `${planEvents[0].title} • ${planEvents[0].date}` : 'No events added yet'}</span>
+                </div>
+                <div className="training-plan-top-strip__actions">
+                  <a href={appRoutes.planRaces} className="button-secondary button-link">Open race calendar</a>
+                </div>
+              </AppCard>
+            </div>
 
-          <AppCard className="training-plan-card training-plan-card-flat training-plan-step-card training-plan-step-card-parameters">
+            <div className="training-plan-workspace-main">
+              <AppCard className="training-plan-card training-plan-card-flat training-plan-workspace-card training-plan-builder-panel">
             <div className="training-plan-quick-builder">
                 <div className="training-plan-quick-builder__header">
-                  <div>
-                    <div className="kicker">Quick builder</div>
-                    <h3>Parameters</h3>
-                    <p>Pick a direction. Set the key limits. Build.</p>
-                  </div>
-                  <div className="chip-row planning-recommendation-chip-row">
+                    <div>
+                      <div className="kicker">{plannerWorkspaceCards.builderPublish}</div>
+                      <h3>Parameters</h3>
+                      <p>{plannerWorkspaceCards.builderPublishCopy}</p>
+                    </div>
+<div className="chip-row planning-recommendation-chip-row">
                     <span className="chip">Draft: {draftStatusLabel}</span>
                     <span className="chip">Now: {activePlanning.summary?.plannedToday || 'Pending'}</span>
                   </div>
@@ -546,6 +554,8 @@ const draftStatusLabel = latestDraft
               />
             </div>
           </AppCard>
+            </div>
+          </div>
         </section>
       ) : (
         <section className="mt-18 training-plan-top-strip__actions">
@@ -553,26 +563,29 @@ const draftStatusLabel = latestDraft
         </section>
       )}
 
-      <section id="review" className="training-plan-review-stack mt-18">
-        <AppCard className="training-plan-card training-plan-card-fullwidth training-plan-step-card training-plan-step-card-draft">
-              <div className="planning-workspace-section__header planning-workspace-section__header-review">
+      <section id="review" className="training-plan-review-stack mt-18 training-plan-workspace-main">
+        <AppCard className="training-plan-card training-plan-card-fullwidth training-plan-workspace-card training-plan-publish-panel training-plan-analysis-panel">
+              <div className="planning-workspace-section__header planning-workspace-section__header-review training-plan-workspace-calendar-header">
                 <div>
-                  <div className="kicker">Draft next month</div>
-                  <h2>Generated month</h2>
-                  {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
+                      <div className="kicker">{plannerWorkspaceCards.monthWorkspace}</div>
+                      <h2>Generated month</h2>
+                      <p>Draft next month</p>
+                      <p>{plannerWorkspaceCards.builderPublishCopy}</p>
+{nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
                 </div>
                 {latestDraft ? null : null}
               </div>
               {latestDraft ? (
-                <>
-                      <TrainingPlanCalendar
-                        draftId={latestDraft.id}
-                        draftRevision={latestDraft.revision || 0}
-                        weeks={(displayedWeeks || latestDraft.weeks) as any}
-                        today={planner.live?.today || ''}
-                        planEvents={planEvents}
-                        reconciliationEvents={truthSummary?.recentEvents || []}
-                      />
+                    <>
+                      <div className="training-plan-workspace-calendar-shell">
+                        <TrainingPlanCalendar
+                            draftId={latestDraft.id}
+                            draftRevision={latestDraft.revision || 0}
+                            weeks={(displayedWeeks || latestDraft.weeks) as any}
+                            today={planner.live?.today || ''}
+                            planEvents={planEvents}
+                            reconciliationEvents={truthSummary?.recentEvents || []}
+                          />
 <div className="training-plan-top-strip__actions mt-18">
                     {!isCalendarMode ? (
                       <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
@@ -626,6 +639,7 @@ const draftStatusLabel = latestDraft
                   ))}
                 </div>
               </details>
+              </div>
             </>
           ) : (
             <p>No monthly draft saved yet. Generate draft to create your first 4-week block.</p>
