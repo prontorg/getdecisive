@@ -243,6 +243,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-inline-menu__submit-danger/i);
   assert.match(calendarStyles, /training-plan-inline-menu__danger-hint/i);
   assert.match(calendarStyles, /training-plan-inline-menu__action-hint/i);
+  assert.match(calendarStyles, /training-plan-inline-menu__selected-action-row/i);
   assert.match(calendarStyles, /training-plan-current-week-panel/i);
   assert.match(calendarStyles, /training-plan-session-card__tag-family/i);
   assert.match(calendarStyles, /training-plan-intent-compare-card__kicker/i);
@@ -254,6 +255,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /showMoveDateField/i);
   assert.match(calendarSource, /menuActionByWorkout/i);
   assert.match(calendarSource, /actionSubmitLabel/i);
+  assert.match(calendarSource, /actionSelectionLabel/i);
   assert.match(calendarSource, /shouldCloseMenuAfterSubmit/i);
   assert.match(calendarSource, /closeMenuAfterSubmit/i);
   assert.match(calendarSource, /destructiveActionSelected/i);
@@ -264,9 +266,12 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /training-plan-inline-menu__action-hint/i);
   assert.match(calendarSource, /actionConsequenceHint/i);
   assert.match(calendarSource, /actionSuccessNotice/i);
+  assert.match(calendarSource, /training-plan-inline-menu__selected-action-label/i);
+  assert.match(calendarSource, /Selected/i);
   assert.match(calendarSource, /Replaced .* with support in the draft/i);
   assert.match(calendarSource, /Marked .* done\* in the draft/i);
   assert.match(calendarSource, /Removed .* from the draft/i);
+  assert.match(calendarSource, /Draft reconciled/i);
   assert.match(calendarSource, /closest\('details'\)/i);
   assert.match(calendarSource, /HTMLDetailsElement/i);
   assert.match(calendarSource, /Move to day/i);
@@ -457,7 +462,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /\/api\/planner\/month\/replan/i);
   assert.match(calendarSource, /moveFeedback/i);
   assert.match(calendarSource, /successNotice/i);
-  assert.match(calendarSource, /Planner updated/i);
+  assert.match(calendarSource, /Move applied/i);
+  assert.match(calendarSource, /Draft reconciled/i);
   assert.match(calendarSource, /Move blocked/i);
   assert.match(calendarSource, /Requested day:/i);
   assert.match(calendarSource, /Use suggested day/i);

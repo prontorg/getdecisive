@@ -9,6 +9,11 @@ type MoveFeedback = {
   suggestedDate?: string | null;
 };
 
+type SuccessFeedback = {
+  title: string;
+  detail: string;
+};
+
 type NoticeFeedback = {
   title: string;
   detail: string;
@@ -130,6 +135,17 @@ function actionSubmitLabel(action: string) {
   }
 }
 
+function actionSelectionLabel(action: string) {
+  switch (action) {
+    case 'move_day': return 'Move day';
+    case 'skip': return 'Skip';
+    case 'replace_with_support': return 'Replace with support';
+    case 'mark_done_modified': return 'Mark done*';
+    case 'remove': return 'Remove';
+    default: return 'Action';
+  }
+}
+
 function shouldCloseMenuAfterSubmit(action: string) {
   return action !== 'move_day';
 }
@@ -150,21 +166,45 @@ function actionConsequenceHint(action: string) {
 function actionSuccessNotice(action: string, workout: Pick<Workout, 'label' | 'locked'>) {
   switch (action) {
     case 'remove':
-      return `Removed ${workout.label} from the draft`;
+      return {
+        title: 'Draft reconciled',
+        detail: `Removed ${workout.label} from the draft`,
+      };
     case 'lock':
-      return `${workout.label} ${workout.locked ? 'unlocked' : 'locked'} in the draft`;
+      return {
+        title: 'Planner updated',
+        detail: `${workout.label} ${workout.locked ? 'unlocked' : 'locked'} in the draft`,
+      };
     case 'easier':
-      return `Made ${workout.label} easier`;
+      return {
+        title: 'Planner updated',
+        detail: `Made ${workout.label} easier`,
+      };
     case 'harder':
-      return `Made ${workout.label} harder`;
+      return {
+        title: 'Planner updated',
+        detail: `Made ${workout.label} harder`,
+      };
     case 'skip':
-      return `Marked ${workout.label} skipped in the draft`;
+      return {
+        title: 'Draft reconciled',
+        detail: `Marked ${workout.label} skipped in the draft`,
+      };
     case 'replace_with_support':
-      return `Replaced ${workout.label} with support in the draft`;
+      return {
+        title: 'Draft reconciled',
+        detail: `Replaced ${workout.label} with support in the draft`,
+      };
     case 'mark_done_modified':
-      return `Marked ${workout.label} done* in the draft`;
+      return {
+        title: 'Draft reconciled',
+        detail: `Marked ${workout.label} done* in the draft`,
+      };
     default:
-      return `${workout.label} updated`;
+      return {
+        title: 'Planner updated',
+        detail: `${workout.label} updated`,
+      };
   }
 }
 
@@ -209,7 +249,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
   const [hoverDate, setHoverDate] = useState<string | null>(null);
   const [busyDate, setBusyDate] = useState<string | null>(null);
   const [moveFeedback, setMoveFeedback] = useState<MoveFeedback | null>(null);
-  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<SuccessFeedback | null>(null);
   const [menuActionByWorkout, setMenuActionByWorkout] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -300,8 +340,8 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
     }
     if (successNotice) {
       return {
-        title: 'Planner updated',
-        detail: successNotice,
+        title: successNotice.title,
+        detail: successNotice.detail,
       };
     }
     return null;
@@ -396,7 +436,10 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
       }
       setMoveFeedback(null);
       if (payload?.draft?.weeks) setWeeks(payload.draft.weeks as Week[]);
-      setSuccessNotice(payload?.notice || `Workout moved to ${moveDate}`);
+      setSuccessNotice({
+        title: 'Move applied',
+        detail: payload?.notice || `Workout moved to ${moveDate}`,
+      });
     } finally {
       setBusyDate(null);
       setDraggingWorkoutId(null);
@@ -557,6 +600,10 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                                 <option value="remove">Remove</option>
                               </select>
                             </label>
+                            <div className="training-plan-inline-menu__selected-action-row">
+                              <span className="training-plan-inline-menu__selected-action-label">Selected</span>
+                              <span className="training-plan-session-card__tag">{actionSelectionLabel(selectedAction)}</span>
+                            </div>
                             {showMoveDateField ? (
                               <label>
                                 <span>Move day</span>

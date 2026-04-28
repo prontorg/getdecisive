@@ -929,6 +929,18 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   padding-top:6px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
+.training-plan-inline-menu__selected-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.training-plan-inline-menu__selected-action-label {
+  color: #9fb0c7;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 .training-plan-session-card__inline-feedback {
   margin-top: 6px;
   padding: 7px 8px;
