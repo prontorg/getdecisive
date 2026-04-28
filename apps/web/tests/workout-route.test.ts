@@ -23,9 +23,12 @@ test('workout move conflict route redirects form submissions back to plan with c
   assert.match(source, /eventType: 'workout_replaced'/i);
   assert.match(source, /eventType: 'workout_completed_modified'/i);
   assert.match(source, /eventType: 'workout_moved'/i);
-  assert.match(source, /eventType: 'workout_locked'/i);
+  assert.doesNotMatch(source, /eventType: 'workout_locked'/i);
   assert.match(source, /source: 'user_action'/i);
-  assert.match(source, /type WorkoutAction = 'lock' \| 'easier' \| 'harder' \| 'move_day' \| 'remove' \| 'skip' \| 'replace_with_support' \| 'mark_done_modified'/i);
+  assert.match(source, /type WorkoutAction = 'move_day' \| 'remove' \| 'skip' \| 'replace_with_support' \| 'mark_done_modified' \| 'reset_reconciliation'/i);
+  assert.match(source, /legacyUnsupportedActions/i);
+  assert.match(source, /Legacy planner action no longer supported/i);
+  assert.doesNotMatch(source, /lockMonthlyPlanWorkout/i);
   assert.match(source, /status: 'skipped'/i);
   assert.match(source, /status: 'replaced'/i);
   assert.match(source, /status: 'completed_modified'/i);

@@ -216,8 +216,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(calendarSource, /action: 'lock'/i);
   assert.doesNotMatch(calendarSource, /action: 'easier'/i);
   assert.doesNotMatch(calendarSource, /action: 'harder'/i);
-  assert.match(source, /Mismatch keeps tomorrow flexible/i);
-  assert.match(source, /Key day can stay sharper tomorrow if today lands cleanly\./i);
+  assert.match(source, /buildTodayReconciliationPayload/i);
   assert.match(source, /plannedVsDoneMismatch/i);
   assert.match(calendarSource, /training-plan-day-card__header/i);
   assert.match(calendarSource, /shortDateLabel/i);

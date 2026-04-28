@@ -5,7 +5,6 @@ import { appRoutes } from '../../../../../lib/routes';
 import {
   appendMonthlyPlanReconciliationEvent,
   getLatestMonthlyPlanDraft,
-  lockMonthlyPlanWorkout,
   removeMonthlyPlanWorkout,
   updateMonthlyPlanWorkout,
 } from '../../../../../lib/server/planner-customization';
@@ -15,7 +14,8 @@ import { getSessionUserId } from '../../../../../lib/server/session';
 const hardCategories = new Set(['repeatability', 'threshold_support', 'race_like']);
 const ROUTE = '/api/planner/month/workout';
 
-type WorkoutAction = 'lock' | 'easier' | 'harder' | 'move_day' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified' | 'reset_reconciliation';
+type WorkoutAction = 'move_day' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified' | 'reset_reconciliation';
+const legacyUnsupportedActions = new Set(['lock', 'easier', 'harder']);
 
 function workoutConflictSummary(
   draft: NonNullable<Awaited<ReturnType<typeof getLatestMonthlyPlanDraft>>>,
@@ -69,44 +69,26 @@ export async function POST(request: Request) {
   const workoutId = String(pick('workoutId') || '');
   const action = String(pick('action') || '') as WorkoutAction;
   if (!draftId || !workoutId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, workoutId, action });
+  if (legacyUnsupportedActions.has(action)) {
+    return routeErrorResponse(ROUTE, 410, 'Legacy planner action no longer supported', { userId, draftId, workoutId, action });
+  }
 
   try {
     const draft = await getLatestMonthlyPlanDraft(userId);
     const workout = draft?.weeks.flatMap((week) => week.workouts).find((item) => item.id === workoutId);
     if (!draft || draft.id !== draftId || !workout) return routeErrorResponse(ROUTE, 404, 'Draft or workout not found', { userId, draftId, workoutId, action });
-    if (workout.locked && action !== 'lock') return routeErrorResponse(ROUTE, 409, 'Workout is locked', { userId, draftId, workoutId, action });
+    if (workout.locked) return routeErrorResponse(ROUTE, 409, 'Workout is locked', { userId, draftId, workoutId, action });
 
     let nextDraft = null;
     let reconciliationEvent:
       | {
-          eventType: 'workout_skipped' | 'workout_replaced' | 'workout_completed_modified' | 'workout_moved' | 'workout_locked';
+          eventType: 'workout_skipped' | 'workout_replaced' | 'workout_completed_modified' | 'workout_moved';
           title: string;
           detail: string;
           date: string;
         }
       | null = null;
-    if (action === 'lock') {
-      const nextLocked = pick('locked') !== 'false' && pick('locked') !== false;
-      nextDraft = await lockMonthlyPlanWorkout(userId, draftId, workoutId, nextLocked);
-      reconciliationEvent = {
-        eventType: 'workout_locked',
-        title: nextLocked ? `${workout.label} locked` : `${workout.label} unlocked`,
-        detail: nextLocked ? 'Workout was locked to preserve the current plan.' : 'Workout was unlocked for further edits.',
-        date: workout.date,
-      };
-    } else if (action === 'easier') {
-      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
-        label: `${workout.label} - easier`,
-        targetLoad: workout.targetLoad ? Math.max(10, Math.round(workout.targetLoad * 0.88)) : workout.targetLoad,
-        durationMinutes: workout.durationMinutes ? Math.max(40, Math.round(workout.durationMinutes * 0.9)) : workout.durationMinutes,
-      });
-    } else if (action === 'harder') {
-      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
-        label: `${workout.label} - harder`,
-        targetLoad: workout.targetLoad ? Math.round(workout.targetLoad * 1.08) : workout.targetLoad,
-        durationMinutes: workout.durationMinutes ? Math.round(workout.durationMinutes * 1.05) : workout.durationMinutes,
-      });
-    } else if (action === 'move_day') {
+    if (action === 'move_day') {
       const moveDate = String(pick('moveDate') || '');
       if (!moveDate) return routeErrorResponse(ROUTE, 400, 'Missing moveDate', { userId, draftId, workoutId, action });
       const conflict = workoutConflictSummary(draft, workoutId, moveDate);

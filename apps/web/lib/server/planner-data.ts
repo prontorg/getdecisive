@@ -68,6 +68,7 @@ export type PlannerTruthSummaryPayload = {
     mismatchReason: string;
     shouldDoNow: string;
     doneLabel: string;
+    tomorrowConsequence: string;
     summary: string;
   };
   currentWeekSignal: string;
@@ -222,6 +223,17 @@ export type WeeklyDecisionPayload = {
   riskFlags: string[];
   remainingWeekHours: number;
   remainingQualityBudget: number;
+};
+
+export type TodayReconciliationPayload = {
+  plannedLabel: string;
+  shouldDoNow: string;
+  doneLabel: string;
+  mismatch: boolean;
+  mismatchReason: string;
+  tomorrowIfTodayLands: string;
+  tomorrowIfTodaySlips: string;
+  tomorrowConsequence: string;
 };
 
 export type CurrentWeekReplanPayload = {
@@ -416,10 +428,37 @@ export type PlanningSurfaceSummary = {
   plannedTomorrow: string;
   likelyTomorrow: string;
   reason: string;
-  confidence: DailyDecision['confidence'] | null;
+  confidence: DailyDecision['confidence'];
   nextKeyDay?: string;
   risks: string[];
 };
+
+export function buildTodayReconciliationPayload(args: {
+  decision?: Pick<DailyDecision, 'plannedForToday' | 'actualRecommendationForToday' | 'plannedForTomorrow' | 'likelyTomorrowAfterToday'> | null;
+  truth?: Pick<PlannerTruthSummaryPayload, 'currentWeekToday'> | null;
+}) : TodayReconciliationPayload {
+  const plannedLabel = args.decision?.plannedForToday || 'Pending';
+  const shouldDoNow = args.truth?.currentWeekToday.shouldDoNow || args.decision?.actualRecommendationForToday || plannedLabel;
+  const doneLabel = args.truth?.currentWeekToday.doneLabel || 'Nothing completed yet';
+  const mismatch = Boolean(args.truth?.currentWeekToday.mismatch);
+  const mismatchReason = args.truth?.currentWeekToday.mismatchReason || 'Today still matches the original prescription.';
+  const tomorrowIfTodayLands = args.decision?.likelyTomorrowAfterToday || 'the intended follow-through';
+  const tomorrowIfTodaySlips = args.decision?.plannedForTomorrow || 'Support endurance';
+  const tomorrowConsequence = mismatch
+    ? 'Mismatch keeps tomorrow flexible until today is repaired.'
+    : 'Key day can stay sharper tomorrow if today lands cleanly.';
+
+  return {
+    plannedLabel,
+    shouldDoNow,
+    doneLabel,
+    mismatch,
+    mismatchReason,
+    tomorrowIfTodayLands,
+    tomorrowIfTodaySlips,
+    tomorrowConsequence,
+  };
+}
 
 export async function getActivePlanningContext(userId: string): Promise<{ cycle: PlanningCycle | null; todayDecision: DailyDecision | null; summary: PlanningSurfaceSummary | null }> {
   const { cycle, decision } = await ensureCurrentPlanningContext(userId);
@@ -1165,11 +1204,14 @@ function currentWeekTodayTruth(
   const mismatchReason = mismatch
     ? 'Today changed enough that execution differs from the original prescription.'
     : 'Today still matches the original prescription.';
+  const tomorrowConsequence = mismatch
+    ? 'Mismatch keeps tomorrow flexible until today is repaired.'
+    : 'Key day can stay sharper tomorrow if today lands cleanly.';
   const summary = planned
     ? `Today truth: ${planned} planned • ${completed} completed • ${changed} changed.`
     : 'Today truth: no draft session sat on today.';
 
-  return { planned, completed, changed, mismatch, mismatchReason, shouldDoNow, doneLabel, summary };
+  return { planned, completed, changed, mismatch, mismatchReason, shouldDoNow, doneLabel, tomorrowConsequence, summary };
 }
 
 export async function buildPlannerTruthSummaryPayload(
@@ -1190,6 +1232,7 @@ export async function buildPlannerTruthSummaryPayload(
       mismatchReason: 'Today still matches the original prescription.',
       shouldDoNow: 'No same-day draft session',
       doneLabel: 'Nothing completed yet',
+      tomorrowConsequence: 'Key day can stay sharper tomorrow if today lands cleanly.',
       summary: 'Today truth: no draft session sat on today.',
     },
     currentWeekSignal: 'Current week drift is low and the block intent is still intact.',
