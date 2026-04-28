@@ -1785,6 +1785,7 @@ test('planner truth summary payload counts execution changes and reports current
     assert.equal(payload.currentWeekToday.mismatch, true);
     assert.match(payload.currentWeekToday.shouldDoNow, /race-like bridge/i);
     assert.match(payload.currentWeekToday.doneLabel, /race-like bridge/i);
+    assert.match(payload.currentWeekToday.mismatchReason, /execution differs|today changed/i);
     assert.match(payload.currentWeekSignal, /current week drift/i);
     assert.equal(payload.recentEvents.length, 5);
     assert.equal(payload.recentEvents[0]?.eventType, 'workout_replaced');

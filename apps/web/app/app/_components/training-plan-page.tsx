@@ -248,6 +248,9 @@ const draftStatusLabel = latestDraft
   const tomorrowIfTodayLands = activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || 'the intended follow-through';
   const protectionOutcome = keySessionProtected ? `Key work stays protected for ${protectedKeyDayLabel}.` : 'Key work is no longer clearly protected.';
   const plannedVsDoneMismatch = Boolean(truthSummary?.currentWeekToday.mismatch);
+  const mismatchConsequence = plannedVsDoneMismatch
+    ? 'Mismatch keeps tomorrow flexible until today is repaired.'
+    : 'Key day can stay sharper tomorrow if today lands cleanly.';
 
   return (
     <AppPageShell>
@@ -414,6 +417,7 @@ const draftStatusLabel = latestDraft
                   <div className="training-plan-current-week-panel__consequence status-item">
                     <strong>If today slips</strong>
                     <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>
+                    <span>{mismatchConsequence}</span>
                     <span>{protectionOutcome}</span>
                   </div>
                   {latestRuntimeRepair ? (

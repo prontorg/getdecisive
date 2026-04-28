@@ -201,27 +201,12 @@ function actionPanelContent(action: string) {
   }
 }
 
-function actionSuccessNotice(action: string, workout: Pick<Workout, 'label' | 'locked'>) {
+function actionSuccessNotice(action: string, workout: Pick<Workout, 'label'>) {
   switch (action) {
     case 'remove':
       return {
         title: 'Draft reconciled',
         detail: `Removed ${workout.label} from the draft`,
-      };
-    case 'lock':
-      return {
-        title: 'Planner updated',
-        detail: `${workout.label} ${workout.locked ? 'unlocked' : 'locked'} in the draft`,
-      };
-    case 'easier':
-      return {
-        title: 'Planner updated',
-        detail: `Made ${workout.label} easier`,
-      };
-    case 'harder':
-      return {
-        title: 'Planner updated',
-        detail: `Made ${workout.label} harder`,
       };
     case 'skip':
       return {
@@ -438,7 +423,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
     return { tone: 'safe' as const, text: 'Drop looks usable' };
   }
 
-  async function mutateWorkout(workoutId: string, action: 'lock' | 'easier' | 'harder' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified' | 'reset_reconciliation', extra: Record<string, unknown> = {}) {
+  async function mutateWorkout(workoutId: string, action: 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified' | 'reset_reconciliation', extra: Record<string, unknown> = {}) {
     const workout = workoutsById.get(workoutId);
     if (!workout) return;
     setSuccessNotice(null);

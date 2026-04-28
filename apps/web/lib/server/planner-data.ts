@@ -65,6 +65,7 @@ export type PlannerTruthSummaryPayload = {
     completed: number;
     changed: number;
     mismatch: boolean;
+    mismatchReason: string;
     shouldDoNow: string;
     doneLabel: string;
     summary: string;
@@ -1161,11 +1162,14 @@ function currentWeekTodayTruth(
     .map((workout) => workout.label)
     .join(' • ') || 'Nothing completed yet';
   const mismatch = changed > 0 || completed > planned || Boolean(todaysWorkouts.some((workout) => workout.status === 'completed_modified' || workout.status === 'skipped' || workout.status === 'replaced'));
+  const mismatchReason = mismatch
+    ? 'Today changed enough that execution differs from the original prescription.'
+    : 'Today still matches the original prescription.';
   const summary = planned
     ? `Today truth: ${planned} planned • ${completed} completed • ${changed} changed.`
     : 'Today truth: no draft session sat on today.';
 
-  return { planned, completed, changed, mismatch, shouldDoNow, doneLabel, summary };
+  return { planned, completed, changed, mismatch, mismatchReason, shouldDoNow, doneLabel, summary };
 }
 
 export async function buildPlannerTruthSummaryPayload(
@@ -1183,6 +1187,7 @@ export async function buildPlannerTruthSummaryPayload(
       completed: 0,
       changed: 0,
       mismatch: false,
+      mismatchReason: 'Today still matches the original prescription.',
       shouldDoNow: 'No same-day draft session',
       doneLabel: 'Nothing completed yet',
       summary: 'Today truth: no draft session sat on today.',

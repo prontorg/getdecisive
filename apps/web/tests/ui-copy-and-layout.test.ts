@@ -210,6 +210,15 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /\.session-tone-rest \.training-plan-session-card__tag \{[^}]*background:\s*rgba\(255,255,255,0\.04\)[^}]*color:\s*#cbd5e1/i);
   assert.match(source, /Action/i);
   assert.match(calendarSource, /summary title=\"Session actions\"/i);
+  assert.doesNotMatch(calendarSource, /case 'lock':/i);
+  assert.doesNotMatch(calendarSource, /case 'easier':/i);
+  assert.doesNotMatch(calendarSource, /case 'harder':/i);
+  assert.doesNotMatch(calendarSource, /action: 'lock'/i);
+  assert.doesNotMatch(calendarSource, /action: 'easier'/i);
+  assert.doesNotMatch(calendarSource, /action: 'harder'/i);
+  assert.match(source, /Mismatch keeps tomorrow flexible/i);
+  assert.match(source, /Key day can stay sharper tomorrow if today lands cleanly\./i);
+  assert.match(source, /plannedVsDoneMismatch/i);
   assert.match(calendarSource, /training-plan-day-card__header/i);
   assert.match(calendarSource, /shortDateLabel/i);
   assert.match(calendarSource, /sessionToneClass/i);
