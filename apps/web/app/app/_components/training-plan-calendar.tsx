@@ -130,6 +130,10 @@ function actionSubmitLabel(action: string) {
   }
 }
 
+function shouldCloseMenuAfterSubmit(action: string) {
+  return action !== 'move_day';
+}
+
 function isVisiblePastPlannedWorkout(workout: Workout) {
   return workout.status === 'skipped' || workout.status === 'replaced' || workout.status === 'completed_modified';
 }
@@ -470,6 +474,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                   const selectedAction = menuActionByWorkout[workout.id] || 'move_day';
                   const showMoveDateField = selectedAction === 'move_day';
                   const submitLabel = actionSubmitLabel(selectedAction);
+                  const closeMenuAfterSubmit = shouldCloseMenuAfterSubmit(selectedAction);
                   return (
                   <div
                     key={workout.id}
@@ -496,7 +501,16 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                         </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>
-                          <form action="/api/planner/month/workout" method="post" className="training-plan-inline-menu__content">
+                          <form
+                            action="/api/planner/month/workout"
+                            method="post"
+                            className="training-plan-inline-menu__content"
+                            onSubmit={(event) => {
+                              if (!closeMenuAfterSubmit) return;
+                              const details = event.currentTarget.closest('details');
+                              if (details instanceof HTMLDetailsElement) details.open = false;
+                            }}
+                          >
                             <input type="hidden" name="draftId" value={draftId} />
                             <input type="hidden" name="workoutId" value={workout.id} />
                             <label>
