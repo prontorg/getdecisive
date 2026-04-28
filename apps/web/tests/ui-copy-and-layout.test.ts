@@ -279,11 +279,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /truthSummary\.counters\.repaired/i);
   assert.match(calendarStyles, /training-plan-execution-changes/i);
   assert.match(calendarStyles, /training-plan-execution-changes__events/i);
-  assert.doesNotMatch(source, /<strong>Planned today<\/strong>/i);
-  assert.doesNotMatch(source, /<strong>Do today<\/strong>/i);
-  assert.doesNotMatch(source, /<strong>Planned tomorrow<\/strong>/i);
-  assert.doesNotMatch(source, /<strong>Tomorrow if today lands<\/strong>/i);
-  assert.doesNotMatch(source, /<strong>Confidence<\/strong>/i);
+  assert.match(source, /<strong>Planned today<\/strong>/i);
+  assert.match(source, /<strong>Do today<\/strong>/i);
+  assert.match(source, /<strong>Planned tomorrow<\/strong>/i);
+  assert.match(source, /<strong>Tomorrow if today lands<\/strong>/i);
+  assert.match(source, /training-plan-current-week-panel__decision-grid/i);
   assert.doesNotMatch(source, /<strong>Hours left<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Key slots<\/strong>/i);
   assert.doesNotMatch(source, /More week actions/i);

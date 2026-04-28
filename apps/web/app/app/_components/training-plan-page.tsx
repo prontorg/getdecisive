@@ -363,6 +363,12 @@ const draftStatusLabel = latestDraft
                       <span className="chip">Quality budget: {currentWeekReplan.remainingQualityBudget}</span>
                     </div>
                   </div>
+                  <div className="training-plan-current-week-panel__decision-grid">
+                    <span className="training-plan-mini-fact"><strong>Planned today</strong>{activePlanning.todayDecision?.plannedForToday || activePlanning.summary?.plannedToday || 'Pending'}</span>
+                    <span className="training-plan-mini-fact"><strong>Do today</strong>{activePlanning.todayDecision?.actualRecommendationForToday || activePlanning.summary?.actualToday || currentWeekReplan.recommendationText}</span>
+                    <span className="training-plan-mini-fact"><strong>Planned tomorrow</strong>{activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
+                    <span className="training-plan-mini-fact"><strong>Tomorrow if today lands</strong>{activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || '—'}</span>
+                  </div>
                   <p className="training-plan-current-week-panel__summary">{currentWeekReplan.recommendationText}</p>
                   <div className="training-plan-current-week-panel__trace training-plan-mini-facts">
                     {[
