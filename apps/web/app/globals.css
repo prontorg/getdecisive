@@ -989,6 +989,16 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   font-size: 11px;
   line-height: 1.35;
 }
+.training-plan-inline-menu__action-hint {
+  margin: -2px 0 0;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(76,125,255,0.08);
+  border: 1px solid rgba(116,146,214,0.16);
+  color: #dbeafe;
+  font-size: 11px;
+  line-height: 1.35;
+}
 .training-plan-inline-panel { min-width: 22px; }
 .training-plan-current-week-panel {
   margin-top: 14px;

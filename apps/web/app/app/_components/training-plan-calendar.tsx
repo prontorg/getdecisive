@@ -134,6 +134,19 @@ function shouldCloseMenuAfterSubmit(action: string) {
   return action !== 'move_day';
 }
 
+function actionConsequenceHint(action: string) {
+  switch (action) {
+    case 'replace_with_support':
+      return 'Replaces this planned session with a support version in the draft.';
+    case 'mark_done_modified':
+      return 'Keeps this session on the calendar but marks it done with modifications.';
+    case 'remove':
+      return 'Removes this planned session from the draft.';
+    default:
+      return null;
+  }
+}
+
 function isVisiblePastPlannedWorkout(workout: Workout) {
   return workout.status === 'skipped' || workout.status === 'replaced' || workout.status === 'completed_modified';
 }
@@ -477,6 +490,10 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                   const closeMenuAfterSubmit = shouldCloseMenuAfterSubmit(selectedAction);
                   const destructiveActionSelected = selectedAction === 'remove';
                   const actionSelectClassName = destructiveActionSelected ? 'training-plan-inline-menu__select-danger' : undefined;
+                  const actionHint = actionConsequenceHint(selectedAction);
+                  const actionHintClassName = destructiveActionSelected
+                    ? 'training-plan-inline-menu__danger-hint'
+                    : 'training-plan-inline-menu__action-hint';
                   return (
                   <div
                     key={workout.id}
@@ -539,8 +556,8 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                                 <input type="date" name="moveDate" defaultValue={workout.date} />
                               </label>
                             ) : null}
-                            {destructiveActionSelected ? (
-                              <p className="training-plan-inline-menu__danger-hint">Removes this planned session from the draft.</p>
+                            {actionHint ? (
+                              <p className={actionHintClassName}>{actionHint}</p>
                             ) : null}
                             <button
                               type="submit"
