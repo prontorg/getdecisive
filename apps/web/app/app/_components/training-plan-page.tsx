@@ -420,6 +420,7 @@ const draftStatusLabel = latestDraft
                   <CurrentWeekRepairPanelClient
                     draftId={latestDraft.id}
                     initialPreviews={currentWeekReplan.scenarioPreviews as any}
+                    initialDraftRevision={latestDraft.revision || 0}
                   />
                 </div>
               ) : null}
@@ -512,14 +513,15 @@ const draftStatusLabel = latestDraft
               </div>
               {latestDraft ? (
                 <>
-                  <TrainingPlanCalendar
-                    draftId={latestDraft.id}
-                    weeks={(displayedWeeks || latestDraft.weeks) as any}
-                    today={planner.live?.today || ''}
-                    planEvents={planEvents}
-                    reconciliationEvents={truthSummary?.recentEvents || []}
-                  />
-                  <div className="training-plan-top-strip__actions mt-18">
+                      <TrainingPlanCalendar
+                        draftId={latestDraft.id}
+                        draftRevision={latestDraft.revision || 0}
+                        weeks={(displayedWeeks || latestDraft.weeks) as any}
+                        today={planner.live?.today || ''}
+                        planEvents={planEvents}
+                        reconciliationEvents={truthSummary?.recentEvents || []}
+                      />
+<div className="training-plan-top-strip__actions mt-18">
                     {!isCalendarMode ? (
                       <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
                     ) : (

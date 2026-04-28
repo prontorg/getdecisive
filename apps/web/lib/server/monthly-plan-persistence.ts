@@ -35,6 +35,7 @@ type GeneratedWeek = {
 export function toStoredCompletedWorkout(workout: GeneratedWorkout, weekIndex: number, index: number): MonthlyPlanWorkout {
   return {
     id: `cw_${weekIndex}_${index + 1}`,
+    plannerSlotId: `completed_${weekIndex}_${index + 1}`,
     date: workout.date,
     label: workout.label,
     intervalLabel: workout.intervalLabel,
@@ -56,6 +57,7 @@ export function toStoredCompletedWorkout(workout: GeneratedWorkout, weekIndex: n
 export function toStoredPlannedWorkout(workout: GeneratedWorkout, weekIndex: number, index: number, existing?: MonthlyPlanWorkout): MonthlyPlanWorkout {
   return {
     id: existing?.id || `w_${weekIndex}_${index + 1}`,
+    plannerSlotId: existing?.plannerSlotId || `slot_${weekIndex}_${index + 1}`,
     date: workout.date,
     label: workout.label,
     intervalLabel: workout.intervalLabel,

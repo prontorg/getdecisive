@@ -78,6 +78,7 @@ type MonthlyPlanInput = {
 
 type MonthlyPlanWorkout = {
   id: string;
+  plannerSlotId?: string;
   date: string;
   label: string;
   intervalLabel?: string;
@@ -122,6 +123,7 @@ type MonthlyPlanDraft = {
   inputId: string;
   createdAt: string;
   updatedAt: string;
+  revision: number;
   assumptions: {
     goalEvent?: string;
     goalDate?: string;
@@ -341,7 +343,7 @@ export async function getLatestMonthlyPlanDraft(userId: string): Promise<Monthly
 
 export async function saveMonthlyPlanDraft(
   userId: string,
-  draft: Omit<MonthlyPlanDraft, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  draft: Omit<MonthlyPlanDraft, 'id' | 'createdAt' | 'updatedAt' | 'revision'> & { id?: string },
 ): Promise<MonthlyPlanDraft[]> {
   const store = await loadStore();
   const existing = store.monthlyDraftsByUser[userId] || [];
@@ -351,6 +353,7 @@ export async function saveMonthlyPlanDraft(
     id: draft.id || makeId('month_draft'),
     createdAt: existing.find((item) => item.id === draft.id)?.createdAt || now,
     updatedAt: now,
+    revision: (existing.find((item) => item.id === draft.id)?.revision || 0) + 1,
   };
   store.monthlyDraftsByUser[userId] = [nextEntry, ...existing.filter((item) => item.id !== nextEntry.id)]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -374,6 +377,7 @@ export async function updateMonthlyPlanWorkout(
     workouts: week.workouts.map((workout) => workout.id === workoutId ? { ...workout, ...patch, source: 'user_modified' } : workout),
   }));
   target.updatedAt = nowIso();
+  target.revision = (target.revision || 0) + 1;
   await saveStore(store);
   return target;
 }
@@ -399,6 +403,7 @@ export async function updateMonthlyPlanWeek(
   if (!target) return null;
   target.weeks = target.weeks.map((week) => week.id === weekId ? { ...week, ...patch } : week);
   target.updatedAt = nowIso();
+  target.revision = (target.revision || 0) + 1;
   await saveStore(store);
   return target;
 }
@@ -414,6 +419,7 @@ export async function replaceMonthlyPlanWeek(
   if (!target) return null;
   target.weeks = target.weeks.map((week) => week.id === nextWeek.id ? nextWeek : week);
   target.updatedAt = nowIso();
+  target.revision = (target.revision || 0) + 1;
   await saveStore(store);
   return target;
 }
@@ -432,6 +438,7 @@ export async function removeMonthlyPlanWorkout(
     workouts: week.workouts.filter((workout) => workout.id !== workoutId),
   }));
   target.updatedAt = nowIso();
+  target.revision = (target.revision || 0) + 1;
   await saveStore(store);
   return target;
 }
@@ -457,6 +464,7 @@ export async function publishMonthlyPlanDraftLocally(
     })),
   }));
   target.updatedAt = nowIso();
+  target.revision = (target.revision || 0) + 1;
   await saveStore(store);
   return target;
 }

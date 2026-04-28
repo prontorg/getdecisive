@@ -21,6 +21,10 @@ function replanScenarioLabel(scenario: string) {
   }
 }
 
+function buildReplanPreviewToken(draftId: string, revision: number, scenario: string, today: string) {
+  return `${draftId}:${revision}:${scenario}:${today}`;
+}
+
 export async function POST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) return redirectWithNotice(ROUTE, request, appRoutes.login, { reason: 'no_session' });
@@ -37,7 +41,9 @@ export async function POST(request: Request) {
   const draftId = String(pick('draftId') || '');
   const scenario = String(pick('scenario') || '');
   const intent = String(pick('intent') || (parsed instanceof FormData ? 'apply' : 'apply'));
-  if (!draftId || !scenario) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, scenario, intent });
+  const expectedDraftRevision = Number(pick('expectedDraftRevision') || 0);
+  const previewToken = String(pick('previewToken') || '');
+  if (!draftId || !scenario) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, scenario, intent, expectedDraftRevision, previewToken });
 
   try {
     const draft = await getLatestMonthlyPlanDraft(userId);
@@ -73,11 +79,25 @@ export async function POST(request: Request) {
       },
     };
 
+    const today = planner.live?.today || new Date().toISOString().slice(0, 10);
+    const currentPreviewToken = buildReplanPreviewToken(draft.id, draft.revision || 0, scenario, today);
+
     if (intent === 'preview') {
       const preview = buildCurrentWeekReplanPayload(planner.live, draftPayload, inputPayload);
       const previewScenario = preview.scenarioPreviews.find((entry) => entry.scenario === scenario) || null;
-      logRouteEvent(ROUTE, 'info', 'Current-week repair preview generated', { userId, draftId, scenario, intent, isJson });
-      return NextResponse.json({ draftId, scenario, intent, previewScenario, preview });
+      logRouteEvent(ROUTE, 'info', 'Current-week repair preview generated', { userId, draftId, scenario, intent, isJson, draftRevision: draft.revision || 0 });
+      return NextResponse.json({ draftId, scenario, intent, previewScenario, preview, draftRevision: draft.revision || 0, previewToken: currentPreviewToken, liveSnapshotDate: today });
+    }
+
+    if (!expectedDraftRevision || expectedDraftRevision !== (draft.revision || 0) || previewToken !== currentPreviewToken) {
+      return routeErrorResponse(ROUTE, 409, 'Repair preview is stale. Refresh the preview before applying.', {
+        userId,
+        draftId,
+        scenario,
+        intent,
+        expectedDraftRevision,
+        currentDraftRevision: draft.revision || 0,
+      });
     }
 
     const nextWeek = replanCurrentWeekForScenario(planner.live, draftPayload, inputPayload, scenario as 'missed_session' | 'fatigued' | 'fresher' | 'reduce_load' | 'increase_specificity');

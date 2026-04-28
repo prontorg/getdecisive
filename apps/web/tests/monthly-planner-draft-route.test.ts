@@ -105,5 +105,10 @@ test('draft generation entry points keep the same advanced month inputs across g
   assert.match(weekRouteSource, /keyProtectionSummary/i);
   assert.match(weekRouteSource, /freshnessSummary/i);
   assert.match(weekRouteSource, /eventType: action === 'regenerate' \? 'week_regenerated' : 'week_replanned'/i);
+  assert.match(replanRouteSource, /expectedDraftRevision/i);
+  assert.match(replanRouteSource, /previewToken/i);
+  assert.match(replanRouteSource, /Repair preview is stale\. Refresh the preview before applying\./i);
+  assert.match(replanRouteSource, /draftRevision: draft\.revision \|\| 0/i);
+  assert.match(replanRouteSource, /buildReplanPreviewToken/i);
   assert.match(replanRouteSource, /eventType: 'week_replanned'/i);
 });

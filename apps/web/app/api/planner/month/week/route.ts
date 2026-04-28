@@ -177,6 +177,10 @@ function buildWeekActionPreview(week: MonthlyPlanWeek, nextWeek: MonthlyPlanWeek
   };
 }
 
+function buildWeekPreviewToken(draftId: string, revision: number, weekId: string, action: string) {
+  return `${draftId}:${revision}:${weekId}:${action}`;
+}
+
 export async function POST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) return redirectWithNotice(ROUTE, request, appRoutes.login, { reason: 'no_session' });
@@ -194,13 +198,16 @@ export async function POST(request: Request) {
   const weekId = String(pick('weekId') || '');
   const action = String(pick('action') || '');
   const intent = String(pick('intent') || (parsed instanceof FormData ? 'apply' : 'apply'));
-  if (!draftId || !weekId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, weekId, action, intent });
+  const expectedDraftRevision = Number(pick('expectedDraftRevision') || 0);
+  const previewToken = String(pick('previewToken') || '');
+  if (!draftId || !weekId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, weekId, action, intent, expectedDraftRevision, previewToken });
 
   try {
     const draft = await getLatestMonthlyPlanDraft(userId);
     const latestInput = await getLatestMonthlyPlanInput(userId);
     const week = draft?.weeks.find((item) => item.id === weekId);
     if (!draft || draft.id !== draftId || !week) return routeErrorResponse(ROUTE, 404, 'Draft or week not found', { userId, draftId, weekId, action });
+    const currentPreviewToken = buildWeekPreviewToken(draft.id, draft.revision || 0, weekId, action);
 
     let nextWeek: MonthlyPlanWeek | null = null;
     if (action === 'regenerate') {
@@ -236,8 +243,20 @@ export async function POST(request: Request) {
 
     if (intent === 'preview') {
       const preview = buildWeekActionPreview(week, nextWeek, action);
-      logRouteEvent(ROUTE, 'info', 'Week mutation preview generated', { userId, draftId, weekId, action, intent, isJson });
-      return NextResponse.json({ draftId, weekId, action, intent, preview });
+      logRouteEvent(ROUTE, 'info', 'Week mutation preview generated', { userId, draftId, weekId, action, intent, isJson, draftRevision: draft.revision || 0 });
+      return NextResponse.json({ draftId, weekId, action, intent, preview, draftRevision: draft.revision || 0, previewToken: currentPreviewToken });
+    }
+
+    if (!expectedDraftRevision || expectedDraftRevision !== (draft.revision || 0) || previewToken !== currentPreviewToken) {
+      return routeErrorResponse(ROUTE, 409, 'Week preview is stale. Refresh the preview before applying.', {
+        userId,
+        draftId,
+        weekId,
+        action,
+        intent,
+        expectedDraftRevision,
+        currentDraftRevision: draft.revision || 0,
+      });
     }
 
     const nextDraft = action === 'regenerate'

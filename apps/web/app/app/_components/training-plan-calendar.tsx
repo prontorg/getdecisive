@@ -48,6 +48,12 @@ type WeekPreview = {
   }>;
 };
 
+type WeekPreviewEnvelope = {
+  preview: WeekPreview;
+  draftRevision: number;
+  previewToken: string;
+};
+
 type PlanEvent = {
   id: string;
   title: string;
@@ -366,12 +372,14 @@ function planEventBadgeClass(type: PlanEvent['type']) {
 
 export function TrainingPlanCalendar({
   draftId,
+  draftRevision,
   weeks: initialWeeks,
   today,
   planEvents = [],
   reconciliationEvents = [],
 }: {
   draftId: string;
+  draftRevision: number;
   weeks: Week[];
   today: string;
   planEvents?: PlanEvent[];
@@ -391,6 +399,7 @@ export function TrainingPlanCalendar({
   const [successNotice, setSuccessNotice] = useState<SuccessFeedback | null>(null);
   const [menuActionByWorkout, setMenuActionByWorkout] = useState<Record<string, string>>({});
   const [weekPreviewByWeekId, setWeekPreviewByWeekId] = useState<Record<string, WeekPreview | null>>({});
+  const [weekPreviewMetaByWeekId, setWeekPreviewMetaByWeekId] = useState<Record<string, { draftRevision: number; previewToken: string } | null>>({});
   const [busyWeekActionByWeekId, setBusyWeekActionByWeekId] = useState<Record<string, WeekAction | null>>({});
 
   useEffect(() => {
@@ -598,20 +607,27 @@ export function TrainingPlanCalendar({
         setSuccessNotice({ title: 'Week preview failed', detail: payload?.error || 'Could not preview this week action.' });
         return;
       }
-      setWeekPreviewByWeekId((current) => ({ ...current, [weekId]: payload.preview as WeekPreview }));
+      const previewPayload = payload as WeekPreviewEnvelope;
+      setWeekPreviewByWeekId((current) => ({ ...current, [weekId]: previewPayload.preview }));
+      setWeekPreviewMetaByWeekId((current) => ({ ...current, [weekId]: { draftRevision: previewPayload.draftRevision, previewToken: previewPayload.previewToken } }));
     } finally {
       setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: null }));
     }
   }
 
   async function applyWeekAction(weekId: string, action: WeekAction) {
+    const previewMeta = weekPreviewMetaByWeekId[weekId];
+    if (!previewMeta) {
+      setSuccessNotice({ title: 'Refresh preview first', detail: 'Preview this week change before applying it so the reviewed version is locked in.' });
+      return;
+    }
     setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: action }));
     setSuccessNotice(null);
     try {
       const response = await fetch('/api/planner/month/week', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftId, weekId, action, intent: 'apply' }),
+        body: JSON.stringify({ draftId, weekId, action, intent: 'apply', expectedDraftRevision: previewMeta.draftRevision, previewToken: previewMeta.previewToken }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -620,6 +636,7 @@ export function TrainingPlanCalendar({
       }
       if (payload?.weeks) setWeeks(payload.weeks as Week[]);
       setWeekPreviewByWeekId((current) => ({ ...current, [weekId]: null }));
+      setWeekPreviewMetaByWeekId((current) => ({ ...current, [weekId]: null }));
       setSuccessNotice({ title: 'Week updated', detail: `${weekActionButtonLabel(action)} applied.` });
     } finally {
       setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: null }));

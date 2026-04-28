@@ -27,17 +27,26 @@ type ScenarioPreview = {
   }>;
 };
 
+type PreviewEnvelope = {
+  previewScenario: ScenarioPreview;
+  draftRevision: number;
+  previewToken: string;
+};
+
 export function CurrentWeekRepairPanelClient({
   draftId,
   initialPreviews,
+  initialDraftRevision,
 }: {
   draftId: string;
   initialPreviews: ScenarioPreview[];
+  initialDraftRevision: number;
 }) {
   const router = useRouter();
   const [previews, setPreviews] = useState<ScenarioPreview[]>(initialPreviews);
   const [busyScenario, setBusyScenario] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
+  const [previewMetaByScenario, setPreviewMetaByScenario] = useState<Record<string, { draftRevision: number; previewToken: string }>>(() => Object.fromEntries(initialPreviews.map((preview) => [preview.scenario, { draftRevision: initialDraftRevision, previewToken: `${draftId}:${initialDraftRevision}:${preview.scenario}:initial` }])));
 
   async function refreshPreview(scenario: ScenarioPreview['scenario']) {
     setBusyScenario(scenario);
@@ -53,21 +62,28 @@ export function CurrentWeekRepairPanelClient({
         setNotice({ title: 'Preview failed', detail: payload?.error || 'Could not refresh this repair preview.' });
         return;
       }
-      setPreviews((current) => current.map((item) => item.scenario === scenario ? payload.previewScenario as ScenarioPreview : item));
-      setNotice({ title: 'Preview refreshed', detail: `${payload.previewScenario.title} updated from the latest live week.` });
+      const nextPayload = payload as PreviewEnvelope;
+      setPreviews((current) => current.map((item) => item.scenario === scenario ? nextPayload.previewScenario : item));
+      setPreviewMetaByScenario((current) => ({ ...current, [scenario]: { draftRevision: nextPayload.draftRevision, previewToken: nextPayload.previewToken } }));
+      setNotice({ title: 'Preview refreshed', detail: `${nextPayload.previewScenario.title} updated from the latest live week.` });
     } finally {
       setBusyScenario(null);
     }
   }
 
   async function applyScenario(scenario: ScenarioPreview['scenario']) {
+    const previewMeta = previewMetaByScenario[scenario];
+    if (!previewMeta || previewMeta.previewToken.endsWith(':initial')) {
+      setNotice({ title: 'Refresh preview first', detail: 'Refresh this repair preview before applying so the exact reviewed version is locked in.' });
+      return;
+    }
     setBusyScenario(scenario);
     setNotice(null);
     try {
       const response = await fetch('/api/planner/month/replan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftId, scenario, intent: 'apply' }),
+        body: JSON.stringify({ draftId, scenario, intent: 'apply', expectedDraftRevision: previewMeta.draftRevision, previewToken: previewMeta.previewToken }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
