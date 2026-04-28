@@ -157,9 +157,12 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Month workspace/i);
   assert.match(source, /Builder and publish/i);
   assert.match(source, /Builder, publish, analysis/i);
+  assert.match(source, /Choose, tune, review/i);
   assert.match(source, /training-plan-publish-panel/i);
   assert.match(source, /training-plan-builder-panel/i);
   assert.match(source, /training-plan-analysis-panel/i);
+  assert.match(source, /training-plan-builder-panel-premium/i);
+  assert.match(source, /training-plan-live-strip-premium/i);
   assert.doesNotMatch(source, /training-plan-step-card-status/i);
   assert.doesNotMatch(source, /training-plan-step-card-goals/i);
   assert.doesNotMatch(source, /training-plan-step-card-parameters/i);
@@ -258,6 +261,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /Before → after/i);
   assert.match(calendarSource, /slotDiffSummary/i);
   assert.match(calendarSource, /training-plan-month-grid-compact/i);
+  assert.match(calendarSource, /training-plan-month-grid-premium/i);
   assert.match(calendarSource, /training-plan-workspace-calendar-shell/i);
   assert.match(calendarSource, /training-plan-workspace-calendar-header/i);
   assert.match(calendarSource, /training-plan-workspace-week-rail/i);
@@ -303,6 +307,16 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /calendarRows/i);
   assert.match(calendarSource, /rowIndexByWeekIndex/i);
   assert.match(calendarStyles, /--calendar-row-height:\s*clamp\(138px, 16vw, 176px\)/i);
+  assert.match(calendarStyles, /\.training-plan-live-strip-premium \{[^}]*gap:\s*10px/i);
+  assert.match(calendarStyles, /\.training-plan-builder-panel-premium \{[^}]*box-shadow:/i);
+  assert.match(calendarStyles, /\.training-plan-builder-bar-compact \{[^}]*grid-template-columns:\s*minmax\(220px, 1\.4fr\) minmax\(110px, \.56fr\) minmax\(130px, \.68fr\) auto/i);
+  assert.match(calendarStyles, /\.training-plan-quick-note-emphasis \{[^}]*border-color:\s*rgba\(122,167,255,0\.18\)/i);
+  assert.match(calendarStyles, /\.training-plan-month-grid-premium \{[^}]*gap:\s*14px/i);
+  assert.match(calendarStyles, /\.training-plan-day-card-premium \{[^}]*backdrop-filter:\s*blur\(14px\)/i);
+  assert.match(calendarStyles, /\.training-plan-session-card-premium \{[^}]*box-shadow:/i);
+  assert.match(calendarStyles, /\.training-plan-week-summary-card-premium \{[^}]*box-shadow:/i);
+  assert.match(calendarStyles, /\.training-plan-live-strip__item-value \{[^}]*font-size:\s*13px/i);
+  assert.match(calendarStyles, /\.training-plan-live-strip__item-meta \{[^}]*font-size:\s*10px/i);
   assert.match(calendarStyles, /\.training-plan-month-grid \{[^}]*grid-auto-rows:\s*var\(--calendar-row-height\)/i);
   assert.match(calendarStyles, /\.training-plan-week-summary-card \{[^}]*height:\s*var\(--calendar-row-height\)/i);
   assert.match(calendarStyles, /\.training-plan-week-summary-column \{[^}]*grid-auto-rows:\s*var\(--calendar-row-height\)/i);
@@ -310,6 +324,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*border-color:\s*rgba\(120,134,156,0\.06\)/i);
   assert.match(calendarStyles, /\.rest-day-subtle \.training-plan-day-card__header strong \{[^}]*color:\s*#d7e2f0/i);
   assert.match(calendarStyles, /\.rest-day-subtle \.training-plan-day-card__summary \{[^}]*color:\s*#9aa9bb/i);
+  assert.match(calendarStyles, /\.training-plan-workspace-compact-grid,\s*\.training-plan-builder-bar-compact,\s*\.training-plan-quick-notes,\s*\.training-plan-live-strip \{[^}]*grid-template-columns:\s*1fr/i);
   assert.match(calendarStyles, /\.session-tone-rest \{[^}]*--session-border:\s*rgba\(120,134,156,0\.18\)[^}]*--session-bg:\s*rgba\(120,134,156,0\.06\)/i);
   assert.match(calendarStyles, /\.session-tone-rest \.training-plan-session-card__label \{[^}]*color:\s*#d7e2f0/i);
   assert.match(calendarStyles, /\.session-tone-rest \.training-plan-session-card__subhead \{[^}]*color:\s*#9aa9bb/i);
@@ -590,7 +605,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /selectPrimaryRecommendation/i);
   assert.match(statefulBuilderSource, /Generate next month/i);
   assert.match(source, /Generated month/i);
-  assert.match(statefulBuilderSource, /Compact builder/i);
+  assert.match(statefulBuilderSource, /Direction/i);
   assert.match(source, /Builder, publish, analysis/i);
   assert.match(statefulBuilderSource, /recommendationAlternatives\.map/i);
   assert.match(statefulBuilderSource, /training-plan-focus-chip/i);

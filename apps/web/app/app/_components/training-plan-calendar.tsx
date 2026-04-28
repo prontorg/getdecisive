@@ -698,7 +698,7 @@ export function TrainingPlanCalendar({
           <div className="kicker">Month workspace</div>
           <strong>Current planning month</strong>
         </div>
-      <div className="training-plan-month-grid training-plan-month-grid-compact">
+      <div className="training-plan-month-grid training-plan-month-grid-compact training-plan-month-grid-premium">
         {calendarDays.map((date) => {
           const dayData = workoutsByDate.get(date) || { completed: [], planned: [], weekIndex: undefined };
           const isPastDay = Boolean(today) && date <= today;
@@ -711,7 +711,7 @@ export function TrainingPlanCalendar({
           return (
             <div
               key={date}
-              className={`training-plan-day-card ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''} ${isHinted && activeHint?.tone === 'warning' ? 'training-plan-day-card-drop-warning' : ''} ${isHinted && activeHint?.tone === 'safe' ? 'training-plan-day-card-drop-safe' : ''}`}
+              className={`training-plan-day-card training-plan-day-card-premium ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''} ${isHinted && activeHint?.tone === 'warning' ? 'training-plan-day-card-drop-warning' : ''} ${isHinted && activeHint?.tone === 'safe' ? 'training-plan-day-card-drop-safe' : ''}`}
               onDragOver={(event) => {
                 event.preventDefault();
                 setHoverDate(date);
@@ -750,7 +750,7 @@ export function TrainingPlanCalendar({
                   const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
                   const changeTrace = slotDiffSummary(reconciliationAudit);
                   return (
-                  <div key={workout.id} className={`training-plan-session-card training-plan-session-card-completed ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)}`}>
+                  <div key={workout.id} className={`training-plan-session-card training-plan-session-card-premium training-plan-session-card-completed ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)}`}>
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
                       <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span>
@@ -800,7 +800,7 @@ export function TrainingPlanCalendar({
                       setDraggingWorkoutId(null);
                       setHoverDate(null);
                     }}
-                    className={`training-plan-session-card ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)} ${busyDate === date ? 'training-plan-session-card-busy' : ''}`}
+                    className={`training-plan-session-card training-plan-session-card-premium ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)} ${busyDate === date ? 'training-plan-session-card-busy' : ''}`}
                   >
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
@@ -975,7 +975,7 @@ export function TrainingPlanCalendar({
           const weekPreview = weekPreviewByWeekId[week.id] || null;
           const busyWeekAction = busyWeekActionByWeekId[week.id] || null;
           return (
-            <div key={week.id} className="training-plan-week-summary-card" style={rowIndexByWeekIndex.get(week.weekIndex) ? { gridRow: rowIndexByWeekIndex.get(week.weekIndex) } : undefined}>
+            <div key={week.id} className="training-plan-week-summary-card training-plan-week-summary-card-premium" style={rowIndexByWeekIndex.get(week.weekIndex) ? { gridRow: rowIndexByWeekIndex.get(week.weekIndex) } : undefined}>
               <div className="training-plan-week-summary-card__inner">
                 <div className="training-plan-week-summary-card__kicker">W{week.weekIndex}</div>
                 <strong>{week.label}</strong>

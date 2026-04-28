@@ -249,6 +249,7 @@ const draftStatusLabel = latestDraft
     monthWorkspace: 'Month workspace',
     builderPublish: 'Builder and publish',
     builderPublishCopy: 'Builder, publish, analysis',
+    builderPolishTagline: 'Choose, tune, review',
   };
 
   return (
@@ -337,14 +338,15 @@ const draftStatusLabel = latestDraft
               </AppCard>
             </div>
 
-            <div className="training-plan-workspace-main">
-              <AppCard className="training-plan-card training-plan-card-flat training-plan-workspace-card training-plan-builder-panel">
+                <div className="training-plan-workspace-main">
+              <AppCard className="training-plan-card training-plan-card-flat training-plan-workspace-card training-plan-builder-panel training-plan-builder-panel-premium">
             <div className="training-plan-quick-builder">
                 <div className="training-plan-quick-builder__header">
                     <div>
                       <div className="kicker">{plannerWorkspaceCards.builderPublish}</div>
                       <h3>Parameters</h3>
                       <p>{plannerWorkspaceCards.builderPublishCopy}</p>
+                      <p className="training-plan-quick-builder__tagline">{plannerWorkspaceCards.builderPolishTagline}</p>
                     </div>
 <div className="chip-row planning-recommendation-chip-row">
                     <span className="chip">Draft: {draftStatusLabel}</span>
@@ -352,26 +354,31 @@ const draftStatusLabel = latestDraft
                   </div>
                 </div>
 
-              <div className="training-plan-live-strip">
+              <div className="training-plan-live-strip training-plan-live-strip-premium">
                 <div className="training-plan-live-strip__item">
                   <strong>Live now</strong>
-                  <span>{activePlanning.summary?.plannedToday || 'Planning refresh pending'}</span>
+                  <span className="training-plan-live-strip__item-value">{activePlanning.summary?.plannedToday || 'Planning refresh pending'}</span>
+                  <span className="training-plan-live-strip__item-meta">Plan truth</span>
                 </div>
                 <div className="training-plan-live-strip__item">
                   <strong>Tomorrow</strong>
-                  <span>{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
+                  <span className="training-plan-live-strip__item-value">{activePlanning.summary?.likelyTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
+                  <span className="training-plan-live-strip__item-meta">If today lands</span>
                 </div>
                 <div className="training-plan-live-strip__item">
                   <strong>Freshness</strong>
-                  <span>{contextPayload.currentState.freshnessSummary}</span>
+                  <span className="training-plan-live-strip__item-value">{contextPayload.currentState.freshnessSummary}</span>
+                  <span className="training-plan-live-strip__item-meta">Current state</span>
                 </div>
                 <div className="training-plan-live-strip__item">
                   <strong>Key slot</strong>
-                  <span>{activePlanning.summary?.nextKeyDay || 'Still resolving'}</span>
+                  <span className="training-plan-live-strip__item-value">{activePlanning.summary?.nextKeyDay || 'Still resolving'}</span>
+                  <span className="training-plan-live-strip__item-meta">Protected next</span>
                 </div>
                 <div className="training-plan-live-strip__item">
                   <strong>Updated</strong>
-                  <span>{liveSyncStamp}</span>
+                  <span className="training-plan-live-strip__item-value">{liveSyncStamp}</span>
+                  <span className="training-plan-live-strip__item-meta">Snapshot sync</span>
                 </div>
               </div>
 

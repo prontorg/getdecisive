@@ -255,8 +255,8 @@ export function TrainingPlanStatefulBuilderClient({
         <button type="submit">Generate next month</button>
 
         <div className="training-plan-quick-notes">
-          <div className="training-plan-quick-note">
-            <strong>Compact builder</strong>
+          <div className="training-plan-quick-note training-plan-quick-note-emphasis">
+            <strong>Direction</strong>
             <p>{selectedSummary}</p>
           </div>
           <div className="training-plan-quick-note">
