@@ -976,6 +976,14 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   background: rgba(245, 158, 11, 0.08);
   color: #f6d28b;
 }
+.training-plan-current-week-panel__latest-repair {
+  display: grid;
+  gap: 4px;
+}
+.training-plan-current-week-panel__latest-repair span {
+  color: #9fb0c7;
+  font-size: 12px;
+}
 .training-plan-current-week-panel__actions {
   display: flex;
   gap: 8px;

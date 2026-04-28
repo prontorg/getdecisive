@@ -127,6 +127,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-current-week-panel__trace/i);
   assert.match(source, /training-plan-mini-fact-warning/i);
   assert.match(source, /No immediate runtime risk flags\./i);
+  assert.match(source, /latestRuntimeRepair/i);
+  assert.match(source, /Latest runtime repair/i);
+  assert.match(source, /training-plan-current-week-panel__latest-repair/i);
   assert.match(source, /\/api\/planner\/month\/replan/i);
   assert.match(source, /Repair/i);
   assert.match(source, /Too fatigued/i);

@@ -19,5 +19,8 @@ test('current-week replan route supports scenario-driven partial replanning for 
   assert.match(source, /request\.headers\.get\('content-type'\)/i);
   assert.match(source, /application\/json/i);
   assert.match(source, /NextResponse\.redirect\(new URL\(|redirectWithNotice\(/i);
+  assert.match(source, /replanScenarioLabel/i);
+  assert.match(source, /Repair missed session|Too fatigued|Use freshness|Cut load|Increase specificity/i);
+  assert.match(source, /Current week repaired:/i);
   assert.match(source, /Active-week draft bridge updated:/i);
 });

@@ -238,6 +238,7 @@ const draftStatusLabel = latestDraft
       }
     : undefined);
   const draftOriginLabel = latestDraft?.assumptions.selectedRecommendationTitle || selectedRecommendation?.title || selectedDirectionLabel;
+  const latestRuntimeRepair = truthSummary?.recentEvents.find((event) => event.source === 'planner_runtime' && /Current week repaired/i.test(event.title));
 
   return (
     <AppPageShell>
@@ -382,6 +383,13 @@ const draftStatusLabel = latestDraft
                     <span className="training-plan-mini-fact"><strong>Missed</strong>{currentWeekReplan.missedSessions.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
                   </div>
+                  {latestRuntimeRepair ? (
+                    <div className="training-plan-current-week-panel__latest-repair status-item">
+                      <strong>Latest runtime repair</strong>
+                      <p>{latestRuntimeRepair.title}</p>
+                      <span>{latestRuntimeRepair.date} • {latestRuntimeRepair.detail}</span>
+                    </div>
+                  ) : null}
                   <div className="training-plan-current-week-panel__actions">
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="missed_session" /><button type="submit" className="button-secondary button-link">Repair</button></form>
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="fatigued" /><button type="submit" className="button-secondary button-link">Too fatigued</button></form>
