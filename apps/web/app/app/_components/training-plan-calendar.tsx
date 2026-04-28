@@ -119,6 +119,17 @@ function statusTagLabel(status: Workout['status']) {
   }
 }
 
+function actionSubmitLabel(action: string) {
+  switch (action) {
+    case 'move_day': return 'Move to day';
+    case 'skip': return 'Mark skipped';
+    case 'replace_with_support': return 'Replace';
+    case 'mark_done_modified': return 'Mark done*';
+    case 'remove': return 'Remove';
+    default: return 'Apply';
+  }
+}
+
 function isVisiblePastPlannedWorkout(workout: Workout) {
   return workout.status === 'skipped' || workout.status === 'replaced' || workout.status === 'completed_modified';
 }
@@ -458,6 +469,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                   const inlineMoveFeedback = moveFeedback?.workoutId === workout.id ? moveFeedback : null;
                   const selectedAction = menuActionByWorkout[workout.id] || 'move_day';
                   const showMoveDateField = selectedAction === 'move_day';
+                  const submitLabel = actionSubmitLabel(selectedAction);
                   return (
                   <div
                     key={workout.id}
@@ -510,7 +522,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                                 <input type="date" name="moveDate" defaultValue={workout.date} />
                               </label>
                             ) : null}
-                            <button type="submit">Apply</button>
+                            <button type="submit">{submitLabel}</button>
                           </form>
                         </details>
                       </div>

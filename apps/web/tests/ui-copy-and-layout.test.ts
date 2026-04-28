@@ -249,6 +249,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /Move day/i);
   assert.match(calendarSource, /showMoveDateField/i);
   assert.match(calendarSource, /menuActionByWorkout/i);
+  assert.match(calendarSource, /actionSubmitLabel/i);
+  assert.match(calendarSource, /Move to day/i);
+  assert.match(calendarSource, /Mark skipped/i);
+  assert.match(calendarSource, /Mark done\*/i);
   assert.match(calendarSource, /event\.target\.value/i);
   assert.match(calendarSource, /statusTagLabel/i);
   assert.match(calendarSource, /statusToneClass/i);
