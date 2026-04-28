@@ -33,9 +33,13 @@ test('login screen copy and auth-page header chrome match the latest product wor
   ]);
 
   assert.match(loginPanel, /auth-login-card-m3/i);
+  assert.match(loginPanel, /auth-login-card-premium/i);
   assert.match(loginPanel, /auth-login-card__header/i);
   assert.match(loginPanel, /auth-login-form/i);
+  assert.match(loginPanel, /auth-login-form-premium/i);
   assert.match(loginPanel, /auth-login-submit/i);
+  assert.match(loginPanel, /button-primary-premium/i);
+  assert.match(loginPanel, /input-premium/i);
   assert.match(loginPageSource, /auth-screen-shell-m3/i);
   assert.match(loginPageSource, /auth-screen-panel-m3/i);
   assert.match(loginPageSource, /auth-invite-row-m3/i);
@@ -128,6 +132,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /activePlanning\.todayDecision\?\.decisionBasis\?\.weeklyBalance/i);
   assert.match(source, /activePlanning\.todayDecision\?\.risks/i);
   assert.match(source, /training-plan-current-week-panel__trace/i);
+  assert.match(source, /training-plan-current-week-panel-premium/i);
+  assert.match(source, /training-plan-current-week-panel__fact-grid/i);
+  assert.match(source, /training-plan-current-week-panel__fact-tile/i);
+  assert.match(source, /training-plan-current-week-panel__summary-callout/i);
   assert.match(source, /training-plan-mini-fact-warning/i);
   assert.match(source, /No immediate runtime risk flags\./i);
   assert.match(source, /latestRuntimeRepair/i);
@@ -309,6 +317,15 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /--calendar-row-height:\s*clamp\(138px, 16vw, 176px\)/i);
   assert.match(calendarStyles, /\.training-plan-live-strip-premium \{[^}]*gap:\s*10px/i);
   assert.match(calendarStyles, /\.training-plan-builder-panel-premium \{[^}]*box-shadow:/i);
+  assert.match(calendarStyles, /\.training-plan-current-week-panel-premium \{[^}]*box-shadow:/i);
+  assert.match(calendarStyles, /\.training-plan-current-week-panel__fact-grid \{[^}]*grid-template-columns:\s*repeat\(auto-fit, minmax\(160px, 1fr\)\)/i);
+  assert.match(calendarStyles, /\.training-plan-current-week-panel__fact-tile \{[^}]*border-radius:\s*16px/i);
+  assert.match(calendarStyles, /\.training-plan-current-week-panel__summary-callout \{[^}]*border-left:\s*3px solid rgba\(122,167,255,0\.32\)/i);
+  assert.match(calendarStyles, /\.button-primary-premium \{[^}]*box-shadow:/i);
+  assert.match(calendarStyles, /\.button-secondary-premium \{[^}]*background:\s*linear-gradient/i);
+  assert.match(calendarStyles, /\.input-premium \{[^}]*box-shadow:\s*inset 0 1px 0 rgba\(255,255,255,0\.035\)/i);
+  assert.match(calendarStyles, /\.auth-login-card-premium \{[^}]*box-shadow:/i);
+  assert.match(calendarStyles, /\.auth-login-form-premium \{[^}]*gap:\s*18px/i);
   assert.match(calendarStyles, /\.training-plan-builder-bar-compact \{[^}]*grid-template-columns:\s*minmax\(220px, 1\.4fr\) minmax\(110px, \.56fr\) minmax\(130px, \.68fr\) auto/i);
   assert.match(calendarStyles, /\.training-plan-quick-note-emphasis \{[^}]*border-color:\s*rgba\(122,167,255,0\.18\)/i);
   assert.match(calendarStyles, /\.training-plan-month-grid-premium \{[^}]*gap:\s*14px/i);
