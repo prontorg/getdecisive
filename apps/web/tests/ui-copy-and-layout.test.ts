@@ -214,6 +214,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /shortDateLabel/i);
   assert.match(calendarSource, /sessionToneClass/i);
   assert.match(calendarSource, /training-plan-month-grid/i);
+  assert.match(calendarSource, /useEffect\(\(\) => \{\s*setWeeks\(initialWeeks\);/i);
+  assert.match(calendarSource, /const \[weeks, setWeeks\] = useState<Week\[\]>\(initialWeeks\)/i);
+  assert.match(calendarSource, /if \(payload\?\.weeks\) setWeeks\(payload\.weeks as Week\[\]\)/i);
+  assert.match(calendarSource, /if \(payload\?\.draft\?\.weeks\) setWeeks\(payload\.draft\.weeks as Week\[\]\)/i);
+  assert.doesNotMatch(calendarSource, /router\.refresh\(\)/i);
   assert.match(calendarSource, /training-plan-inline-menu/i);
   assert.match(calendarSource, /training-plan-session-card__quick-actions/i);
   assert.match(calendarSource, /mutateWorkout\(workout\.id, 'easier'\)/i);

@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 
 type MoveFeedback = {
   workoutId: string;
@@ -147,13 +146,17 @@ function planEventBadgeClass(type: PlanEvent['type']) {
   }
 }
 
-export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }: { draftId: string; weeks: Week[]; today: string; planEvents?: PlanEvent[] }) {
-  const router = useRouter();
+export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, planEvents = [] }: { draftId: string; weeks: Week[]; today: string; planEvents?: PlanEvent[] }) {
+  const [weeks, setWeeks] = useState<Week[]>(initialWeeks);
   const [draggingWorkoutId, setDraggingWorkoutId] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
   const [busyDate, setBusyDate] = useState<string | null>(null);
   const [moveFeedback, setMoveFeedback] = useState<MoveFeedback | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setWeeks(initialWeeks);
+  }, [initialWeeks]);
 
   const calendarDays = useMemo(() => {
     const dates = new Set<string>();
@@ -282,8 +285,8 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
                   : action === 'mark_done_modified'
                     ? `${workout.label} marked done-modified`
                     : `${workout.label} updated`;
+      if (payload?.weeks) setWeeks(payload.weeks as Week[]);
       setSuccessNotice(nextNotice);
-      router.refresh();
     } finally {
       setBusyDate(null);
     }
@@ -319,8 +322,8 @@ export function TrainingPlanCalendar({ draftId, weeks, today, planEvents = [] }:
         return;
       }
       setMoveFeedback(null);
+      if (payload?.draft?.weeks) setWeeks(payload.draft.weeks as Week[]);
       setSuccessNotice(payload?.notice || `Workout moved to ${moveDate}`);
-      router.refresh();
     } finally {
       setBusyDate(null);
       setDraggingWorkoutId(null);
