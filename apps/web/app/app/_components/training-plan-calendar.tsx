@@ -136,6 +136,15 @@ function weekActionButtonLabel(action: WeekAction) {
   }
 }
 
+function weekActionCompactLabel(action: WeekAction) {
+  switch (action) {
+    case 'regenerate': return 'Regen';
+    case 'reduce_load': return 'Reduce';
+    case 'increase_specificity': return 'Sharpen';
+    case 'lighter_weekend': return 'Weekend';
+  }
+}
+
 const WEEK_ACTIONS: WeekAction[] = ['regenerate', 'reduce_load', 'increase_specificity', 'lighter_weekend'];
 
 function familyIntentLabel(workout: Pick<Workout, 'category' | 'label' | 'intervalLabel' | 'familyIntent'>) {
@@ -208,7 +217,37 @@ function actionSelectionLabel(action: string) {
   }
 }
 
-const WORKOUT_ACTIONS = ['move_day', 'remove'] as const;
+const WORKOUT_ACTIONS = ['move_day', 'skip', 'replace_with_support', 'mark_done_modified', 'remove'] as const;
+
+type WorkoutAction = typeof WORKOUT_ACTIONS[number];
+
+function workoutActionState(
+  workout: Pick<Workout, 'status'>,
+  action: WorkoutAction,
+) {
+  if (action === 'move_day' || action === 'remove') return 'idle';
+  if (action === 'skip') {
+    if (workout.status === 'skipped') return 'active';
+    if (workout.status === 'replaced' || workout.status === 'completed_modified') return 'disabled';
+    return 'idle';
+  }
+  if (action === 'replace_with_support') {
+    if (workout.status === 'replaced') return 'active';
+    if (workout.status === 'skipped' || workout.status === 'completed_modified') return 'disabled';
+    return 'idle';
+  }
+  if (workout.status === 'completed_modified') return 'active';
+  if (workout.status === 'skipped' || workout.status === 'replaced') return 'disabled';
+  return 'idle';
+}
+
+function normalizeWorkoutAction(
+  workout: Pick<Workout, 'status'>,
+  action: string,
+) {
+  if (!WORKOUT_ACTIONS.includes(action as WorkoutAction)) return 'move_day';
+  return workoutActionState(workout, action as WorkoutAction) === 'disabled' ? 'move_day' : action;
+}
 
 function shouldCloseMenuAfterSubmit(action: string) {
   return action !== 'move_day';
@@ -303,34 +342,6 @@ function statusToneClass(status: Workout['status']) {
     case 'replaced': return 'training-plan-session-card-status-replaced';
     case 'completed_modified': return 'training-plan-session-card-status-completed-modified';
     default: return '';
-  }
-}
-
-function quickActionState(
-  workout: Pick<Workout, 'status'>,
-  action: 'skip' | 'replace_with_support' | 'mark_done_modified',
-) {
-  if (action === 'skip') {
-    if (workout.status === 'skipped') return 'active';
-    if (workout.status === 'replaced' || workout.status === 'completed_modified') return 'disabled';
-    return 'idle';
-  }
-  if (action === 'replace_with_support') {
-    if (workout.status === 'replaced') return 'active';
-    if (workout.status === 'skipped' || workout.status === 'completed_modified') return 'disabled';
-    return 'idle';
-  }
-  if (workout.status === 'completed_modified') return 'active';
-  if (workout.status === 'skipped' || workout.status === 'replaced') return 'disabled';
-  return 'idle';
-}
-
-function settledReconciliationLabel(status: Workout['status']) {
-  switch (status) {
-    case 'skipped': return 'Skipped';
-    case 'replaced': return 'Support';
-    case 'completed_modified': return 'Done*';
-    default: return null;
   }
 }
 
@@ -772,7 +783,8 @@ export function TrainingPlanCalendar({
                   const workoutAuditTrail = reconciliationEventsByWorkoutKey.get(reconciliationKey) || [];
                   const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
                   const changeTrace = slotDiffSummary(reconciliationAudit);
-                  const selectedAction = menuActionByWorkout[workout.id] || 'move_day';
+                  const selectedAction = normalizeWorkoutAction(workout, menuActionByWorkout[workout.id] || 'move_day');
+                  const busyWorkout = busyDate === date;
                   const showMoveDateField = selectedAction === 'move_day';
                   const submitLabel = actionSubmitLabel(selectedAction);
                   const closeMenuAfterSubmit = shouldCloseMenuAfterSubmit(selectedAction);
@@ -782,10 +794,6 @@ export function TrainingPlanCalendar({
                     ? 'training-plan-inline-menu__danger-hint'
                     : 'training-plan-inline-menu__action-hint';
                   const panel = actionPanelContent(selectedAction);
-                  const skipActionState = quickActionState(workout, 'skip');
-                  const supportActionState = quickActionState(workout, 'replace_with_support');
-                  const doneModifiedActionState = quickActionState(workout, 'mark_done_modified');
-                  const settledReconciliation = settledReconciliationLabel(workout.status);
                   return (
                   <div
                     key={workout.id}
@@ -800,55 +808,22 @@ export function TrainingPlanCalendar({
                       setDraggingWorkoutId(null);
                       setHoverDate(null);
                     }}
-                    className={`training-plan-session-card training-plan-session-card-premium ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)} ${busyDate === date ? 'training-plan-session-card-busy' : ''}`}
+                    className={`training-plan-session-card training-plan-session-card-premium ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)} ${busyWorkout ? 'training-plan-session-card-busy' : ''}`}
                   >
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
                       <div className="training-plan-session-card__actions">
+                        {!workout.locked ? (
+                          <span
+                            className="training-plan-session-card__drag-handle"
+                            title="Drag to move this session"
+                            aria-label="Drag to move this session"
+                          >
+                            ⋮⋮
+                          </span>
+                        ) : null}
                         {workout.locked ? <span className="training-plan-session-card__tag">lock</span> : null}
                         {workout.status !== 'planned' ? <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span> : null}
-                        <div className="training-plan-session-card__quick-actions">
-                          {[
-                            { action: 'skip' as const, label: 'Skip', state: skipActionState },
-                            { action: 'replace_with_support' as const, label: 'Support', state: supportActionState },
-                            { action: 'mark_done_modified' as const, label: 'Done*', state: doneModifiedActionState },
-                          ].map(({ action, label, state }) => {
-                            const quickActionDisabled = state === 'disabled';
-                            const quickActionClassName = [
-                              'button-secondary',
-                              'training-plan-session-card__quick-action',
-                              state === 'active' ? 'training-plan-session-card__quick-action-active' : '',
-                              quickActionDisabled ? 'training-plan-session-card__quick-action-disabled' : '',
-                            ].filter(Boolean).join(' ');
-                            return (
-                              <button
-                                key={action}
-                                type="button"
-                                className={quickActionClassName}
-                                disabled={quickActionDisabled}
-                                aria-disabled={quickActionDisabled}
-                                onClick={() => {
-                                  if (quickActionDisabled) return;
-                                  mutateWorkout(workout.id, action);
-                                }}
-                              >
-                                {label}
-                              </button>
-                            );
-                          })}
-                          {settledReconciliation ? (
-                            <>
-                              <span className="training-plan-session-card__quick-action-settled">{settledReconciliation}</span>
-                              <button
-                                type="button"
-                                className="button-secondary training-plan-session-card__quick-action training-plan-session-card__quick-action-undo"
-                                onClick={() => mutateWorkout(workout.id, 'reset_reconciliation')}
-                              >
-                                Undo
-                              </button>
-                            </>
-                          ) : null}
-                        </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>
                           <form
@@ -867,6 +842,8 @@ export function TrainingPlanCalendar({
                               {WORKOUT_ACTIONS.map((action) => {
                                 const actionActive = selectedAction === action;
                                 const actionDanger = action === 'remove';
+                                const actionState = workoutActionState(workout, action);
+                                const actionDisabled = busyWorkout || actionState === 'disabled';
                                 const actionPillClassName = [
                                   'button-secondary',
                                   'training-plan-inline-menu__action-pill',
@@ -879,15 +856,34 @@ export function TrainingPlanCalendar({
                                     type="button"
                                     className={actionPillClassName}
                                     aria-pressed={actionActive ? 'true' : 'false'}
-                                    onClick={() => setMenuActionByWorkout((current) => ({
-                                      ...current,
-                                      [workout.id]: action,
-                                    }))}
+                                    disabled={actionDisabled}
+                                    aria-disabled={actionDisabled}
+                                    onClick={() => {
+                                      if (actionDisabled) return;
+                                      setMenuActionByWorkout((current) => ({
+                                        ...current,
+                                        [workout.id]: action,
+                                      }));
+                                    }}
                                   >
                                     {actionSelectionLabel(action)}
                                   </button>
                                 );
                               })}
+                              {workout.status !== 'planned' ? (
+                                <button
+                                  type="button"
+                                  className="button-secondary training-plan-inline-menu__action-pill"
+                                  disabled={busyWorkout}
+                                  aria-disabled={busyWorkout}
+                                  onClick={() => {
+                                    if (busyWorkout) return;
+                                    mutateWorkout(workout.id, 'reset_reconciliation');
+                                  }}
+                                >
+                                  Undo
+                                </button>
+                              ) : null}
                             </div>
                             <input type="hidden" name="action" value={selectedAction} />
                             <div className="training-plan-inline-menu__selected-action-row">
@@ -964,7 +960,8 @@ export function TrainingPlanCalendar({
           const plannedMinutes = week.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
           const completedLoad = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
           const plannedLoad = week.workouts.reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
-          const latestHistory = (week.completedThisWeek || []).slice(-1)[0];
+          const completedCount = (week.completedThisWeek || []).length;
+          const plannedCount = week.workouts.length;
           const summaryLabel = weekSummaryLabel(week);
           const availableHoursLabel = typeof week.availableHours === 'number'
             ? `${week.availableHours.toFixed(1)} h available`
@@ -981,8 +978,8 @@ export function TrainingPlanCalendar({
                 <strong>{week.label}</strong>
                 <p>{summaryLabel} • {week.targetHours.toFixed(1)} h • L{week.targetLoad}</p>
                 <p>{eventAdjustedHoursLabel}</p>
-                <p>{latestHistory ? `History: ${latestHistory.label}` : `Next ${(plannedMinutes / 60).toFixed(1)} h • L${plannedLoad}`}</p>
-                <p>{latestHistory ? `${(completedMinutes / 60).toFixed(1)} h done • L${completedLoad}` : `${plannedMinutes ? `${(plannedMinutes / 60).toFixed(1)} h planned • L${plannedLoad}` : 'Fresher week / lower cost'}`}</p>
+                <p>Completed • {completedCount} sessions • {(completedMinutes / 60).toFixed(1)} h • L{completedLoad}</p>
+                <p>Planned • {plannedCount} sessions • {(plannedMinutes / 60).toFixed(1)} h • L{plannedLoad}</p>
                 <div className="button-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
                   {WEEK_ACTIONS.map((action) => (
                     <button
@@ -992,7 +989,7 @@ export function TrainingPlanCalendar({
                       disabled={Boolean(busyWeekAction)}
                       onClick={() => previewWeekAction(week.id, action)}
                     >
-                      {weekActionButtonLabel(action)}
+                      {weekActionCompactLabel(action)}
                     </button>
                   ))}
                 </div>

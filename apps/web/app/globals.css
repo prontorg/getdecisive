@@ -891,16 +891,18 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-session-card__label { color:#eef4ff; font-size:11px; line-height:1.2; max-width: 16ch; }
 .training-plan-session-card__subhead { margin-top: 3px; color: #cdd8e8; font-size: 9px; line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .92; }
 .training-plan-session-card__actions { display:flex; align-items:flex-start; gap:4px; margin-left:auto; }
-.training-plan-session-card__quick-actions {
-  display:flex;
-  align-items:center;
-  gap:3px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-  opacity: .42;
-  transform: translateY(1px);
-  transition: opacity .16s ease, transform .16s ease;
+.training-plan-session-card__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  color: #9fb0c7;
+  font-size: 11px;
+  letter-spacing: -0.12em;
+  cursor: grab;
+  user-select: none;
 }
+.training-plan-session-card__drag-handle:active { cursor: grabbing; }
 .training-plan-session-card-status-skipped {
   border-color: rgba(245,158,11,0.42);
   box-shadow: inset 0 0 0 1px rgba(245,158,11,0.12);
@@ -912,56 +914,6 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-session-card-status-completed-modified {
   border-color: rgba(34,197,94,0.38);
   box-shadow: inset 0 0 0 1px rgba(34,197,94,0.12);
-}
-.training-plan-session-card:hover .training-plan-session-card__quick-actions,
-.training-plan-session-card:focus-within .training-plan-session-card__quick-actions { opacity: .92; transform: translateY(0); }
-.training-plan-session-card__quick-action {
-  padding: 3px 6px;
-  font-size: 9px;
-  border-radius: 999px;
-  min-height: 20px;
-  box-shadow: none;
-  border-color: rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.035);
-  color: #cdd8e8;
-}
-.training-plan-session-card__quick-action:hover,
-.training-plan-session-card__quick-action:focus-visible {
-  background: rgba(122,167,255,0.12);
-  border-color: rgba(122,167,255,0.24);
-  color: #eef4ff;
-}
-.training-plan-session-card__quick-action-active {
-  background: rgba(122,167,255,0.16);
-  border-color: rgba(122,167,255,0.3);
-  color: #eef4ff;
-}
-.training-plan-session-card__quick-action-disabled,
-.training-plan-session-card__quick-action:disabled {
-  opacity: .42;
-  cursor: not-allowed;
-  background: rgba(255,255,255,0.025);
-  border-color: rgba(255,255,255,0.04);
-  color: #8fa1b8;
-}
-.training-plan-session-card__quick-action:disabled:hover,
-.training-plan-session-card__quick-action:disabled:focus-visible {
-  background: rgba(255,255,255,0.025);
-  border-color: rgba(255,255,255,0.04);
-  color: #8fa1b8;
-}
-.training-plan-session-card__quick-action-settled {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(122,167,255,0.1);
-  color: #dbeafe;
-  font-size: 9px;
-}
-.training-plan-session-card__quick-action-undo {
-  border-color: rgba(122,167,255,0.22);
-  color: #eef4ff;
 }
 .training-plan-session-card__tag {
   display:inline-flex;
