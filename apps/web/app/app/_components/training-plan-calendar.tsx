@@ -539,6 +539,9 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                                 <input type="date" name="moveDate" defaultValue={workout.date} />
                               </label>
                             ) : null}
+                            {destructiveActionSelected ? (
+                              <p className="training-plan-inline-menu__danger-hint">Removes this planned session from the draft.</p>
+                            ) : null}
                             <button
                               type="submit"
                               className={destructiveActionSelected ? 'training-plan-inline-menu__submit-danger' : undefined}
