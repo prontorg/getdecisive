@@ -209,6 +209,15 @@ const draftStatusLabel = latestDraft
       ? 'Draft saved and locally published'
       : 'Draft saved locally and still editable'
     : 'No draft saved yet';
+  const publishStateLabel = latestDraft?.publishState === 'published'
+    ? 'Future weeks published locally'
+    : 'Draft only';
+  const publishStateDetail = latestDraft?.publishState === 'published'
+    ? 'Runtime week stays live while future draft weeks are locally published.'
+    : 'Runtime week stays live until you publish the future draft.';
+  const publishSyncLabel = latestDraft?.weeks.some((week) => week.workouts.some((workout) => workout.status === 'published_intervals'))
+    ? 'Externally synced'
+    : 'Local only';
   const recommendationPayload = buildPlanningRecommendationPayload(planner.live, currentDirection, latestInput ? {
     sourceWindowDays: latestInput.sourceWindowDays,
     ignoreSickWeek: latestInput.ignoreSickWeek,
@@ -459,12 +468,15 @@ const draftStatusLabel = latestDraft
                       <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
                     )}
                     <span className="chip">Built from: {latestDraft.assumptions?.selectedRecommendationTitle || latestInput?.selectedRecommendation?.title || latestInput?.objective || 'latest planner inputs'} • {fmtHours(latestInput?.mustFollow.maxWeeklyHours || 10.5)} • {latestInput?.preferences.restDay || 'Saturday'} rest</span>
+                    <span className="chip">Publish state: {publishStateLabel}</span>
+                    <span className="chip">Sync: {publishSyncLabel}</span>
                     <details className="training-plan-inline-panel">
                       <summary title="More month actions">⋯</summary>
                       <div className="training-plan-inline-panel__content">
                         <div className="training-plan-calendar-publish-copy">
                           <strong>Publish future draft</strong>
                           <p>Future weeks only. Live week stays runtime-backed.</p>
+                          <p>{publishStateDetail}</p>
                         </div>
                         <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
                         <form action="/api/planner/month/publish" method="post">
@@ -475,8 +487,8 @@ const draftStatusLabel = latestDraft
                     </details>
                   </div>
                   <details className="training-plan-compare-panel">
-<summary>Month details</summary>
-                <div className="training-plan-comparison-grid training-plan-comparison-grid-compact">
+                    <summary>Month details</summary>
+                    <div className="training-plan-comparison-grid training-plan-comparison-grid-compact">
                   <div className="status-item">
                     <strong>{comparePayload.recentWindow.label}</strong>
                     <p>{fmtHours(comparePayload.recentWindow.totalHours)} • Load {comparePayload.recentWindow.totalLoad} • {comparePayload.recentWindow.totalSessions} sessions</p>

@@ -131,6 +131,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Publish future draft/i);
   assert.match(source, /Live week stays runtime-backed/i);
   assert.match(source, /Future draft published locally|Draft saved and locally published/i);
+  assert.match(source, /publishStateLabel/i);
+  assert.match(source, /Publish state/i);
+  assert.match(source, /Future weeks published locally/i);
+  assert.match(source, /Runtime week stays live/i);
+  assert.match(source, /Externally synced/i);
   assert.doesNotMatch(source, /training-plan-publish-inline/i);
   assert.match(calendarSource, /effectAllowed = 'move'/i);
   assert.match(calendarSource, /setData\('text\/plain', workout\.id\)/i);
