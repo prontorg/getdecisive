@@ -797,17 +797,6 @@ export function TrainingPlanCalendar({
                   return (
                   <div
                     key={workout.id}
-                    draggable={!workout.locked}
-                    onDragStart={(event) => {
-                      setDraggingWorkoutId(workout.id);
-                      setHoverDate(null);
-                      event.dataTransfer.effectAllowed = 'move';
-                      event.dataTransfer.setData('text/plain', workout.id);
-                    }}
-                    onDragEnd={() => {
-                      setDraggingWorkoutId(null);
-                      setHoverDate(null);
-                    }}
                     className={`training-plan-session-card training-plan-session-card-premium ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)} ${busyWorkout ? 'training-plan-session-card-busy' : ''}`}
                   >
                     <div className="training-plan-session-card__row">
@@ -815,9 +804,20 @@ export function TrainingPlanCalendar({
                       <div className="training-plan-session-card__actions">
                         {!workout.locked ? (
                           <span
+                            draggable
                             className="training-plan-session-card__drag-handle"
                             title="Drag to move this session"
                             aria-label="Drag to move this session"
+                            onDragStart={(event) => {
+                              setDraggingWorkoutId(workout.id);
+                              setHoverDate(null);
+                              event.dataTransfer.effectAllowed = 'move';
+                              event.dataTransfer.setData('text/plain', workout.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggingWorkoutId(null);
+                              setHoverDate(null);
+                            }}
                           >
                             ⋮⋮
                           </span>

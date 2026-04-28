@@ -251,7 +251,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /effectAllowed = 'move'/i);
   assert.match(calendarSource, /setData\('text\/plain', workout\.id\)/i);
   assert.match(calendarSource, /getData\('text\/plain'\)/i);
-  assert.match(calendarSource, /draggable=\{!workout\.locked\}/i);
+  assert.match(calendarSource, /<span\s+draggable\s+className=\"training-plan-session-card__drag-handle\"/i);
+  assert.doesNotMatch(calendarSource, /<div\s+key=\{workout\.id\}\s+draggable=\{!workout\.locked\}/i);
   assert.match(calendarSource, /training-plan-session-card__drag-handle/i);
   assert.doesNotMatch(calendarSource, /training-plan-session-card__quick-actions/i);
   assert.doesNotMatch(calendarSource, /training-plan-session-card__quick-action/i);
