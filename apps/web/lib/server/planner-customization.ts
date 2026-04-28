@@ -153,6 +153,9 @@ type MonthlyPlanReconciliationEvent = {
   id: string;
   draftId: string;
   workoutId?: string;
+  matchedPlannedWorkoutId?: string;
+  matchedPlannedWorkoutLabel?: string;
+  completedLabel?: string;
   weekId?: string;
   date: string;
   eventType:

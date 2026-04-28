@@ -23,4 +23,6 @@ test('current-week replan route supports scenario-driven partial replanning for 
   assert.match(source, /Repair missed session|Too fatigued|Use freshness|Cut load|Increase specificity/i);
   assert.match(source, /Current week repaired:/i);
   assert.match(source, /Active-week draft bridge updated:/i);
+  assert.match(source, /matchedPlannedWorkoutId/i);
+  assert.match(source, /matchedPlannedWorkoutLabel/i);
 });

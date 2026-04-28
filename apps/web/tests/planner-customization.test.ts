@@ -170,6 +170,9 @@ test('planner reconciliation events append newest-first and stay draft-scoped', 
     await appendMonthlyPlanReconciliationEvent('user_1', {
       draftId: 'draft_a',
       workoutId: 'w_1',
+      matchedPlannedWorkoutId: 'w_1',
+      matchedPlannedWorkoutLabel: 'Repeatability set',
+      completedLabel: '30/15 set',
       date: '2026-04-22',
       eventType: 'workout_skipped',
       title: 'Repeatability set skipped',
@@ -201,6 +204,9 @@ test('planner reconciliation events append newest-first and stay draft-scoped', 
     assert.equal(allForDraft[0]?.draftId, 'draft_a');
     assert.equal(allForDraft[0]?.eventType, 'week_replanned');
     assert.equal(allForDraft[1]?.eventType, 'workout_skipped');
+    assert.equal(allForDraft[1]?.matchedPlannedWorkoutId, 'w_1');
+    assert.equal(allForDraft[1]?.matchedPlannedWorkoutLabel, 'Repeatability set');
+    assert.equal(allForDraft[1]?.completedLabel, '30/15 set');
     assert.equal(recent.length, 1);
     assert.equal(recent[0]?.title, 'Current week repaired');
   });

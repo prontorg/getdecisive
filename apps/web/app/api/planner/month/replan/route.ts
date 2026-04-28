@@ -83,10 +83,13 @@ export async function POST(request: Request) {
     });
 
     const scenarioLabel = replanScenarioLabel(scenario);
+    const matchedPlannedWorkout = existingWeek.workouts.find((workout) => workout.date >= (planner.live?.today || '')) || existingWeek.workouts[0];
 
     await appendMonthlyPlanReconciliationEvent(userId, {
       draftId,
       weekId: existingWeek.id,
+      matchedPlannedWorkoutId: matchedPlannedWorkout?.id,
+      matchedPlannedWorkoutLabel: matchedPlannedWorkout?.label,
       date: planner.live?.today || new Date().toISOString().slice(0, 10),
       eventType: 'week_replanned',
       title: `Current week repaired: ${scenarioLabel}`,

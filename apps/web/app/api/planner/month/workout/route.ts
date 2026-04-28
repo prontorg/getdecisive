@@ -86,6 +86,9 @@ export async function POST(request: Request) {
           title: string;
           detail: string;
           date: string;
+          matchedPlannedWorkoutId?: string;
+          matchedPlannedWorkoutLabel?: string;
+          completedLabel?: string;
         }
       | null = null;
     if (action === 'move_day') {
@@ -121,6 +124,8 @@ export async function POST(request: Request) {
         title: `${workout.label} moved`,
         detail: `Moved from ${workout.date} to ${moveDate}.`,
         date: moveDate,
+        matchedPlannedWorkoutId: workout.id,
+        matchedPlannedWorkoutLabel: workout.label,
       };
     } else if (action === 'skip') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
@@ -133,6 +138,8 @@ export async function POST(request: Request) {
         title: `${workout.label} skipped`,
         detail: `Skipped instead of the originally planned session on ${workout.date}.`,
         date: workout.date,
+        matchedPlannedWorkoutId: workout.id,
+        matchedPlannedWorkoutLabel: workout.label,
       };
     } else if (action === 'replace_with_support') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
@@ -150,6 +157,8 @@ export async function POST(request: Request) {
         title: `${workout.label} replaced`,
         detail: `Replaced with support work on ${workout.date}.`,
         date: workout.date,
+        matchedPlannedWorkoutId: workout.id,
+        matchedPlannedWorkoutLabel: workout.label,
       };
     } else if (action === 'mark_done_modified') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
@@ -162,6 +171,9 @@ export async function POST(request: Request) {
         title: `${workout.label} completed modified`,
         detail: `Completed with modified execution versus the original planned structure.`,
         date: workout.date,
+        matchedPlannedWorkoutId: workout.id,
+        matchedPlannedWorkoutLabel: workout.label,
+        completedLabel: String(pick('completedLabel') || workout.label),
       };
     } else if (action === 'reset_reconciliation') {
       nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
@@ -180,6 +192,9 @@ export async function POST(request: Request) {
       await appendMonthlyPlanReconciliationEvent(userId, {
         draftId,
         workoutId,
+        matchedPlannedWorkoutId: reconciliationEvent.matchedPlannedWorkoutId,
+        matchedPlannedWorkoutLabel: reconciliationEvent.matchedPlannedWorkoutLabel,
+        completedLabel: reconciliationEvent.completedLabel,
         date: reconciliationEvent.date,
         eventType: reconciliationEvent.eventType,
         title: reconciliationEvent.title,

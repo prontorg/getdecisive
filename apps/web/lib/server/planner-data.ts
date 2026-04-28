@@ -68,6 +68,9 @@ export type PlannerTruthSummaryPayload = {
     mismatchReason: string;
     shouldDoNow: string;
     doneLabel: string;
+    matchedPlannedWorkoutIds: string[];
+    matchedPlannedWorkoutLabels: string[];
+    unmatchedCompletedLabels: string[];
     tomorrowConsequence: string;
     summary: string;
   };
@@ -1239,16 +1242,18 @@ function currentWeekTodayTruth(
   const todaysWorkouts = (currentWeek?.workouts || []).filter((workout) => workout.date === today);
   const todaysRows = (live?.recent_rows || []).filter((row) => row.start_date_local.slice(0, 10) === today);
   const statusChanged = todaysWorkouts.filter((workout) => workout.status !== 'planned' && workout.status !== 'published_local' && workout.status !== 'published_intervals').length;
-  const matchedWorkoutIds = new Set(
-    todaysWorkouts
-      .filter((workout) => todaysRows.some((row) => plannedWorkoutMatchesLiveRow(workout, row)))
-      .map((workout) => workout.id),
-  );
-  const unmatchedLiveRows = todaysRows.filter((row) => !todaysWorkouts.some((workout) => plannedWorkoutMatchesLiveRow(workout, row)));
+  const matchedPairs = todaysRows.map((row) => {
+    const workout = todaysWorkouts.find((candidate) => plannedWorkoutMatchesLiveRow(candidate, row));
+    return workout ? { row, workout } : null;
+  }).filter(Boolean) as Array<{ row: LiveRow; workout: MonthlyPlanDraft['weeks'][number]['workouts'][number] }>;
+  const matchedWorkoutIds = Array.from(new Set(matchedPairs.map((pair) => pair.workout.id)));
+  const matchedWorkoutLabels = Array.from(new Set(matchedPairs.map((pair) => pair.workout.label)));
+  const unmatchedLiveRows = todaysRows.filter((row) => !matchedPairs.some((pair) => pair.row.activity_id === row.activity_id));
+  const unmatchedCompletedLabels = unmatchedLiveRows.map(liveRowLabel);
   const completed = todaysRows.length || todaysWorkouts.filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified').length;
   const planned = todaysWorkouts.length;
   const changed = statusChanged + unmatchedLiveRows.length;
-  const pendingPlanned = todaysWorkouts.filter((workout) => !matchedWorkoutIds.has(workout.id) && workout.status !== 'completed' && workout.status !== 'completed_modified');
+  const pendingPlanned = todaysWorkouts.filter((workout) => !matchedWorkoutIds.includes(workout.id) && workout.status !== 'completed' && workout.status !== 'completed_modified');
   const shouldDoNow = pendingPlanned[0]?.label || todaysWorkouts[0]?.label || 'No same-day draft session';
   const doneLabel = todaysRows.map(liveRowLabel).join(' • ')
     || todaysWorkouts
@@ -1271,7 +1276,20 @@ function currentWeekTodayTruth(
     ? `Today truth: ${planned} planned • ${completed} completed • ${changed} changed.`
     : 'Today truth: no draft session sat on today.';
 
-  return { planned, completed, changed, mismatch, mismatchReason, shouldDoNow, doneLabel, tomorrowConsequence, summary };
+  return {
+    planned,
+    completed,
+    changed,
+    mismatch,
+    mismatchReason,
+    shouldDoNow,
+    doneLabel,
+    matchedPlannedWorkoutIds: matchedWorkoutIds,
+    matchedPlannedWorkoutLabels: matchedWorkoutLabels,
+    unmatchedCompletedLabels,
+    tomorrowConsequence,
+    summary,
+  };
 }
 
 export async function buildPlannerTruthSummaryPayload(
@@ -1292,6 +1310,9 @@ export async function buildPlannerTruthSummaryPayload(
       mismatchReason: 'Today still matches the original prescription.',
       shouldDoNow: 'No same-day draft session',
       doneLabel: 'Nothing completed yet',
+      matchedPlannedWorkoutIds: [],
+      matchedPlannedWorkoutLabels: [],
+      unmatchedCompletedLabels: [],
       tomorrowConsequence: 'Key day can stay sharper tomorrow if today lands cleanly.',
       summary: 'Today truth: no draft session sat on today.',
     },

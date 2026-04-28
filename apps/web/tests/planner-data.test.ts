@@ -1569,6 +1569,8 @@ test('planner truth summary flags same-day completed work that does not match th
   assert.equal(payload.currentWeekToday.completed, 1);
   assert.equal(payload.currentWeekToday.changed, 1);
   assert.equal(payload.currentWeekToday.mismatch, true);
+  assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutIds, []);
+  assert.deepEqual(payload.currentWeekToday.unmatchedCompletedLabels, ['Endurance spin']);
   assert.match(payload.currentWeekToday.doneLabel, /Endurance spin/i);
   assert.match(payload.currentWeekToday.shouldDoNow, /Threshold support/i);
   assert.match(payload.currentWeekToday.mismatchReason, /does not cleanly match the planned session type or structure/i);
@@ -1609,6 +1611,9 @@ test('planner truth summary counts same-day matching workout family as landed ev
   assert.equal(payload.currentWeekToday.completed, 1);
   assert.equal(payload.currentWeekToday.changed, 0);
   assert.equal(payload.currentWeekToday.mismatch, false);
+  assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutIds, ['w_truth_2']);
+  assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutLabels, ['Threshold support']);
+  assert.deepEqual(payload.currentWeekToday.unmatchedCompletedLabels, []);
   assert.match(payload.currentWeekToday.doneLabel, /2x15 set/i);
   assert.match(payload.currentWeekToday.mismatchReason, /still matches the original prescription/i);
 });
@@ -1906,6 +1911,9 @@ test('planner truth summary payload counts execution changes and reports current
     assert.equal(payload.currentWeekToday.changed, 1);
     assert.match(payload.currentWeekToday.summary, /today.*1 planned/i);
     assert.equal(payload.currentWeekToday.mismatch, true);
+    assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutIds, []);
+    assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutLabels, []);
+    assert.deepEqual(payload.currentWeekToday.unmatchedCompletedLabels, []);
     assert.match(payload.currentWeekToday.shouldDoNow, /race-like bridge/i);
     assert.match(payload.currentWeekToday.doneLabel, /race-like bridge/i);
     assert.match(payload.currentWeekToday.mismatchReason, /execution differs|today changed/i);
