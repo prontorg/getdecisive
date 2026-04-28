@@ -1,5 +1,17 @@
 import type { MonthlyPlanWeek, MonthlyPlanWorkout } from './planner-customization';
 
+function normalizeText(value?: string) {
+  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function plannedWorkoutFingerprint(workout: Pick<GeneratedWorkout, 'date' | 'category' | 'familyIntent' | 'intervalLabel' | 'label'>) {
+  return [workout.date, workout.category, normalizeText(workout.familyIntent), normalizeText(workout.intervalLabel), normalizeText(workout.label)].join('|');
+}
+
+function completedWorkoutFingerprint(workout: Pick<GeneratedWorkout, 'date' | 'category' | 'label'>) {
+  return [workout.date, workout.category, normalizeText(workout.label)].join('|');
+}
+
 type GeneratedWorkout = {
   date: string;
   label: string;
@@ -57,7 +69,7 @@ export function toStoredCompletedWorkout(workout: GeneratedWorkout, weekIndex: n
 export function toStoredPlannedWorkout(workout: GeneratedWorkout, weekIndex: number, index: number, existing?: MonthlyPlanWorkout): MonthlyPlanWorkout {
   return {
     id: existing?.id || `w_${weekIndex}_${index + 1}`,
-    plannerSlotId: existing?.plannerSlotId || `slot_${weekIndex}_${index + 1}`,
+    plannerSlotId: existing?.plannerSlotId || `slot_${weekIndex}_${index + 1}_${Math.random().toString(36).slice(2, 8)}`,
     date: workout.date,
     label: workout.label,
     intervalLabel: workout.intervalLabel,
@@ -76,6 +88,22 @@ export function toStoredPlannedWorkout(workout: GeneratedWorkout, weekIndex: num
   };
 }
 
+function matchExistingPlannedWorkout(workout: GeneratedWorkout, existing?: MonthlyPlanWorkout[]) {
+  if (!existing?.length) return undefined;
+  const nextFingerprint = plannedWorkoutFingerprint(workout);
+  return existing.find((candidate) => plannedWorkoutFingerprint(candidate as GeneratedWorkout) === nextFingerprint)
+    || existing.find((candidate) => candidate.date === workout.date && candidate.category === workout.category && normalizeText(candidate.familyIntent) === normalizeText(workout.familyIntent))
+    || existing.find((candidate) => candidate.date === workout.date && normalizeText(candidate.label) === normalizeText(workout.label))
+    || existing.find((candidate) => candidate.matchedPlannedWorkoutLabel && normalizeText(candidate.matchedPlannedWorkoutLabel) === normalizeText(workout.label));
+}
+
+function matchExistingCompletedWorkout(workout: GeneratedWorkout, existing?: MonthlyPlanWorkout[]) {
+  if (!existing?.length) return undefined;
+  const nextFingerprint = completedWorkoutFingerprint(workout);
+  return existing.find((candidate) => completedWorkoutFingerprint(candidate as GeneratedWorkout) === nextFingerprint)
+    || existing.find((candidate) => candidate.date === workout.date && normalizeText(candidate.label) === normalizeText(workout.label));
+}
+
 export function toStoredWeekFromGenerated(generated: GeneratedWeek, existing?: MonthlyPlanWeek): MonthlyPlanWeek {
   return {
     id: existing?.id || `week_${generated.weekIndex}`,
@@ -90,11 +118,14 @@ export function toStoredWeekFromGenerated(generated: GeneratedWeek, existing?: M
     longSessionDay: generated.longSessionDay,
     rationale: generated.rationale,
     completedThisWeek: (generated.completedThisWeek || existing?.completedThisWeek || []).map((workout, index) => {
-      const existingCompleted = existing?.completedThisWeek?.[index];
+      const existingCompleted = matchExistingCompletedWorkout(workout as GeneratedWorkout, existing?.completedThisWeek);
       return existingCompleted
         ? { ...existingCompleted, ...toStoredCompletedWorkout(workout as GeneratedWorkout, generated.weekIndex, index) }
         : toStoredCompletedWorkout(workout as GeneratedWorkout, generated.weekIndex, index);
     }),
-    workouts: generated.workouts.map((workout, index) => toStoredPlannedWorkout(workout, generated.weekIndex, index, existing?.workouts[index])),
+    workouts: generated.workouts.map((workout, index) => {
+      const existingWorkout = matchExistingPlannedWorkout(workout, existing?.workouts);
+      return toStoredPlannedWorkout(workout, generated.weekIndex, index, existingWorkout);
+    }),
   };
 }

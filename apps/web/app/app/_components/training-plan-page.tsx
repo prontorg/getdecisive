@@ -6,9 +6,13 @@ import {
   buildGoalPayload,
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
+  buildPlannerBlockPayload,
   buildPlannerTruthSummaryPayload,
+  buildPlannerWeekPayload,
   buildPlanningRecommendationPayload,
+  buildPowerProfilePayload,
   buildTodayReconciliationPayload,
+  buildAdaptationPayload,
   getActivePlanningContext,
   getAuthorizedPlannerLiveContext,
   replaceCurrentWeekWithRuntime,
@@ -195,6 +199,11 @@ const draftStatusLabel = latestDraft
     objective: latestInput.objective,
     mustFollow: { maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours },
   } : undefined);
+  const powerProfile = buildPowerProfilePayload(planner.live);
+  const goalAlignment = buildGoalPayload(planner.live, goalEntries);
+  const weekPayload = buildPlannerWeekPayload(planner.live);
+  const blockPayload = buildPlannerBlockPayload(planner.live);
+  const adaptationPayload = buildAdaptationPayload(planner.live);
   const selectedObjectiveValue = latestInput?.objective || recommendationPayload.primary.objective;
   const selectedDirectionLabel = objectiveOptions.find((item) => item.value === selectedObjectiveValue)?.label || selectedObjectiveValue || 'No direction selected yet';
   const selectedRecommendation = latestInput?.selectedRecommendation || (latestInput
@@ -225,6 +234,16 @@ const draftStatusLabel = latestDraft
   const protectionOutcome = keySessionProtected ? `Key work stays protected for ${protectedKeyDayLabel}.` : 'Key work is no longer clearly protected.';
   const plannedVsDoneMismatch = todayReconciliation.mismatch;
   const mismatchConsequence = todayReconciliation.tomorrowConsequence;
+  const currentWeekTruthRows = truthSummary?.currentWeekTruthRows || [];
+  const recentMutationEvents = truthSummary?.recentEvents || [];
+  const slotDiffSummary = recentMutationEvents[0]?.diffSummary || recentMutationEvents[0]?.detail || 'No exact slot change recorded yet.';
+  const builderAnalysisCards = [
+    { title: 'Planning snapshot', body: powerProfile.goalAlignmentSummary[0] || recommendationPayload.primary.explanation },
+    { title: 'Strengths', body: powerProfile.strengths[0] || 'No clear live strength summary yet.' },
+    { title: 'Limiters', body: powerProfile.weaknesses[0] || weekPayload.missingSystems[0] || 'No clear limiter summary yet.' },
+    { title: 'Goal direction', body: goalEntries[0]?.title || goalAlignment.currentPlanFitSummary || selectedDirectionLabel },
+    { title: 'Adaptation state', body: adaptationPayload.userFacingExplanation },
+  ];
 
   return (
     <AppPageShell>
@@ -422,8 +441,41 @@ const draftStatusLabel = latestDraft
                     initialPreviews={currentWeekReplan.scenarioPreviews as any}
                     initialDraftRevision={latestDraft.revision || 0}
                   />
+                  <div className="training-plan-execution-changes">
+                    <div className="training-plan-execution-changes__header">
+                      <div>
+                        <div className="kicker">Week reconciliation</div>
+                        <strong>Runtime bridge</strong>
+                      </div>
+                      <div className="chip-row">
+                        <span className="chip">{weekPayload.riskFlags[0] || 'No live risk flag yet'}</span>
+                        <span className="chip">Block state: {blockPayload.blockState}</span>
+                      </div>
+                    </div>
+                    <p className="training-plan-execution-changes__summary">{slotDiffSummary}</p>
+                    <div className="training-plan-execution-changes__events">
+                      {currentWeekTruthRows.map((row) => (
+                        <div key={`${row.date}-${row.plannedLabel}`} className="training-plan-execution-changes__event-row status-item">
+                          <strong>{row.date} • {row.status.replaceAll('_', ' ')}</strong>
+                          <p>Planned: {row.plannedLabel}</p>
+                          <span>Completed: {row.completedLabel}</span>
+                          <span>Runtime bridge: {row.runtimeLabel}</span>
+                          <span>{row.driftSummary}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : null}
+
+              <div className="training-plan-comparison-grid training-plan-comparison-grid-compact">
+                {builderAnalysisCards.map((card) => (
+                  <div key={card.title} className="status-item training-plan-intent-compare-card">
+                    <strong>{card.title}</strong>
+                    <p>{card.body}</p>
+                  </div>
+                ))}
+              </div>
 
               {truthSummary ? (
                 <div className="training-plan-execution-changes">

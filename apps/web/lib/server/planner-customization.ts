@@ -158,7 +158,9 @@ type MonthlyPlanReconciliationEvent = {
   id: string;
   draftId: string;
   workoutId?: string;
+  workoutPlannerSlotId?: string;
   matchedPlannedWorkoutId?: string;
+  matchedPlannedWorkoutSlotId?: string;
   matchedPlannedWorkoutLabel?: string;
   completedLabel?: string;
   weekId?: string;
@@ -173,6 +175,12 @@ type MonthlyPlanReconciliationEvent = {
     | 'week_replanned';
   title: string;
   detail: string;
+  beforeSummary?: string;
+  afterSummary?: string;
+  diffSummary?: string;
+  actionKey?: string;
+  scope?: 'workout' | 'week' | 'current_week_runtime';
+  liveSnapshotDate?: string;
   source: 'user_action' | 'planner_runtime';
   createdAt: string;
 };
@@ -198,6 +206,49 @@ function nowIso() {
 
 function makeId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function ensurePlannerSlotId(workout: MonthlyPlanWorkout, weekIndex: number, index: number, usedSlotIds: Set<string>) {
+  let plannerSlotId = workout.plannerSlotId || workout.matchedPlannedWorkoutId || workout.id;
+  if (!plannerSlotId || usedSlotIds.has(plannerSlotId)) {
+    plannerSlotId = `${workout.source === 'completed' ? 'completed' : 'slot'}_${weekIndex}_${index + 1}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  usedSlotIds.add(plannerSlotId);
+  return plannerSlotId;
+}
+
+function normalizeMonthlyPlanWorkout(workout: MonthlyPlanWorkout, weekIndex: number, index: number, usedSlotIds: Set<string>): MonthlyPlanWorkout {
+  const plannerSlotId = ensurePlannerSlotId(workout, weekIndex, index, usedSlotIds);
+  return {
+    ...workout,
+    plannerSlotId,
+  };
+}
+
+function normalizeMonthlyPlanDraft(draft: MonthlyPlanDraft): MonthlyPlanDraft {
+  const usedSlotIds = new Set<string>();
+  return {
+    ...draft,
+    weeks: draft.weeks.map((week) => ({
+      ...week,
+      completedThisWeek: (week.completedThisWeek || []).map((workout, index) => normalizeMonthlyPlanWorkout(workout, week.weekIndex, index, usedSlotIds)),
+      workouts: week.workouts.map((workout, index) => normalizeMonthlyPlanWorkout(workout, week.weekIndex, index + (week.completedThisWeek?.length || 0), usedSlotIds)),
+    })),
+  };
+}
+
+function normalizePlannerCustomizationStore(store: PlannerCustomizationStore): PlannerCustomizationStore {
+  return {
+    ...store,
+    monthlyDraftsByUser: Object.fromEntries(Object.entries(store.monthlyDraftsByUser || {}).map(([userId, drafts]) => [
+      userId,
+      (drafts || []).map((draft) => normalizeMonthlyPlanDraft(draft)),
+    ])),
+  };
+}
+
+function workoutMatchesIdentity(workout: MonthlyPlanWorkout, identity: string) {
+  return workout.id === identity || workout.plannerSlotId === identity;
 }
 
 function createSeedStore(): PlannerCustomizationStore {
@@ -228,7 +279,7 @@ export async function loadPlannerCustomizationStore(): Promise<PlannerCustomizat
   await ensureStoreFile();
   const raw = await readFile(STORE_PATH, 'utf8');
   const parsed = JSON.parse(raw) as Partial<PlannerCustomizationStore>;
-  return {
+  return normalizePlannerCustomizationStore({
     goalsByUser: parsed.goalsByUser || {},
     adaptationByUser: parsed.adaptationByUser || {},
     planningContextByUser: parsed.planningContextByUser || {},
@@ -239,7 +290,7 @@ export async function loadPlannerCustomizationStore(): Promise<PlannerCustomizat
     monthlyDraftsByUser: parsed.monthlyDraftsByUser || {},
     planningEventsByUser: parsed.planningEventsByUser || {},
     monthlyPlanReconciliationEventsByUser: parsed.monthlyPlanReconciliationEventsByUser || {},
-  };
+  });
 }
 
 async function loadStore(): Promise<PlannerCustomizationStore> {
@@ -348,13 +399,13 @@ export async function saveMonthlyPlanDraft(
   const store = await loadStore();
   const existing = store.monthlyDraftsByUser[userId] || [];
   const now = nowIso();
-  const nextEntry: MonthlyPlanDraft = {
+  const nextEntry: MonthlyPlanDraft = normalizeMonthlyPlanDraft({
     ...draft,
     id: draft.id || makeId('month_draft'),
     createdAt: existing.find((item) => item.id === draft.id)?.createdAt || now,
     updatedAt: now,
     revision: (existing.find((item) => item.id === draft.id)?.revision || 0) + 1,
-  };
+  });
   store.monthlyDraftsByUser[userId] = [nextEntry, ...existing.filter((item) => item.id !== nextEntry.id)]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 12);
@@ -374,7 +425,7 @@ export async function updateMonthlyPlanWorkout(
   if (!target) return null;
   target.weeks = target.weeks.map((week) => ({
     ...week,
-    workouts: week.workouts.map((workout) => workout.id === workoutId ? { ...workout, ...patch, source: 'user_modified' } : workout),
+    workouts: week.workouts.map((workout) => workoutMatchesIdentity(workout, workoutId) ? { ...workout, ...patch, source: 'user_modified' } : workout),
   }));
   target.updatedAt = nowIso();
   target.revision = (target.revision || 0) + 1;
@@ -435,7 +486,7 @@ export async function removeMonthlyPlanWorkout(
   if (!target) return null;
   target.weeks = target.weeks.map((week) => ({
     ...week,
-    workouts: week.workouts.filter((workout) => workout.id !== workoutId),
+    workouts: week.workouts.filter((workout) => !workoutMatchesIdentity(workout, workoutId)),
   }));
   target.updatedAt = nowIso();
   target.revision = (target.revision || 0) + 1;

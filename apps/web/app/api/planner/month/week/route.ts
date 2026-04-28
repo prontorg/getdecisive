@@ -259,6 +259,7 @@ export async function POST(request: Request) {
       });
     }
 
+    const appliedPreview = buildWeekActionPreview(week, nextWeek, action);
     const nextDraft = action === 'regenerate'
       ? await replaceMonthlyPlanWeek(userId, draftId, nextWeek)
       : await updateMonthlyPlanWeek(userId, draftId, weekId, nextWeek);
@@ -273,6 +274,11 @@ export async function POST(request: Request) {
       detail: action === 'regenerate'
         ? 'Week was regenerated from the latest planner inputs and live context.'
         : `Week mutation applied via ${action}.`,
+      beforeSummary: `${week.targetHours.toFixed(1)} h • L${week.targetLoad}`,
+      afterSummary: `${nextWeek.targetHours.toFixed(1)} h • L${nextWeek.targetLoad}`,
+      diffSummary: appliedPreview.summary,
+      actionKey: action,
+      scope: 'week',
       source: action === 'regenerate' ? 'planner_runtime' : 'user_action',
     });
     revalidatePath(appRoutes.plan);

@@ -66,14 +66,21 @@ type PlanEvent = {
 type ReconciliationAuditEvent = {
   id: string;
   workoutId?: string;
+  workoutPlannerSlotId?: string;
   matchedPlannedWorkoutId?: string;
+  matchedPlannedWorkoutSlotId?: string;
   matchedPlannedWorkoutLabel?: string;
   completedLabel?: string;
+  beforeSummary?: string;
+  afterSummary?: string;
+  diffSummary?: string;
+  scope?: 'workout' | 'week' | 'current_week_runtime';
   eventType: 'workout_skipped' | 'workout_replaced' | 'workout_completed_modified' | 'workout_moved' | 'workout_locked' | 'week_regenerated' | 'week_replanned';
 };
 
 type Workout = {
   id: string;
+  plannerSlotId?: string;
   date: string;
   label: string;
   intervalLabel?: string;
@@ -328,7 +335,7 @@ function settledReconciliationLabel(status: Workout['status']) {
 }
 
 function reconciliationAuditLabel(
-  workout: Pick<Workout, 'id' | 'label' | 'status' | 'matchedPlannedWorkoutLabel' | 'completedLabel'>,
+  workout: Pick<Workout, 'id' | 'plannerSlotId' | 'label' | 'status' | 'matchedPlannedWorkoutLabel' | 'completedLabel'>,
   auditEvent?: ReconciliationAuditEvent,
 ) {
   const plannedRef = workout.matchedPlannedWorkoutLabel || auditEvent?.matchedPlannedWorkoutLabel || workout.label;
@@ -345,6 +352,13 @@ function reconciliationAuditLabel(
   if (workout.status === 'skipped') {
     return `Planned ref: ${plannedRef}`;
   }
+  return null;
+}
+
+function slotDiffSummary(auditEvent?: ReconciliationAuditEvent) {
+  if (!auditEvent) return null;
+  if (auditEvent.diffSummary) return auditEvent.diffSummary;
+  if (auditEvent.beforeSummary && auditEvent.afterSummary) return `${auditEvent.beforeSummary} → ${auditEvent.afterSummary}`;
   return null;
 }
 
@@ -388,9 +402,20 @@ export function TrainingPlanCalendar({
   const [weeks, setWeeks] = useState<Week[]>(initialWeeks);
   const reconciliationEventByWorkoutId = useMemo(() => {
     const entries = reconciliationEvents
-      .filter((event) => event.workoutId || event.matchedPlannedWorkoutId)
-      .map((event) => [event.workoutId || event.matchedPlannedWorkoutId!, event] as const);
+      .filter((event) => event.workoutId || event.matchedPlannedWorkoutId || event.workoutPlannerSlotId || event.matchedPlannedWorkoutSlotId)
+      .map((event) => [event.workoutPlannerSlotId || event.matchedPlannedWorkoutSlotId || event.workoutId || event.matchedPlannedWorkoutId!, event] as const);
     return new Map<string, ReconciliationAuditEvent>(entries);
+  }, [reconciliationEvents]);
+  const reconciliationEventsByWorkoutKey = useMemo(() => {
+    const grouped = new Map<string, ReconciliationAuditEvent[]>();
+    for (const event of reconciliationEvents) {
+      const workoutKey = event.workoutPlannerSlotId || event.matchedPlannedWorkoutSlotId || event.workoutId || event.matchedPlannedWorkoutId;
+      if (!workoutKey) continue;
+      const current = grouped.get(workoutKey) || [];
+      current.push(event);
+      grouped.set(workoutKey, current);
+    }
+    return grouped;
   }, [reconciliationEvents]);
   const [draggingWorkoutId, setDraggingWorkoutId] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
@@ -532,7 +557,7 @@ export function TrainingPlanCalendar({
       const response = await fetch('/api/planner/month/workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftId, workoutId, action, ...extra }),
+        body: JSON.stringify({ draftId, workoutId, plannerSlotId: workout.plannerSlotId, action, ...extra }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -560,7 +585,7 @@ export function TrainingPlanCalendar({
       const response = await fetch('/api/planner/month/workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftId, workoutId, action: 'move_day', moveDate }),
+        body: JSON.stringify({ draftId, workoutId, plannerSlotId: workoutsById.get(workoutId)?.plannerSlotId, action: 'move_day', moveDate }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -716,8 +741,10 @@ export function TrainingPlanCalendar({
               {isHinted && activeHint ? <p className={`training-plan-day-card__drop-hint training-plan-day-card__drop-hint-${activeHint.tone}`}>{activeHint.text}</p> : null}
               <div className="training-plan-day-card__sessions">
                 {dayData.completed.map((workout) => {
-                  const reconciliationAudit = reconciliationEventByWorkoutId.get(workout.id);
+                  const reconciliationKey = workout.plannerSlotId || workout.id;
+                  const reconciliationAudit = reconciliationEventByWorkoutId.get(reconciliationKey) || reconciliationEventByWorkoutId.get(workout.id);
                   const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
+                  const changeTrace = slotDiffSummary(reconciliationAudit);
                   return (
                   <div key={workout.id} className={`training-plan-session-card training-plan-session-card-completed ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)}`}>
                     <div className="training-plan-session-card__row">
@@ -727,6 +754,7 @@ export function TrainingPlanCalendar({
                     {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
                     {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
                     {reconciliationAuditText ? <div className="training-plan-session-card__subhead training-plan-session-card__subhead-audit">{reconciliationAuditText}</div> : null}
+                    {changeTrace ? <div className="training-plan-session-card__change-trace"><strong className="training-plan-session-card__change-trace-title">Before → after</strong><span>{changeTrace}</span></div> : null}
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>
@@ -735,8 +763,11 @@ export function TrainingPlanCalendar({
                 )})}
                 {plannedForDisplay.map((workout) => {
                   const inlineMoveFeedback = moveFeedback?.workoutId === workout.id ? moveFeedback : null;
-                  const reconciliationAudit = reconciliationEventByWorkoutId.get(workout.id);
+                  const reconciliationKey = workout.plannerSlotId || workout.id;
+                  const reconciliationAudit = reconciliationEventByWorkoutId.get(reconciliationKey) || reconciliationEventByWorkoutId.get(workout.id);
+                  const workoutAuditTrail = reconciliationEventsByWorkoutKey.get(reconciliationKey) || [];
                   const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
+                  const changeTrace = slotDiffSummary(reconciliationAudit);
                   const selectedAction = menuActionByWorkout[workout.id] || 'move_day';
                   const showMoveDateField = selectedAction === 'move_day';
                   const submitLabel = actionSubmitLabel(selectedAction);
@@ -888,6 +919,8 @@ export function TrainingPlanCalendar({
                     {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
                     {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
                     {reconciliationAuditText ? <div className="training-plan-session-card__subhead training-plan-session-card__subhead-audit">{reconciliationAuditText}</div> : null}
+                    {changeTrace ? <div className="training-plan-session-card__change-trace"><strong className="training-plan-session-card__change-trace-title">Before → after</strong><span>{changeTrace}</span></div> : null}
+                    {workoutAuditTrail.length > 1 ? <div className="training-plan-session-card__change-trace"><strong className="training-plan-session-card__change-trace-title">Change trace</strong><span>{workoutAuditTrail.length} linked events recorded for this slot.</span></div> : null}
                     {inlineMoveFeedback ? (
                       <div className="training-plan-session-card__inline-feedback">
                         <strong>Move blocked</strong>

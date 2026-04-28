@@ -69,11 +69,20 @@ export type PlannerTruthSummaryPayload = {
     shouldDoNow: string;
     doneLabel: string;
     matchedPlannedWorkoutIds: string[];
+    matchedPlannedWorkoutSlotIds: string[];
     matchedPlannedWorkoutLabels: string[];
     unmatchedCompletedLabels: string[];
     tomorrowConsequence: string;
     summary: string;
   };
+  currentWeekTruthRows: Array<{
+    date: string;
+    plannedLabel: string;
+    completedLabel: string;
+    runtimeLabel: string;
+    status: 'matched' | 'mismatch' | 'future_bridge' | 'no_planned_slot';
+    driftSummary: string;
+  }>;
   currentWeekSignal: string;
   recentEvents: MonthlyPlanReconciliationEvent[];
 };
@@ -1276,6 +1285,7 @@ function currentWeekTodayTruth(
     return workout ? { row, workout } : null;
   }).filter(Boolean) as Array<{ row: LiveRow; workout: MonthlyPlanDraft['weeks'][number]['workouts'][number] }>;
   const matchedWorkoutIds = Array.from(new Set(matchedPairs.map((pair) => pair.workout.id)));
+  const matchedWorkoutSlotIds = Array.from(new Set(matchedPairs.map((pair) => pair.workout.plannerSlotId).filter(Boolean))) as string[];
   const matchedWorkoutLabels = Array.from(new Set(matchedPairs.map((pair) => pair.workout.label)));
   const unmatchedLiveRows = todaysRows.filter((row) => !matchedPairs.some((pair) => pair.row.activity_id === row.activity_id));
   const unmatchedCompletedLabels = unmatchedLiveRows.map(liveRowLabel);
@@ -1314,11 +1324,51 @@ function currentWeekTodayTruth(
     shouldDoNow,
     doneLabel,
     matchedPlannedWorkoutIds: matchedWorkoutIds,
+    matchedPlannedWorkoutSlotIds: matchedWorkoutSlotIds,
     matchedPlannedWorkoutLabels: matchedWorkoutLabels,
     unmatchedCompletedLabels,
     tomorrowConsequence,
     summary,
   };
+}
+
+function currentWeekExecutionTruthRows(
+  currentWeek: MonthlyPlanDraft['weeks'][number] | undefined,
+  today: string,
+  live?: LiveState | null,
+): PlannerTruthSummaryPayload['currentWeekTruthRows'] {
+  if (!currentWeek) return [];
+  const weekRows = live?.recent_rows || [];
+  return currentWeek.workouts.map((workout) => {
+    const completedRows = weekRows.filter((row) => row.start_date_local.slice(0, 10) === workout.date);
+    const matchedRow = completedRows.find((row) => plannedWorkoutMatchesLiveRow(workout, row));
+    const completedLabel = matchedRow
+      ? liveRowLabel(matchedRow)
+      : completedRows.map(liveRowLabel).join(' • ') || (workout.status === 'completed' || workout.status === 'completed_modified' ? workout.completedLabel || workout.label : 'Not done yet');
+    const runtimeLabel = workout.date >= today ? workout.label : completedLabel;
+    const status = workout.date > today
+      ? 'future_bridge' as const
+      : matchedRow
+        ? 'matched' as const
+        : completedRows.length
+          ? 'mismatch' as const
+          : 'no_planned_slot' as const;
+    const driftSummary = status === 'matched'
+      ? 'Draft and live execution still line up.'
+      : status === 'mismatch'
+        ? 'Completed work diverged from the planned slot and needs runtime repair context.'
+        : status === 'future_bridge'
+          ? 'Runtime bridge owns this future slot now.'
+          : 'No matching completed work landed on this planned slot yet.';
+    return {
+      date: workout.date,
+      plannedLabel: workout.label,
+      completedLabel,
+      runtimeLabel,
+      status,
+      driftSummary,
+    };
+  });
 }
 
 export async function buildPlannerTruthSummaryPayload(
@@ -1340,11 +1390,13 @@ export async function buildPlannerTruthSummaryPayload(
       shouldDoNow: 'No same-day draft session',
       doneLabel: 'Nothing completed yet',
       matchedPlannedWorkoutIds: [],
+      matchedPlannedWorkoutSlotIds: [],
       matchedPlannedWorkoutLabels: [],
       unmatchedCompletedLabels: [],
       tomorrowConsequence: 'Key day can stay sharper tomorrow if today lands cleanly.',
       summary: 'Today truth: no draft session sat on today.',
     },
+    currentWeekTruthRows: [],
     currentWeekSignal: 'Current week drift is low and the block intent is still intact.',
     recentEvents: [],
   };
@@ -1396,6 +1448,7 @@ export async function buildPlannerTruthSummaryPayload(
     counters,
     currentWeekSeverity: currentWeekTruthSeverity(currentWeekEvents, counters),
     currentWeekToday: currentWeekTodayTruth(currentWeek, today, live),
+    currentWeekTruthRows: currentWeekExecutionTruthRows(currentWeek, today, live),
     currentWeekSignal: currentWeekTruthSignal(currentWeekEvents, counters),
     recentEvents,
   };

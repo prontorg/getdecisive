@@ -31,6 +31,7 @@ type PreviewEnvelope = {
   previewScenario: ScenarioPreview;
   draftRevision: number;
   previewToken: string;
+  liveSnapshotDate?: string;
 };
 
 export function CurrentWeekRepairPanelClient({
@@ -47,6 +48,7 @@ export function CurrentWeekRepairPanelClient({
   const [busyScenario, setBusyScenario] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
   const [previewMetaByScenario, setPreviewMetaByScenario] = useState<Record<string, { draftRevision: number; previewToken: string }>>(() => Object.fromEntries(initialPreviews.map((preview) => [preview.scenario, { draftRevision: initialDraftRevision, previewToken: `${draftId}:${initialDraftRevision}:${preview.scenario}:initial` }])));
+  const [liveSnapshotDateByScenario, setLiveSnapshotDateByScenario] = useState<Record<string, string>>({});
 
   async function refreshPreview(scenario: ScenarioPreview['scenario']) {
     setBusyScenario(scenario);
@@ -65,6 +67,7 @@ export function CurrentWeekRepairPanelClient({
       const nextPayload = payload as PreviewEnvelope;
       setPreviews((current) => current.map((item) => item.scenario === scenario ? nextPayload.previewScenario : item));
       setPreviewMetaByScenario((current) => ({ ...current, [scenario]: { draftRevision: nextPayload.draftRevision, previewToken: nextPayload.previewToken } }));
+      setLiveSnapshotDateByScenario((current) => ({ ...current, [scenario]: nextPayload.liveSnapshotDate || '' }));
       setNotice({ title: 'Preview refreshed', detail: `${nextPayload.previewScenario.title} updated from the latest live week.` });
     } finally {
       setBusyScenario(null);
@@ -118,6 +121,7 @@ export function CurrentWeekRepairPanelClient({
               <span className="training-plan-mini-fact"><strong>Today</strong>{preview.todayConsequence}</span>
               <span className="training-plan-mini-fact"><strong>Tomorrow</strong>{preview.tomorrowConsequence}</span>
               <span className="training-plan-mini-fact"><strong>Key slot protection</strong>{preview.keyProtectionSummary}</span>
+              {liveSnapshotDateByScenario[preview.scenario] ? <span className="training-plan-mini-fact"><strong>Reviewed live snapshot</strong>{liveSnapshotDateByScenario[preview.scenario]}</span> : null}
             </div>
             {preview.changes.map((change) => (
               <div key={`${preview.scenario}-${change.date}-${change.after}`} className="training-plan-current-week-panel__change-row">

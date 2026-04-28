@@ -242,6 +242,55 @@ test('planner reconciliation events append newest-first and stay draft-scoped', 
   });
 });
 
+test('legacy drafts are normalized with planner slot ids and slot-based updates survive legacy id changes', async () => {
+  await withPlannerCustomizationModule(async ({ saveMonthlyPlanDraft, getLatestMonthlyPlanDraft, updateMonthlyPlanWorkout, removeMonthlyPlanWorkout }) => {
+    const drafts = await saveMonthlyPlanDraft('user_1', {
+      monthStart: '2026-04-01',
+      inputId: 'input_legacy_1',
+      assumptions: {
+        recentSummary: [],
+        availabilitySummary: [],
+        guardrailSummary: [],
+      },
+      weeks: [{
+        id: 'week_legacy_1',
+        weekIndex: 1,
+        label: 'Legacy week',
+        intent: 'Legacy draft should normalize slot ids.',
+        targetHours: 8,
+        targetLoad: 360,
+        rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+        workouts: [
+          { id: 'legacy_w_1', date: '2026-04-07', label: 'Threshold support', category: 'threshold_support', locked: false, source: 'generated', status: 'planned', durationMinutes: 80, targetLoad: 88 },
+          { id: 'legacy_w_2', date: '2026-04-09', label: 'Repeatability set', category: 'repeatability', locked: false, source: 'generated', status: 'planned', durationMinutes: 70, targetLoad: 92 },
+        ],
+      }],
+      publishState: 'draft',
+    });
+
+    const draftId = drafts[0]!.id;
+    const latest = await getLatestMonthlyPlanDraft('user_1');
+    const normalizedWorkouts = latest?.weeks[0]?.workouts || [];
+    assert.equal(normalizedWorkouts.every((workout) => typeof workout.plannerSlotId === 'string' && workout.plannerSlotId.length > 0), true);
+    assert.equal(new Set(normalizedWorkouts.map((workout) => workout.plannerSlotId)).size, normalizedWorkouts.length);
+
+    const thresholdSlotId = normalizedWorkouts.find((workout) => workout.id === 'legacy_w_1')?.plannerSlotId;
+    assert.ok(thresholdSlotId);
+
+    await updateMonthlyPlanWorkout('user_1', draftId, String(thresholdSlotId), { id: 'reshaped_w_1', label: 'Threshold support - moved identity', targetLoad: 84 });
+    let updated = await getLatestMonthlyPlanDraft('user_1');
+    let updatedThreshold = updated?.weeks[0]?.workouts.find((workout) => workout.plannerSlotId === thresholdSlotId);
+    assert.equal(updatedThreshold?.id, 'reshaped_w_1');
+    assert.equal(updatedThreshold?.label, 'Threshold support - moved identity');
+    assert.equal(updatedThreshold?.targetLoad, 84);
+
+    await removeMonthlyPlanWorkout('user_1', draftId, String(thresholdSlotId));
+    updated = await getLatestMonthlyPlanDraft('user_1');
+    assert.equal(updated?.weeks[0]?.workouts.some((workout) => workout.plannerSlotId === thresholdSlotId), false);
+    assert.equal(updated?.weeks[0]?.workouts.length, 1);
+  });
+});
+
 test('monthly drafts can update a week block without replacing other weeks', async () => {
   await withPlannerCustomizationModule(async ({ saveMonthlyPlanDraft, updateMonthlyPlanWeek, getLatestMonthlyPlanDraft }) => {
     const drafts = await saveMonthlyPlanDraft('user_1', {

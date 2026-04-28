@@ -1563,7 +1563,7 @@ test('planner truth summary flags same-day completed work that does not match th
       targetLoad: 420,
       rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
       workouts: [
-        { id: 'w_truth_1', date: '2026-04-16', label: 'Threshold support', intervalLabel: '2x15 threshold', category: 'threshold_support', durationMinutes: 80, targetLoad: 95, locked: false, source: 'generated', status: 'planned' },
+        { id: 'w_truth_1', plannerSlotId: 'slot_truth_1', date: '2026-04-16', label: 'Threshold support', intervalLabel: '2x15 threshold', category: 'threshold_support', durationMinutes: 80, targetLoad: 95, locked: false, source: 'generated', status: 'planned' },
       ],
     }],
   } as any;
@@ -1582,6 +1582,7 @@ test('planner truth summary flags same-day completed work that does not match th
   assert.equal(payload.currentWeekToday.changed, 1);
   assert.equal(payload.currentWeekToday.mismatch, true);
   assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutIds, []);
+  assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutSlotIds, []);
   assert.deepEqual(payload.currentWeekToday.unmatchedCompletedLabels, ['Endurance spin']);
   assert.match(payload.currentWeekToday.doneLabel, /Endurance spin/i);
   assert.match(payload.currentWeekToday.shouldDoNow, /Threshold support/i);
@@ -1606,7 +1607,7 @@ test('planner truth summary counts same-day matching workout family as landed ev
       targetLoad: 420,
       rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
       workouts: [
-        { id: 'w_truth_2', date: '2026-04-16', label: 'Threshold support', intervalLabel: '2x15 threshold', category: 'threshold_support', durationMinutes: 80, targetLoad: 95, locked: false, source: 'generated', status: 'planned' },
+        { id: 'w_truth_2', plannerSlotId: 'slot_truth_2', date: '2026-04-16', label: 'Threshold support', intervalLabel: '2x15 threshold', category: 'threshold_support', durationMinutes: 80, targetLoad: 95, locked: false, source: 'generated', status: 'planned' },
       ],
     }],
   } as any;
@@ -1624,6 +1625,7 @@ test('planner truth summary counts same-day matching workout family as landed ev
   assert.equal(payload.currentWeekToday.changed, 0);
   assert.equal(payload.currentWeekToday.mismatch, false);
   assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutIds, ['w_truth_2']);
+  assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutSlotIds, ['slot_truth_2']);
   assert.deepEqual(payload.currentWeekToday.matchedPlannedWorkoutLabels, ['Threshold support']);
   assert.deepEqual(payload.currentWeekToday.unmatchedCompletedLabels, []);
   assert.match(payload.currentWeekToday.doneLabel, /2x15 set/i);

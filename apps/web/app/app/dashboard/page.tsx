@@ -5,7 +5,7 @@ import { appRoutes } from '../../../lib/routes';
 import { getLatestIntervalsConnectionRecord } from '../../../lib/server/auth-store';
 import { fetchCoachDashboardEmbed } from '../../../lib/server/coach-dashboard';
 import { getAuthenticatedAppContext } from '../../../lib/server/app-context';
-import { getActivePlanningContext, getAuthorizedPlannerLiveContext } from '../../../lib/server/planner-data';
+import { getActivePlanningContext, getAuthorizedPlannerLiveContext, buildAdaptationPayload, buildGoalPayload, buildPlannerBlockPayload, buildPowerProfilePayload } from '../../../lib/server/planner-data';
 import { getSessionUserId } from '../../../lib/server/session';
 import { getLatestSnapshotForUser } from '../../../lib/server/sync-store';
 
@@ -34,6 +34,10 @@ export default async function DashboardPage() {
   const latestConnection = await getLatestIntervalsConnectionRecord(userId);
   const latestSnapshot = latestConnection ? await getLatestSnapshotForUser(userId, latestConnection.id) : null;
   const liveSyncStamp = formatLiveSyncStamp(latestSnapshot?.capturedAt || null);
+  const powerProfile = buildPowerProfilePayload(planner.live);
+  const blockState = buildPlannerBlockPayload(planner.live);
+  const goalAlignment = buildGoalPayload(planner.live);
+  const adaptationState = buildAdaptationPayload(planner.live);
 
   const embed = await fetchCoachDashboardEmbed(userId);
 
@@ -113,6 +117,38 @@ export default async function DashboardPage() {
               <div className="dashboard-planning-mini-card">
                 <strong>Primary risk</strong>
                 <span>{activePlanning.summary.risks[0] || 'No major risk surfaced in the live runtime layer.'}</span>
+              </div>
+            </div>
+          </AppCard>
+          <AppCard className="dashboard-planning-card">
+            <div className="kicker">Read-only analysis</div>
+            <div className="dashboard-planning-card__header">
+              <div>
+                <h2>Power profile</h2>
+                <p className="muted">Read-only analysis stays inside the product while Intervals writes remain disabled.</p>
+              </div>
+              <div className="chip-row">
+                <span className="chip">Block state: {blockState.blockState}</span>
+                <span className="chip">Goal alignment</span>
+                <span className="chip">Adaptation state</span>
+              </div>
+            </div>
+            <div className="dashboard-planning-grid">
+              <div className="training-plan-context-chip">
+                <strong>Power profile</strong>
+                <span>{powerProfile.strengths[0] || 'No live strength summary yet.'}</span>
+              </div>
+              <div className="training-plan-context-chip">
+                <strong>Block state</strong>
+                <span>{blockState.mainEmphasis}</span>
+              </div>
+              <div className="training-plan-context-chip">
+                <strong>Goal alignment</strong>
+                <span>{goalAlignment.currentPlanFitSummary}</span>
+              </div>
+              <div className="training-plan-context-chip training-plan-context-chip-warning">
+                <strong>Adaptation state</strong>
+                <span>{adaptationState.userFacingExplanation}</span>
               </div>
             </div>
           </AppCard>

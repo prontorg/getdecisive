@@ -128,11 +128,18 @@ export async function POST(request: Request) {
       draftId,
       weekId: existingWeek.id,
       matchedPlannedWorkoutId: matchedPlannedWorkout?.id,
+      matchedPlannedWorkoutSlotId: matchedPlannedWorkout?.plannerSlotId,
       matchedPlannedWorkoutLabel: matchedPlannedWorkout?.label,
       date: planner.live?.today || new Date().toISOString().slice(0, 10),
       eventType: 'week_replanned',
       title: `Current week repaired: ${scenarioLabel}`,
       detail: `Current-week runtime repair applied via ${scenarioLabel.toLowerCase()}.`,
+      beforeSummary: existingWeek.intent,
+      afterSummary: nextStoredWeek.intent,
+      diffSummary: buildCurrentWeekReplanPayload(planner.live, draftPayload, inputPayload).scenarioPreviews.find((entry) => entry.scenario === scenario)?.impactSummary,
+      actionKey: scenario,
+      scope: 'current_week_runtime',
+      liveSnapshotDate: today,
       source: 'planner_runtime',
     });
 

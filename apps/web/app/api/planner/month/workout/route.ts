@@ -67,16 +67,18 @@ export async function POST(request: Request) {
   const pick = (key: string) => parsed instanceof FormData ? parsed.get(key) : parsed[key];
   const draftId = String(pick('draftId') || '');
   const workoutId = String(pick('workoutId') || '');
+  const plannerSlotId = String(pick('plannerSlotId') || '');
   const action = String(pick('action') || '') as WorkoutAction;
-  if (!draftId || !workoutId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, workoutId, action });
+  if (!draftId || (!workoutId && !plannerSlotId) || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, workoutId, plannerSlotId, action });
   if (legacyUnsupportedActions.has(action)) {
     return routeErrorResponse(ROUTE, 410, 'Legacy planner action no longer supported', { userId, draftId, workoutId, action });
   }
 
   try {
     const draft = await getLatestMonthlyPlanDraft(userId);
-    const workout = draft?.weeks.flatMap((week) => week.workouts).find((item) => item.id === workoutId);
-    if (!draft || draft.id !== draftId || !workout) return routeErrorResponse(ROUTE, 404, 'Draft or workout not found', { userId, draftId, workoutId, action });
+    const workoutIdentity = plannerSlotId || workoutId;
+    const workout = draft?.weeks.flatMap((week) => week.workouts).find((item) => item.id === workoutIdentity || item.plannerSlotId === workoutIdentity);
+    if (!draft || draft.id !== draftId || !workout) return routeErrorResponse(ROUTE, 404, 'Draft or workout not found', { userId, draftId, workoutId, plannerSlotId, action });
     if (workout.locked) return routeErrorResponse(ROUTE, 409, 'Workout is locked', { userId, draftId, workoutId, action });
 
     let nextDraft = null;
@@ -115,7 +117,7 @@ export async function POST(request: Request) {
           suggestedDate: saferDay,
         }, { status: 409 });
       }
-      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, plannerSlotId || workout.plannerSlotId || workoutId, {
         date: moveDate,
         label: `${workout.label} - moved`,
       });
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
         matchedPlannedWorkoutLabel: workout.label,
       };
     } else if (action === 'skip') {
-      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, plannerSlotId || workout.plannerSlotId || workoutId, {
         status: 'skipped',
         locked: true,
         reconciliationNote: `Skipped instead of ${workout.label}`,
@@ -145,7 +147,7 @@ export async function POST(request: Request) {
         matchedPlannedWorkoutLabel: workout.label,
       };
     } else if (action === 'replace_with_support') {
-      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, plannerSlotId || workout.plannerSlotId || workoutId, {
         label: hardCategories.has(workout.category) ? 'Support replacement' : 'Recovery support replacement',
         intervalLabel: `Replaced from ${workout.label}`,
         familyIntent: 'support replacement',
@@ -167,7 +169,7 @@ export async function POST(request: Request) {
         matchedPlannedWorkoutLabel: workout.label,
       };
     } else if (action === 'mark_done_modified') {
-      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, plannerSlotId || workout.plannerSlotId || workoutId, {
         status: 'completed_modified',
         locked: true,
         reconciliationNote: `Completed with modified execution vs planned ${workout.label}`,
@@ -185,7 +187,7 @@ export async function POST(request: Request) {
         completedLabel: String(pick('completedLabel') || workout.label),
       };
     } else if (action === 'reset_reconciliation') {
-      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, plannerSlotId || workout.plannerSlotId || workoutId, {
         status: 'planned',
         locked: false,
         reconciliationNote: undefined,
@@ -194,7 +196,7 @@ export async function POST(request: Request) {
         completedLabel: undefined,
       });
     } else if (action === 'remove') {
-      nextDraft = await removeMonthlyPlanWorkout(userId, draftId, workoutId);
+      nextDraft = await removeMonthlyPlanWorkout(userId, draftId, plannerSlotId || workout.plannerSlotId || workoutId);
     } else {
       return routeErrorResponse(ROUTE, 400, 'Unsupported action', { userId, draftId, workoutId, action });
     }
@@ -203,14 +205,21 @@ export async function POST(request: Request) {
     if (reconciliationEvent) {
       await appendMonthlyPlanReconciliationEvent(userId, {
         draftId,
-        workoutId,
+        workoutId: workout.id,
+        workoutPlannerSlotId: workout.plannerSlotId,
         matchedPlannedWorkoutId: reconciliationEvent.matchedPlannedWorkoutId,
+        matchedPlannedWorkoutSlotId: workout.plannerSlotId,
         matchedPlannedWorkoutLabel: reconciliationEvent.matchedPlannedWorkoutLabel,
         completedLabel: reconciliationEvent.completedLabel,
         date: reconciliationEvent.date,
         eventType: reconciliationEvent.eventType,
         title: reconciliationEvent.title,
         detail: reconciliationEvent.detail,
+        beforeSummary: `${workout.date} • ${workout.label}`,
+        afterSummary: nextDraft?.weeks.flatMap((week) => week.workouts).find((item) => item.plannerSlotId === workout.plannerSlotId || item.id === workout.id)?.label,
+        diffSummary: `${workout.label} → ${nextDraft?.weeks.flatMap((week) => week.workouts).find((item) => item.plannerSlotId === workout.plannerSlotId || item.id === workout.id)?.label || workout.label}`,
+        actionKey: action,
+        scope: 'workout',
         source: 'user_action',
       });
     }
