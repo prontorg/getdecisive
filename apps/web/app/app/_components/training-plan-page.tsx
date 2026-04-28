@@ -240,9 +240,12 @@ const draftStatusLabel = latestDraft
     : undefined);
   const draftOriginLabel = latestDraft?.assumptions.selectedRecommendationTitle || selectedRecommendation?.title || selectedDirectionLabel;
   const latestRuntimeRepair = truthSummary?.recentEvents.find((event) => event.source === 'planner_runtime' && /Current week repaired/i.test(event.title));
+  const latestRuntimeRepairTarget = latestRuntimeRepair?.matchedPlannedWorkoutLabel || 'No linked planned slot';
   const completedTodayRows = (planner.live?.recent_rows || []).filter((row) => row.start_date_local.slice(0, 10) === today);
   const completedTodayCount = completedTodayRows.length;
   const completedTodaySummary = completedTodayRows.map((row) => row.summary?.short_label || row.session_type || row.name || 'Completed').slice(0, 2).join(' • ');
+  const matchedTodaySummary = truthSummary?.currentWeekToday.matchedPlannedWorkoutLabels.join(' • ') || 'No matched planned slot yet';
+  const unmatchedTodaySummary = truthSummary?.currentWeekToday.unmatchedCompletedLabels.join(' • ') || 'No unmatched completed work';
   const todayReconciliation = buildTodayReconciliationPayload({
     decision: activePlanning.todayDecision,
     truth: truthSummary,
@@ -407,6 +410,8 @@ const draftStatusLabel = latestDraft
                     <span className="training-plan-mini-fact"><strong>Planned so far</strong>{currentWeekReplan.plannedSoFar.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Completed so far</strong>{currentWeekReplan.completedSoFar.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Completed today</strong>{completedTodayCount}</span>
+                    <span className="training-plan-mini-fact"><strong>Matched planned slot</strong>{matchedTodaySummary}</span>
+                    <span className="training-plan-mini-fact"><strong>Unmatched done</strong>{unmatchedTodaySummary}</span>
                     <span className="training-plan-mini-fact"><strong>Missed</strong>{currentWeekReplan.missedSessions.length || 0}</span>
                     <span className="training-plan-mini-fact"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
                     <span className="training-plan-mini-fact"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
@@ -428,6 +433,7 @@ const draftStatusLabel = latestDraft
                       <strong>Latest runtime repair</strong>
                       <p>{latestRuntimeRepair.title}</p>
                       <span>{latestRuntimeRepair.date} • {latestRuntimeRepair.detail}</span>
+                      <span>Target planned slot: {latestRuntimeRepairTarget}</span>
                     </div>
                   ) : null}
                   <div className="training-plan-current-week-panel__actions">
@@ -464,6 +470,8 @@ const draftStatusLabel = latestDraft
                       <div key={event.id} className="training-plan-execution-changes__event-row status-item">
                         <strong>{event.title}</strong>
                         <p>{event.detail}</p>
+                        {event.matchedPlannedWorkoutLabel ? <span>Planned ref: {event.matchedPlannedWorkoutLabel}</span> : null}
+                        {event.completedLabel ? <span>Completed as: {event.completedLabel}</span> : null}
                         <span className="training-plan-execution-changes__event-meta">{event.date} • {event.source === 'planner_runtime' ? 'planner runtime' : 'manual change'}</span>
                       </div>
                     ))}
@@ -524,7 +532,13 @@ const draftStatusLabel = latestDraft
               </div>
               {latestDraft ? (
                 <>
-                  <TrainingPlanCalendar draftId={latestDraft.id} weeks={(displayedWeeks || latestDraft.weeks) as any} today={planner.live?.today || ''} planEvents={planEvents} />
+                  <TrainingPlanCalendar
+                    draftId={latestDraft.id}
+                    weeks={(displayedWeeks || latestDraft.weeks) as any}
+                    today={planner.live?.today || ''}
+                    planEvents={planEvents}
+                    reconciliationEvents={truthSummary?.recentEvents || []}
+                  />
                   <div className="training-plan-top-strip__actions mt-18">
                     {!isCalendarMode ? (
                       <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>

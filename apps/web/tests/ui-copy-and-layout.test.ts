@@ -128,7 +128,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-mini-fact-warning/i);
   assert.match(source, /No immediate runtime risk flags\./i);
   assert.match(source, /latestRuntimeRepair/i);
+  assert.match(source, /latestRuntimeRepairTarget/i);
+  assert.match(source, /Matched planned slot/i);
+  assert.match(source, /Unmatched done/i);
   assert.match(source, /Latest runtime repair/i);
+  assert.match(source, /Target planned slot:/i);
   assert.match(source, /training-plan-current-week-panel__latest-repair/i);
   assert.match(source, /\/api\/planner\/month\/replan/i);
   assert.match(source, /Repair/i);
@@ -162,6 +166,12 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /intervalLabel/i);
   assert.match(calendarSource, /familyIntent/i);
   assert.match(calendarSource, /selectionRationale/i);
+  assert.match(calendarSource, /reconciliationEvents/i);
+  assert.match(calendarSource, /reconciliationEventByWorkoutId/i);
+  assert.match(calendarSource, /reconciliationAuditLabel/i);
+  assert.match(calendarSource, /training-plan-session-card__subhead-audit/i);
+  assert.match(calendarSource, /Planned ref:/i);
+  assert.match(calendarSource, /Completed as:/i);
   assert.match(calendarSource, /training-plan-session-card__subhead/i);
   assert.match(calendarSource, /familyIntentLabel/i);
   assert.match(calendarSource, /training-plan-session-card__tag-family/i);

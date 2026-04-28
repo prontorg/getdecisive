@@ -31,6 +31,15 @@ type PlanEvent = {
   durationHours?: number;
 };
 
+type ReconciliationAuditEvent = {
+  id: string;
+  workoutId?: string;
+  matchedPlannedWorkoutId?: string;
+  matchedPlannedWorkoutLabel?: string;
+  completedLabel?: string;
+  eventType: 'workout_skipped' | 'workout_replaced' | 'workout_completed_modified' | 'workout_moved' | 'workout_locked' | 'week_regenerated' | 'week_replanned';
+};
+
 type Workout = {
   id: string;
   date: string;
@@ -272,6 +281,26 @@ function settledReconciliationLabel(status: Workout['status']) {
   }
 }
 
+function reconciliationAuditLabel(
+  workout: Pick<Workout, 'id' | 'label' | 'status'>,
+  auditEvent?: ReconciliationAuditEvent,
+) {
+  if (!auditEvent) return null;
+  const plannedRef = auditEvent.matchedPlannedWorkoutLabel || workout.label;
+  if (workout.status === 'replaced' && plannedRef && plannedRef !== workout.label) {
+    return `Planned ref: ${plannedRef}`;
+  }
+  if (workout.status === 'completed_modified') {
+    return auditEvent.completedLabel
+      ? `Completed as: ${auditEvent.completedLabel} • planned ref: ${plannedRef}`
+      : `Planned ref: ${plannedRef}`;
+  }
+  if (workout.status === 'skipped') {
+    return `Planned ref: ${plannedRef}`;
+  }
+  return null;
+}
+
 function sessionToneClass(category: Workout['category'] | undefined) {
   switch (category) {
     case 'repeatability': return 'session-tone-repeatability';
@@ -294,8 +323,26 @@ function planEventBadgeClass(type: PlanEvent['type']) {
   }
 }
 
-export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, planEvents = [] }: { draftId: string; weeks: Week[]; today: string; planEvents?: PlanEvent[] }) {
+export function TrainingPlanCalendar({
+  draftId,
+  weeks: initialWeeks,
+  today,
+  planEvents = [],
+  reconciliationEvents = [],
+}: {
+  draftId: string;
+  weeks: Week[];
+  today: string;
+  planEvents?: PlanEvent[];
+  reconciliationEvents?: ReconciliationAuditEvent[];
+}) {
   const [weeks, setWeeks] = useState<Week[]>(initialWeeks);
+  const reconciliationEventByWorkoutId = useMemo(() => {
+    const entries = reconciliationEvents
+      .filter((event) => event.workoutId || event.matchedPlannedWorkoutId)
+      .map((event) => [event.workoutId || event.matchedPlannedWorkoutId!, event] as const);
+    return new Map<string, ReconciliationAuditEvent>(entries);
+  }, [reconciliationEvents]);
   const [draggingWorkoutId, setDraggingWorkoutId] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
   const [busyDate, setBusyDate] = useState<string | null>(null);
@@ -566,7 +613,10 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
               </p>
               {isHinted && activeHint ? <p className={`training-plan-day-card__drop-hint training-plan-day-card__drop-hint-${activeHint.tone}`}>{activeHint.text}</p> : null}
               <div className="training-plan-day-card__sessions">
-                {dayData.completed.map((workout) => (
+                {dayData.completed.map((workout) => {
+                  const reconciliationAudit = reconciliationEventByWorkoutId.get(workout.id);
+                  const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
+                  return (
                   <div key={workout.id} className={`training-plan-session-card training-plan-session-card-completed ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)}`}>
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
@@ -574,14 +624,17 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                     </div>
                     {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
                     {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
+                    {reconciliationAuditText ? <div className="training-plan-session-card__subhead training-plan-session-card__subhead-audit">{reconciliationAuditText}</div> : null}
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>
                     </div>
                   </div>
-                ))}
+                )})}
                 {plannedForDisplay.map((workout) => {
                   const inlineMoveFeedback = moveFeedback?.workoutId === workout.id ? moveFeedback : null;
+                  const reconciliationAudit = reconciliationEventByWorkoutId.get(workout.id);
+                  const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
                   const selectedAction = menuActionByWorkout[workout.id] || 'move_day';
                   const showMoveDateField = selectedAction === 'move_day';
                   const submitLabel = actionSubmitLabel(selectedAction);
@@ -732,6 +785,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                     </div>
                     {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
                     {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
+                    {reconciliationAuditText ? <div className="training-plan-session-card__subhead training-plan-session-card__subhead-audit">{reconciliationAuditText}</div> : null}
                     {inlineMoveFeedback ? (
                       <div className="training-plan-session-card__inline-feedback">
                         <strong>Move blocked</strong>
