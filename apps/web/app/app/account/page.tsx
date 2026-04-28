@@ -13,6 +13,14 @@ export default async function AccountPage({
 }: {
   searchParams?: Promise<{ error?: string; notice?: string; tab?: string }>;
 }) {
+  const plannerHost = process.env.NEXT_PUBLIC_APP_URL || 'https://app.decisive.coach';
+  const buildInviteRegistrationUrl = (invite: { code: string; recipientEmail?: string; recipientName?: string }) => {
+    const url = new URL(appRoutes.register, plannerHost);
+    url.searchParams.set('inviteCode', invite.code);
+    if (invite.recipientEmail) url.searchParams.set('email', invite.recipientEmail);
+    if (invite.recipientName) url.searchParams.set('name', invite.recipientName);
+    return url.toString();
+  };
   const params = (await searchParams) || {};
   const tab = params.tab || 'profile';
   const userId = await getSessionUserId();
@@ -257,6 +265,14 @@ export default async function AccountPage({
                 <input name="code" type="text" placeholder="DECISIVE-BETA" />
               </label>
               <label>
+                <span>Recipient name</span>
+                <input name="recipientName" type="text" placeholder="Athlete name" />
+              </label>
+              <label>
+                <span>Recipient email</span>
+                <input name="recipientEmail" type="email" placeholder="athlete@example.com" />
+              </label>
+              <label>
                 <span>Max uses</span>
                 <input name="maxUses" type="number" min="1" defaultValue="1" required />
               </label>
@@ -274,6 +290,20 @@ export default async function AccountPage({
                 <div className="status-item" key={invite.id}>
                   <strong>{invite.code}</strong>
                   <p>Status: {invite.status} • Used {invite.usedCount}/{invite.maxUses}</p>
+                  <p>Registration link: {buildInviteRegistrationUrl(invite)}</p>
+                  {invite.recipientName || invite.recipientEmail ? (
+                    <span>Recipient: {[invite.recipientName, invite.recipientEmail].filter(Boolean).join(' • ')}</span>
+                  ) : null}
+                  {invite.createdAt ? <span>Created: {invite.createdAt}</span> : null}
+                  <div className="form-grid" style={{ marginTop: 10 }}>
+                    <label>
+                      <span>Share link</span>
+                      <input type="text" value={buildInviteRegistrationUrl(invite)} readOnly />
+                    </label>
+                  </div>
+                  <div className="button-row" style={{ marginTop: 10 }}>
+                    <a href={buildInviteRegistrationUrl(invite)} className="button-link button-secondary">Open invite link</a>
+                  </div>
                   {invite.status === 'active' ? (
                     <form action="/api/invites/revoke" method="post">
                       <input type="hidden" name="inviteId" value={invite.id} />

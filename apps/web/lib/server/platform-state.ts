@@ -9,6 +9,9 @@ export type InviteRecord = {
   status: 'active' | 'revoked';
   maxUses: number;
   usedCount: number;
+  recipientName?: string;
+  recipientEmail?: string;
+  createdAt?: string;
 };
 
 export type UserRecord = {

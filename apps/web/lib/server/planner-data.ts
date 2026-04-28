@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 
 import { appRoutes } from '../routes';
-import { getDerivedOnboardingStatusRecord, getLatestIntervalsConnectionRecord, getPlatformState } from './auth-store';
+import { enqueueIntervalsRefreshIfStale, getDerivedOnboardingStatusRecord, getLatestIntervalsConnectionRecord, getPlatformState } from './auth-store';
 import type { LiveRow, LiveState } from './live-state';
 import {
   completeIntervalsSyncJob,
@@ -252,6 +252,21 @@ export type CurrentWeekReplanPayload = {
   selectedDirectionSummary?: string;
   remainingWeekHours: number;
   remainingQualityBudget: number;
+  scenarioPreviews: Array<{
+    scenario: 'missed_session' | 'fatigued' | 'fresher' | 'reduce_load' | 'increase_specificity';
+    actionLabel: string;
+    title: string;
+    summary: string;
+    impactSummary: string;
+    protectedKeyDay: string;
+    changes: Array<{
+      date: string;
+      changeType: 'reshaped' | 'sharpened' | 'load_adjusted';
+      before: string;
+      after: string;
+      reason: string;
+    }>;
+  }>;
 };
 
 export type PlanningRecommendationPayload = {
@@ -420,6 +435,12 @@ export async function hydrateUserSnapshotFromSharedLive(
 export async function getAuthorizedPlannerLiveContext(userId: string): Promise<{ context: AuthenticatedPlannerContext; live: LiveState | null } | null> {
   const context = await getAuthenticatedPlannerContext(userId);
   if (!context) return null;
+  const queuedRefresh = await enqueueIntervalsRefreshIfStale(userId, { staleAfterMinutes: 20, statusMessage: 'Planner live refresh queued' });
+  if (queuedRefresh) {
+    import('./sync-worker').then(({ triggerSyncWorker }) => {
+      triggerSyncWorker(process.env.DECISIVE_PLATFORM_STORE_PATH);
+    }).catch(() => null);
+  }
   const live = await resolveAuthorizedLiveState(context, await getLiveIntervalsState());
   return { context, live };
 }
@@ -2456,6 +2477,7 @@ export function buildCurrentWeekReplanPayload(
   const remainingDays = remainingWorkouts.map((workout) => workout.date);
   const recommendedNextKeyDay = remainingWorkouts.find((workout) => ['repeatability', 'threshold_support', 'race_like'].includes(workout.category))?.date || remainingWorkouts[0]?.date || today;
   const selectedDirectionSummary = input?.currentDirection ? `Selected month direction: ${input.currentDirection}.` : undefined;
+  const scenarioPreviews = buildCurrentWeekScenarioPreviews(live, draft, input);
   return {
     liveWindowLabel: 'Live active week (today / tomorrow / completed work)',
     draftBridgeLabel: 'Draft bridge (remaining editable slots in this same week)',
@@ -2469,7 +2491,98 @@ export function buildCurrentWeekReplanPayload(
     selectedDirectionSummary,
     remainingWeekHours: decision.remainingWeekHours,
     remainingQualityBudget: decision.remainingQualityBudget,
+    scenarioPreviews,
   };
+}
+
+function currentWeekScenarioActionLabel(scenario: CurrentWeekReplanPayload['scenarioPreviews'][number]['scenario']) {
+  switch (scenario) {
+    case 'missed_session': return 'Repair';
+    case 'fatigued': return 'Too fatigued';
+    case 'fresher': return 'Use freshness';
+    case 'reduce_load': return 'Cut load';
+    case 'increase_specificity': return 'Race-like';
+  }
+}
+
+function currentWeekScenarioTitle(scenario: CurrentWeekReplanPayload['scenarioPreviews'][number]['scenario']) {
+  switch (scenario) {
+    case 'missed_session': return 'Repair the live week';
+    case 'fatigued': return 'Back off but keep the week coherent';
+    case 'fresher': return 'Spend the extra freshness carefully';
+    case 'reduce_load': return 'Trim load without losing structure';
+    case 'increase_specificity': return 'Sharpen the next key slot';
+  }
+}
+
+function formatScenarioWorkoutSummary(workout: { label?: string; intervalLabel?: string; durationMinutes?: number; targetLoad?: number }) {
+  const parts = [workout.label || 'Session'];
+  if (workout.intervalLabel) parts.push(workout.intervalLabel);
+  const metrics = [
+    workout.durationMinutes ? `${workout.durationMinutes} min` : null,
+    workout.targetLoad ? `${workout.targetLoad} load` : null,
+  ].filter(Boolean);
+  if (metrics.length) parts.push(metrics.join(' • '));
+  return parts.join(' • ');
+}
+
+function scenarioChangeReason(scenario: CurrentWeekReplanPayload['scenarioPreviews'][number]['scenario']) {
+  switch (scenario) {
+    case 'missed_session': return 'Repairs the remaining week after execution drift.';
+    case 'fatigued': return 'Protects repeatability when freshness is constrained.';
+    case 'fresher': return 'Uses extra freshness without changing the weekly shape.';
+    case 'reduce_load': return 'Cuts total cost while keeping support structure.';
+    case 'increase_specificity': return 'Turns the next editable slot into a more race-like hit.';
+  }
+}
+
+function buildCurrentWeekScenarioPreviews(
+  live: LiveState | null | undefined,
+  draft: MonthlyPlannerDraftPayload | null | undefined,
+  input?: Parameters<typeof buildWeeklyDecisionPayload>[2],
+): CurrentWeekReplanPayload['scenarioPreviews'] {
+  if (!draft || !input) return [];
+  const scenarios: CurrentWeekReplanPayload['scenarioPreviews'][number]['scenario'][] = ['missed_session', 'fatigued', 'increase_specificity'];
+  const week = currentWeekDraftWeek(draft, live?.today || todayIso());
+  if (!week) return [];
+  const protectedKeyDay = week.workouts.find((workout) => ['repeatability', 'threshold_support', 'race_like'].includes(workout.category))?.date || (live?.today || todayIso());
+  return scenarios.map((scenario) => {
+    const nextWeek = replanCurrentWeekForScenario(live, draft, input, scenario);
+    const changes = nextWeek.workouts.flatMap((afterWorkout, index) => {
+      const afterWorkoutId = (afterWorkout as { id?: string }).id;
+      const beforeWorkout = week.workouts.find((candidate) => (candidate as { id?: string }).id === afterWorkoutId)
+        || week.workouts.find((candidate) => candidate.date === afterWorkout.date)
+        || week.workouts[index];
+      if (!beforeWorkout) return [];
+      const beforeSummary = formatScenarioWorkoutSummary(beforeWorkout);
+      const afterSummary = formatScenarioWorkoutSummary(afterWorkout);
+      if (beforeSummary === afterSummary) return [];
+      return [{
+        date: afterWorkout.date,
+        changeType: scenario === 'increase_specificity' ? 'sharpened' as const : scenario === 'fresher' ? 'load_adjusted' as const : 'reshaped' as const,
+        before: beforeSummary,
+        after: afterSummary,
+        reason: scenarioChangeReason(scenario),
+      }];
+    }).slice(0, 3);
+    const impactSummary = changes.length
+      ? `${changes.length} slot${changes.length === 1 ? '' : 's'} change before apply.`
+      : 'No exact slot change needed from the current draft.';
+    const summary = scenario === 'increase_specificity'
+      ? `Protect ${protectedKeyDay} and sharpen the first eligible remaining slot.`
+      : scenario === 'fatigued'
+        ? `Protect ${protectedKeyDay} and lower cost across the remaining editable work.`
+        : `Repair the remaining week while keeping ${protectedKeyDay} as the protected next key day.`;
+    return {
+      scenario,
+      actionLabel: currentWeekScenarioActionLabel(scenario),
+      title: currentWeekScenarioTitle(scenario),
+      summary,
+      impactSummary,
+      protectedKeyDay,
+      changes,
+    };
+  });
 }
 
 export function replanCurrentWeekForScenario(
@@ -2485,7 +2598,15 @@ export function replanCurrentWeekForScenario(
   const multiplier = scenario === 'fatigued' || scenario === 'reduce_load' ? 0.85 : scenario === 'fresher' ? 1.05 : 1;
   const workouts = plannedFuture.map((workout, index) => {
     if (scenario === 'increase_specificity' && index === 0 && workout.category !== 'rest') {
-      return { ...workout, label: 'Race-like session', category: 'race_like' as const, targetLoad: Math.round(Number(workout.targetLoad || 90) * 1.05) };
+      return {
+        ...workout,
+        label: 'Race-like session',
+        intervalLabel: 'track-bridge sharpeners',
+        familyIntent: 'race_like',
+        selectionRationale: ['Pulled the next editable slot closer to track-specific race demand.'],
+        category: 'race_like' as const,
+        targetLoad: Math.round(Number(workout.targetLoad || 90) * 1.05),
+      };
     }
     if ((scenario === 'fatigued' || scenario === 'reduce_load') && workout.category !== 'rest') {
       return { ...workout, durationMinutes: workout.durationMinutes ? Math.max(30, Math.round(workout.durationMinutes * multiplier)) : workout.durationMinutes, targetLoad: workout.targetLoad ? Math.max(10, Math.round(workout.targetLoad * multiplier)) : workout.targetLoad };

@@ -436,10 +436,29 @@ const draftStatusLabel = latestDraft
                       <span>Target planned slot: {latestRuntimeRepairTarget}</span>
                     </div>
                   ) : null}
-                  <div className="training-plan-current-week-panel__actions">
-                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="missed_session" /><button type="submit" className="button-secondary button-link">Repair</button></form>
-                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="fatigued" /><button type="submit" className="button-secondary button-link">Too fatigued</button></form>
-                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="increase_specificity" /><button type="submit" className="button-secondary button-link">Race-like</button></form>
+                  <div className="training-plan-current-week-panel__scenario-list">
+                    <div className="kicker">Preview exact week changes</div>
+                    {currentWeekReplan.scenarioPreviews.map((preview) => (
+                      <div key={preview.scenario} className="training-plan-current-week-panel__scenario-card status-item">
+                        <strong>{preview.title}</strong>
+                        <p>{preview.summary}</p>
+                        <span>{preview.impactSummary}</span>
+                        <span>Protected key day: {preview.protectedKeyDay}</span>
+                        {preview.changes.map((change) => (
+                          <div key={`${preview.scenario}-${change.date}-${change.after}`} className="training-plan-current-week-panel__change-row">
+                            <strong>{change.date}</strong>
+                            <p>{change.before}</p>
+                            <p>→ {change.after}</p>
+                            <span>{change.reason}</span>
+                          </div>
+                        ))}
+                        <form action="/api/planner/month/replan" method="post">
+                          <input type="hidden" name="draftId" value={latestDraft.id} />
+                          <input type="hidden" name="scenario" value={preview.scenario} />
+                          <button type="submit" className="button-secondary button-link">{preview.actionLabel}</button>
+                        </form>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : null}

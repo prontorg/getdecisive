@@ -1488,6 +1488,11 @@ test('current-week replanning payload compares planned versus done and recommend
   assert.equal(typeof payload.recommendedNextKeyDay, 'string');
   assert.match(payload.recommendedFocus, /race_specificity|threshold_support|repeatability|aerobic_support|unload/);
   assert.equal(typeof payload.recommendationText, 'string');
+  assert.equal(Array.isArray(payload.scenarioPreviews), true);
+  assert.equal(payload.scenarioPreviews.length, 3);
+  assert.match(payload.scenarioPreviews[0]?.title || '', /Repair the live week|Back off but keep the week coherent|Sharpen the next key slot/i);
+  assert.match(payload.scenarioPreviews[0]?.impactSummary || '', /slot|No exact slot change/i);
+  assert.equal(Array.isArray(payload.scenarioPreviews[0]?.changes), true);
 });
 
 test('current-week replanning only clears missed sessions when completed work matches the same day and workout family', () => {
@@ -1531,6 +1536,8 @@ test('current-week replanning only clears missed sessions when completed work ma
   assert.equal(payload.completedSoFar.length, 2);
   assert.equal(payload.missedSessions.length, 1);
   assert.match(payload.missedSessions[0] || '', /2026-04-16 • Race-like bridge/i);
+  assert.match(payload.scenarioPreviews.find((preview) => preview.scenario === 'increase_specificity')?.changes[0]?.after || '', /Race-like session|track-bridge sharpeners/i);
+  assert.match(payload.scenarioPreviews.find((preview) => preview.scenario === 'fatigued')?.changes[0]?.reason || '', /freshness is constrained/i);
 });
 
 test('planner truth summary flags same-day completed work that does not match the planned workout family', async () => {

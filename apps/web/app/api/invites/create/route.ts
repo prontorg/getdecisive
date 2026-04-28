@@ -17,10 +17,12 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const code = String(formData.get('code') || '');
+  const recipientName = String(formData.get('recipientName') || '');
+  const recipientEmail = String(formData.get('recipientEmail') || '');
   const maxUses = Number(formData.get('maxUses') || '1');
 
   try {
-    const invite = await createInviteRecord(userId, { code, maxUses });
+    const invite = await createInviteRecord(userId, { code, maxUses, recipientName, recipientEmail });
     return NextResponse.redirect(accountInvitesUrl('notice', `Invite ${invite.code} created`, request));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Could not create invite';

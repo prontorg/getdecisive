@@ -131,7 +131,7 @@ export async function getPlatformState(): Promise<PlatformState> {
     `),
     pool.query(`select id, workspace_id, user_id from workspace_memberships`),
     pool.query(`select membership_id, role_key from workspace_membership_roles`),
-    pool.query(`select id, code_hash, status, max_uses, used_count from invite_codes`),
+    pool.query(`select id, code_hash, status, max_uses, used_count, created_at from invite_codes`),
     pool.query(`select id, user_id, state, progress_pct, status_message, details_json, updated_at from onboarding_runs`),
     pool.query(`
       select intervals_connections.id, athlete_profiles.user_id, intervals_connections.external_athlete_id,
@@ -174,6 +174,7 @@ export async function getPlatformState(): Promise<PlatformState> {
     status: row.status,
     maxUses: row.max_uses,
     usedCount: row.used_count,
+    createdAt: row.created_at?.toISOString?.() || row.created_at,
   }));
   state.onboardingRuns = onboardingResult.rows.map(mapOnboardingRow);
   state.intervalsConnections = connectionsResult.rows.map(mapConnectionRow);
@@ -233,9 +234,12 @@ export async function listInviteRecords(): Promise<InviteRecord[]> {
   return [...state.invites].sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export async function createInviteRecord(actorUserId: string, input: { code?: string; maxUses?: number }): Promise<InviteRecord> {
+export async function createInviteRecord(actorUserId: string, input: { code?: string; maxUses?: number; recipientName?: string; recipientEmail?: string }): Promise<InviteRecord> {
   const normalizedCode = (input.code || `DECISIVE-${randomUUID().slice(0, 8).toUpperCase()}`).trim().toUpperCase();
   const maxUses = Math.max(1, Number(input.maxUses || 1));
+  const recipientName = input.recipientName?.trim() || undefined;
+  const recipientEmail = input.recipientEmail?.trim() || undefined;
+  const createdAt = nowIso();
   if (!normalizedCode) throw new Error('Invite code is required');
 
   if (!isPostgresSyncStoreEnabled()) {
@@ -247,6 +251,9 @@ export async function createInviteRecord(actorUserId: string, input: { code?: st
       status: 'active',
       maxUses,
       usedCount: 0,
+      recipientName,
+      recipientEmail,
+      createdAt,
     };
     state.invites.push(invite);
     state.auditEvents.push({ id: makeId('audit'), eventType: 'invite.created', entityType: 'invite', entityId: invite.id, createdAt: nowIso() });
@@ -267,6 +274,9 @@ export async function createInviteRecord(actorUserId: string, input: { code?: st
     status: 'active',
     maxUses,
     usedCount: 0,
+    recipientName,
+    recipientEmail,
+    createdAt,
   };
   await getPgPool().query(
     `insert into invite_codes (id, code_hash, created_by_membership_id, max_uses, used_count, status)
@@ -276,7 +286,7 @@ export async function createInviteRecord(actorUserId: string, input: { code?: st
   await getPgPool().query(
     `insert into audit_events (id, actor_user_id, actor_membership_id, event_type, entity_type, entity_id, payload_json)
      values ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
-    [randomUUID(), actorUserId, membershipId, 'invite.created', 'invite', invite.id, JSON.stringify({ code: invite.code, maxUses })],
+    [randomUUID(), actorUserId, membershipId, 'invite.created', 'invite', invite.id, JSON.stringify({ code: invite.code, maxUses, recipientName, recipientEmail })],
   );
   return invite;
 }
@@ -465,6 +475,27 @@ export async function enqueueIntervalsRefreshOnLogin(
     [`syncjob_${randomUUID()}`, userId, connection.id, 'intervals_incremental_sync', 'queued', 10, statusMessage, queuedAt],
   );
   return true;
+}
+
+export async function enqueueIntervalsRefreshIfStale(
+  userId: string,
+  options: { staleAfterMinutes?: number; statusMessage?: string; now?: string } = {},
+): Promise<boolean> {
+  const connection = await getLatestIntervalsConnectionRecord(userId);
+  if (!connection || connection.syncStatus !== 'ready') return false;
+  const state = await getPlatformState();
+  const latestJob = await getLatestSyncJobForUser(userId, state.syncJobs);
+  if (latestJob && latestJob.connectionId === connection.id && (latestJob.status === 'queued' || latestJob.status === 'running')) {
+    return false;
+  }
+  const snapshot = await getLatestSnapshotForUser(userId, connection.id, state.intervalsSnapshots);
+  if (!snapshot?.capturedAt) return false;
+  const now = new Date(options.now || nowIso()).getTime();
+  const capturedAt = new Date(snapshot.capturedAt).getTime();
+  if (!Number.isFinite(capturedAt)) return false;
+  const staleAfterMinutes = Math.max(5, Number(options.staleAfterMinutes || 20));
+  if (now - capturedAt < staleAfterMinutes * 60 * 1000) return false;
+  return enqueueIntervalsRefreshOnLogin(userId, options.statusMessage || `Background refresh queued (${staleAfterMinutes} min staleness)`);
 }
 
 export async function getUserByIdRecord(userId: string): Promise<UserRecord | null> {

@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import {
   applyIntervalsCredentialsRecord,
   createInviteRecord,
+  enqueueIntervalsRefreshIfStale,
   enqueueIntervalsRefreshOnLogin,
   listInviteRecords,
   loginWithPasswordRecord,
@@ -105,6 +106,31 @@ test('enqueueIntervalsRefreshOnLogin creates a queued incremental sync job witho
     assert.equal(updated.syncJobs[1]?.status, 'queued');
     assert.equal(updated.intervalsSnapshots.length, 1);
     assert.equal(updated.intervalsConnections[0]?.syncStatus, 'ready');
+
+    const staleQueued = await enqueueIntervalsRefreshIfStale(registration.user.id, {
+      staleAfterMinutes: 20,
+      now: '2026-04-14T08:40:00Z',
+    });
+    assert.equal(staleQueued, false);
+
+    updated.syncJobs[1].status = 'completed';
+    updated.syncJobs[1].updatedAt = '2026-04-14T08:15:00Z';
+    await import('../lib/server/dev-store').then(({ savePlatformState }) => savePlatformState(updated));
+
+    const freshQueued = await enqueueIntervalsRefreshIfStale(registration.user.id, {
+      staleAfterMinutes: 20,
+      now: '2026-04-14T08:20:00Z',
+    });
+    assert.equal(freshQueued, false);
+
+    const staleRetryQueued = await enqueueIntervalsRefreshIfStale(registration.user.id, {
+      staleAfterMinutes: 20,
+      now: '2026-04-14T08:40:00Z',
+    });
+    const staleUpdated = await loadPlatformState();
+    assert.equal(staleRetryQueued, true);
+    assert.equal(staleUpdated.syncJobs.length, 3);
+    assert.match(staleUpdated.syncJobs[2]?.statusMessage || '', /staleness/i);
   } finally {
     if (previousDb === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDb;
     if (previousStore === undefined) delete process.env.DECISIVE_PLATFORM_STORE_PATH; else process.env.DECISIVE_PLATFORM_STORE_PATH = previousStore;
@@ -129,10 +155,18 @@ test('createInviteRecord, listInviteRecords, and revokeInviteRecord work in file
     state.memberships[0].roles = ['admin'];
     await import('../lib/server/dev-store').then(({ savePlatformState }) => savePlatformState(state));
 
-    const invite = await createInviteRecord(registration.user.id, { code: 'BETA-2026', maxUses: 3 });
+    const invite = await createInviteRecord(registration.user.id, {
+      code: 'BETA-2026',
+      maxUses: 3,
+      recipientName: 'Track Athlete',
+      recipientEmail: 'track@example.com',
+    });
     assert.equal(invite.code, 'BETA-2026');
+    assert.equal(invite.recipientName, 'Track Athlete');
+    assert.equal(invite.recipientEmail, 'track@example.com');
     const invites = await listInviteRecords();
     assert.equal(invites.some((item) => item.code === 'BETA-2026'), true);
+    assert.equal(invites.find((item) => item.code === 'BETA-2026')?.recipientEmail, 'track@example.com');
 
     const revoked = await revokeInviteRecord(registration.user.id, invite.id);
     assert.equal(revoked.status, 'revoked');

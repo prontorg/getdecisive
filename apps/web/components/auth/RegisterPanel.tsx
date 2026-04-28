@@ -3,9 +3,10 @@ type RegisterPanelProps = {
   email?: string;
   name?: string;
   inviteCode?: string;
+  inviteRecipientLabel?: string;
 };
 
-export function RegisterPanel({ error, email, name, inviteCode }: RegisterPanelProps) {
+export function RegisterPanel({ error, email, name, inviteCode, inviteRecipientLabel }: RegisterPanelProps) {
   const hasInviteCode = Boolean(inviteCode);
   const inviteError = !hasInviteCode ? 'Open signup from a valid invite link before creating an account.' : null;
   const displayError = error === inviteError ? inviteError : error;
@@ -15,6 +16,7 @@ export function RegisterPanel({ error, email, name, inviteCode }: RegisterPanelP
       <div className="kicker">Invite-only signup</div>
       <h2>Create your account</h2>
       <p className="muted">Keep signup simple here. Intervals connection happens in the guided onboarding step right after account creation.</p>
+      {inviteRecipientLabel ? <p className="muted">Invite prepared for {inviteRecipientLabel}.</p> : null}
       {displayError ? <p className="notice error">{displayError}</p> : null}
       {inviteError && inviteError !== displayError ? <p className="notice error">{inviteError}</p> : null}
       <form className="form-grid" action="/api/auth/register" method="post">
