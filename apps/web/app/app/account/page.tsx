@@ -89,6 +89,7 @@ export default async function AccountPage({
             </div>
             <div className="status-list compact-status-list" style={{ marginTop: 16 }}>
               <div className="status-item"><strong>Sync health</strong><p>{syncHealth.healthLabel}</p></div>
+              <div className="status-item"><strong>Snapshot freshness</strong><p>{syncHealth.freshnessLabel}</p></div>
               <div className="status-item"><strong>Worker</strong><p>{syncHealth.jobLabel}</p></div>
               <div className="status-item"><strong>Last snapshot</strong><p>{syncHealth.snapshotLabel}</p></div>
               <div className="status-item"><strong>Athlete ID</strong><p>{syncHealth.athleteIdLabel}</p></div>

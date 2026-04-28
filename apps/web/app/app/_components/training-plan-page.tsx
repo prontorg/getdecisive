@@ -448,7 +448,12 @@ const draftStatusLabel = latestDraft
                           <div key={`${preview.scenario}-${change.date}-${change.after}`} className="training-plan-current-week-panel__change-row">
                             <strong>{change.date}</strong>
                             <p>{change.before}</p>
+                            {change.beforeIntervalLabel ? <span>Before structure: {change.beforeIntervalLabel}</span> : null}
+                            {change.beforeFamilyIntent ? <span>Before intent: {change.beforeFamilyIntent}</span> : null}
                             <p>→ {change.after}</p>
+                            {change.afterIntervalLabel ? <span>After structure: {change.afterIntervalLabel}</span> : null}
+                            {change.afterFamilyIntent ? <span>After intent: {change.afterFamilyIntent}</span> : null}
+                            {change.rationaleTags?.length ? <span>Why this family: {change.rationaleTags.join(' • ')}</span> : null}
                             <span>{change.reason}</span>
                           </div>
                         ))}

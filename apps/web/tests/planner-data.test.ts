@@ -1493,6 +1493,8 @@ test('current-week replanning payload compares planned versus done and recommend
   assert.match(payload.scenarioPreviews[0]?.title || '', /Repair the live week|Back off but keep the week coherent|Sharpen the next key slot/i);
   assert.match(payload.scenarioPreviews[0]?.impactSummary || '', /slot|No exact slot change/i);
   assert.equal(Array.isArray(payload.scenarioPreviews[0]?.changes), true);
+  assert.ok(payload.scenarioPreviews[0]?.changes[0]?.beforeIntervalLabel !== undefined || payload.scenarioPreviews[0]?.changes[0]?.afterIntervalLabel !== undefined);
+  assert.ok(payload.scenarioPreviews[0]?.changes[0]?.rationaleTags === undefined || Array.isArray(payload.scenarioPreviews[0]?.changes[0]?.rationaleTags));
 });
 
 test('current-week replanning only clears missed sessions when completed work matches the same day and workout family', () => {

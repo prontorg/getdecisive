@@ -264,6 +264,11 @@ export type CurrentWeekReplanPayload = {
       changeType: 'reshaped' | 'sharpened' | 'load_adjusted';
       before: string;
       after: string;
+      beforeIntervalLabel?: string;
+      afterIntervalLabel?: string;
+      beforeFamilyIntent?: string;
+      afterFamilyIntent?: string;
+      rationaleTags?: string[];
       reason: string;
     }>;
   }>;
@@ -2562,6 +2567,11 @@ function buildCurrentWeekScenarioPreviews(
         changeType: scenario === 'increase_specificity' ? 'sharpened' as const : scenario === 'fresher' ? 'load_adjusted' as const : 'reshaped' as const,
         before: beforeSummary,
         after: afterSummary,
+        beforeIntervalLabel: beforeWorkout.intervalLabel,
+        afterIntervalLabel: afterWorkout.intervalLabel,
+        beforeFamilyIntent: beforeWorkout.familyIntent,
+        afterFamilyIntent: afterWorkout.familyIntent,
+        rationaleTags: afterWorkout.selectionRationale,
         reason: scenarioChangeReason(scenario),
       }];
     }).slice(0, 3);

@@ -16,6 +16,16 @@ function formatUtc(value?: string | null, empty = '—') {
   }) + ' UTC';
 }
 
+function freshnessStateFromSnapshot(snapshotCapturedAt?: string | null) {
+  if (!snapshotCapturedAt) return { label: 'No snapshot yet', ageMinutes: null };
+  const capturedAt = new Date(snapshotCapturedAt).getTime();
+  if (!Number.isFinite(capturedAt)) return { label: 'Snapshot time unreadable', ageMinutes: null };
+  const ageMinutes = Math.max(0, Math.round((Date.now() - capturedAt) / 60000));
+  if (ageMinutes >= 60) return { label: `Stale (${ageMinutes} min old)`, ageMinutes };
+  if (ageMinutes >= 20) return { label: `Aging (${ageMinutes} min old)`, ageMinutes };
+  return { label: `Fresh (${ageMinutes} min old)`, ageMinutes };
+}
+
 function deriveSyncHealthLabel(params: {
   connection: IntervalsConnectionRecord | null;
   onboarding: OnboardingRunRecord | null;
@@ -34,6 +44,7 @@ function deriveSyncHealthLabel(params: {
 
 export type SyncHealthSummary = {
   healthLabel: string;
+  freshnessLabel: string;
   jobLabel: string;
   snapshotLabel: string;
   athleteIdLabel: string;
@@ -64,9 +75,11 @@ export async function getSyncHealthSummary(
     syncJob,
     snapshotCapturedAt: snapshot?.capturedAt || null,
   });
+  const freshness = freshnessStateFromSnapshot(snapshot?.capturedAt || null);
 
   return {
     healthLabel,
+    freshnessLabel: freshness.label,
     jobLabel: syncJob
       ? `${syncJob.status} • ${syncJob.progressPct}% • ${syncJob.statusMessage}`
       : connection
