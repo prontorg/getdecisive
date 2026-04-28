@@ -22,6 +22,32 @@ type NoticeFeedback = {
   workoutId?: string;
 };
 
+type WeekAction = 'regenerate' | 'reduce_load' | 'increase_specificity' | 'lighter_weekend';
+
+type WeekPreview = {
+  action: WeekAction;
+  actionLabel: string;
+  weekId: string;
+  weekLabel: string;
+  summary: string;
+  beforeHours: number;
+  afterHours: number;
+  beforeLoad: number;
+  afterLoad: number;
+  keyProtectionSummary: string;
+  freshnessSummary: string;
+  changes: Array<{
+    date: string;
+    before: string;
+    after: string;
+    beforeIntervalLabel?: string;
+    afterIntervalLabel?: string;
+    beforeFamilyIntent?: string;
+    afterFamilyIntent?: string;
+    reason: string;
+  }>;
+};
+
 type PlanEvent = {
   id: string;
   title: string;
@@ -87,6 +113,17 @@ function shortCategoryLabel(category: Workout['category']) {
     default: return category;
   }
 }
+
+function weekActionButtonLabel(action: WeekAction) {
+  switch (action) {
+    case 'regenerate': return 'Regenerate';
+    case 'reduce_load': return 'Reduce load';
+    case 'increase_specificity': return 'Sharpen';
+    case 'lighter_weekend': return 'Lighter weekend';
+  }
+}
+
+const WEEK_ACTIONS: WeekAction[] = ['regenerate', 'reduce_load', 'increase_specificity', 'lighter_weekend'];
 
 function familyIntentLabel(workout: Pick<Workout, 'category' | 'label' | 'intervalLabel' | 'familyIntent'>) {
   if (workout.familyIntent) return workout.familyIntent;
@@ -353,6 +390,8 @@ export function TrainingPlanCalendar({
   const [moveFeedback, setMoveFeedback] = useState<MoveFeedback | null>(null);
   const [successNotice, setSuccessNotice] = useState<SuccessFeedback | null>(null);
   const [menuActionByWorkout, setMenuActionByWorkout] = useState<Record<string, string>>({});
+  const [weekPreviewByWeekId, setWeekPreviewByWeekId] = useState<Record<string, WeekPreview | null>>({});
+  const [busyWeekActionByWeekId, setBusyWeekActionByWeekId] = useState<Record<string, WeekAction | null>>({});
 
   useEffect(() => {
     setWeeks(initialWeeks);
@@ -542,6 +581,48 @@ export function TrainingPlanCalendar({
     } finally {
       setBusyDate(null);
       setDraggingWorkoutId(null);
+    }
+  }
+
+  async function previewWeekAction(weekId: string, action: WeekAction) {
+    setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: action }));
+    setSuccessNotice(null);
+    try {
+      const response = await fetch('/api/planner/month/week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draftId, weekId, action, intent: 'preview' }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.preview) {
+        setSuccessNotice({ title: 'Week preview failed', detail: payload?.error || 'Could not preview this week action.' });
+        return;
+      }
+      setWeekPreviewByWeekId((current) => ({ ...current, [weekId]: payload.preview as WeekPreview }));
+    } finally {
+      setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: null }));
+    }
+  }
+
+  async function applyWeekAction(weekId: string, action: WeekAction) {
+    setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: action }));
+    setSuccessNotice(null);
+    try {
+      const response = await fetch('/api/planner/month/week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draftId, weekId, action, intent: 'apply' }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setSuccessNotice({ title: 'Week update failed', detail: payload?.error || 'Could not apply this week action.' });
+        return;
+      }
+      if (payload?.weeks) setWeeks(payload.weeks as Week[]);
+      setWeekPreviewByWeekId((current) => ({ ...current, [weekId]: null }));
+      setSuccessNotice({ title: 'Week updated', detail: `${weekActionButtonLabel(action)} applied.` });
+    } finally {
+      setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: null }));
     }
   }
 
@@ -837,6 +918,8 @@ export function TrainingPlanCalendar({
           const eventAdjustedHoursLabel = typeof week.eventHours === 'number' && week.eventHours > 0
             ? `${availableHoursLabel} after ${week.eventHours.toFixed(1)} h events`
             : availableHoursLabel;
+          const weekPreview = weekPreviewByWeekId[week.id] || null;
+          const busyWeekAction = busyWeekActionByWeekId[week.id] || null;
           return (
             <div key={week.id} className="training-plan-week-summary-card" style={rowIndexByWeekIndex.get(week.weekIndex) ? { gridRow: rowIndexByWeekIndex.get(week.weekIndex) } : undefined}>
               <div className="training-plan-week-summary-card__inner">
@@ -846,6 +929,44 @@ export function TrainingPlanCalendar({
                 <p>{eventAdjustedHoursLabel}</p>
                 <p>{latestHistory ? `History: ${latestHistory.label}` : `Next ${(plannedMinutes / 60).toFixed(1)} h • L${plannedLoad}`}</p>
                 <p>{latestHistory ? `${(completedMinutes / 60).toFixed(1)} h done • L${completedLoad}` : `${plannedMinutes ? `${(plannedMinutes / 60).toFixed(1)} h planned • L${plannedLoad}` : 'Fresher week / lower cost'}`}</p>
+                <div className="button-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                  {WEEK_ACTIONS.map((action) => (
+                    <button
+                      key={action}
+                      type="button"
+                      className="button-secondary"
+                      disabled={Boolean(busyWeekAction)}
+                      onClick={() => previewWeekAction(week.id, action)}
+                    >
+                      {weekActionButtonLabel(action)}
+                    </button>
+                  ))}
+                </div>
+                {weekPreview ? (
+                  <div className="status-item" style={{ marginTop: 10 }}>
+                    <strong>{weekPreview.actionLabel}</strong>
+                    <p>{weekPreview.summary}</p>
+                    <span>{weekPreview.beforeHours.toFixed(1)} h / L{weekPreview.beforeLoad} → {weekPreview.afterHours.toFixed(1)} h / L{weekPreview.afterLoad}</span>
+                    <span>{weekPreview.keyProtectionSummary}</span>
+                    <span>{weekPreview.freshnessSummary}</span>
+                    {weekPreview.changes.map((change) => (
+                      <div key={`${weekPreview.weekId}-${weekPreview.action}-${change.date}-${change.after}`} className="training-plan-current-week-panel__change-row">
+                        <strong>{change.date}</strong>
+                        <p>{change.before}</p>
+                        {change.beforeIntervalLabel ? <span>Before structure: {change.beforeIntervalLabel}</span> : null}
+                        {change.beforeFamilyIntent ? <span>Before intent: {change.beforeFamilyIntent}</span> : null}
+                        <p>→ {change.after}</p>
+                        {change.afterIntervalLabel ? <span>After structure: {change.afterIntervalLabel}</span> : null}
+                        {change.afterFamilyIntent ? <span>After intent: {change.afterFamilyIntent}</span> : null}
+                        <span>{change.reason}</span>
+                      </div>
+                    ))}
+                    <div className="button-row" style={{ marginTop: 8 }}>
+                      <button type="button" className="button-secondary button-link" disabled={Boolean(busyWeekAction)} onClick={() => applyWeekAction(week.id, weekPreview.action)}>Apply week change</button>
+                      <button type="button" className="button-secondary" disabled={Boolean(busyWeekAction)} onClick={() => setWeekPreviewByWeekId((current) => ({ ...current, [week.id]: null }))}>Dismiss</button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           );

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { appRoutes } from '../../../../../lib/routes';
 import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
 import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
-import { getUserGoalEntries, listPlanningEvents, saveMonthlyPlanDraft, saveMonthlyPlanInput } from '../../../../../lib/server/planner-customization';
+import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, listPlanningEvents, saveMonthlyPlanDraft, saveMonthlyPlanInput } from '../../../../../lib/server/planner-customization';
 import { normalizeMonthlyPlanRequestBody } from '../../../../../lib/server/monthly-plan-request';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
@@ -24,8 +24,14 @@ export async function POST(request: Request) {
   if (!parsed) return routeErrorResponse(ROUTE, 400, 'Invalid payload', { userId, contentType });
 
   try {
-    const monthlyInputs = await saveMonthlyPlanInput(userId, normalizeMonthlyPlanRequestBody(parsed, planner.live?.today || new Date().toISOString().slice(0, 10)));
-    const latestInput = monthlyInputs[0];
+    const action = parsed instanceof FormData ? String(parsed.get('action') || '') : String(parsed?.action || '');
+    const latestExistingDraft = await getLatestMonthlyPlanDraft(userId);
+    const latestInput = action === 'refresh_latest_input'
+      ? await getLatestMonthlyPlanInput(userId)
+      : (await saveMonthlyPlanInput(userId, normalizeMonthlyPlanRequestBody(parsed, planner.live?.today || new Date().toISOString().slice(0, 10))))[0];
+    if (!latestInput) {
+      return routeErrorResponse(ROUTE, 404, 'No saved planner inputs found to refresh', { userId, action });
+    }
     const currentDirection = buildGoalPayload(planner.live, await getUserGoalEntries(userId)).goalHistory[0]?.title;
     const planEvents = await listPlanningEvents(userId);
     const generated = buildMonthlyPlannerDraftPayload(planner.live, {
@@ -52,6 +58,7 @@ export async function POST(request: Request) {
     });
 
     const savedDrafts = await saveMonthlyPlanDraft(userId, {
+      id: latestExistingDraft?.id,
       monthStart: generated.monthStart,
       inputId: latestInput?.id || 'missing_input',
       assumptions: {
@@ -61,8 +68,8 @@ export async function POST(request: Request) {
         selectedRecommendationReason: latestInput?.selectedRecommendation?.reason,
         selectedRecommendationConfidence: latestInput?.selectedRecommendation?.confidence,
       },
-      weeks: generated.weeks.map((week) => toStoredWeekFromGenerated(week)),
-      publishState: 'draft',
+      weeks: generated.weeks.map((week) => toStoredWeekFromGenerated(week, latestExistingDraft?.weeks.find((existing) => existing.weekIndex === week.weekIndex))),
+      publishState: latestExistingDraft?.publishState === 'published' ? 'published' : 'draft',
     });
 
     logRouteEvent(ROUTE, 'info', 'Monthly draft generated', {

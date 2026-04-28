@@ -6,7 +6,6 @@ import {
   buildGoalPayload,
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
-  buildMonthlyPlannerDraftPayload,
   buildPlannerTruthSummaryPayload,
   buildPlanningRecommendationPayload,
   buildTodayReconciliationPayload,
@@ -14,8 +13,7 @@ import {
   getAuthorizedPlannerLiveContext,
   replaceCurrentWeekWithRuntime,
 } from '../../../lib/server/planner-data';
-import { toStoredWeekFromGenerated } from '../../../lib/server/monthly-plan-persistence';
-import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, saveMonthlyPlanDraft, listPlanningEvents } from '../../../lib/server/planner-customization';
+import { getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, listPlanningEvents } from '../../../lib/server/planner-customization';
 import { getLatestIntervalsConnectionRecord } from '../../../lib/server/auth-store';
 import { getSessionUserId } from '../../../lib/server/session';
 import { getLatestSnapshotForUser } from '../../../lib/server/sync-store';
@@ -107,47 +105,16 @@ export async function TrainingPlanPage({
   const currentDirection = buildGoalPayload(planner.live, goalEntries).goalHistory[0]?.title;
   const today = planner.live?.today || new Date().toISOString().slice(0, 10);
   const currentMonthStart = `${today.slice(0, 8)}01`;
-  const needsAutomaticDraftRefresh = Boolean(
-    latestInput
-      && (
-        !latestDraft
-        || latestDraft.monthStart !== currentMonthStart
-        || (latestDraft.updatedAt || '').slice(0, 10) < today
-      ),
-  );
-
-  if (latestInput && needsAutomaticDraftRefresh) {
-    const regenerated = buildMonthlyPlannerDraftPayload(planner.live, {
-      objective: latestInput.objective,
-      ambition: latestInput.ambition,
-      currentDirection,
-      successMarkers: latestInput.successMarkers,
-      sourceWindowDays: latestInput.sourceWindowDays,
-      ignoreSickWeek: latestInput.ignoreSickWeek,
-      ignoreVacationWeek: latestInput.ignoreVacationWeek,
-      excludeNonPrimarySport: latestInput.excludeNonPrimarySport,
-      mustFollow: {
-        noBackToBackHardDays: latestInput.mustFollow.noBackToBackHardDays,
-        maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours,
-        maxWeekdayMinutes: latestInput.mustFollow.maxWeekdayMinutes,
-        unavailableDates: latestInput.mustFollow.unavailableDates,
-      },
-      preferences: {
-        restDay: latestInput.preferences.restDay,
-        restDaysPerWeek: latestInput.preferences.restDaysPerWeek,
-        longRideDay: latestInput.preferences.longRideDay,
-      },
-      planEvents,
-    });
-    const savedDrafts = await saveMonthlyPlanDraft(userId, {
-      monthStart: regenerated.monthStart,
-      inputId: latestInput.id,
-      assumptions: regenerated.assumptions,
-      weeks: regenerated.weeks.map((week) => toStoredWeekFromGenerated(week, latestDraft?.weeks.find((existing) => existing.weekIndex === week.weekIndex))),
-      publishState: latestDraft?.publishState === 'published' ? 'published' : 'draft',
-    });
-    latestDraft = savedDrafts[0] || null;
-  }
+  const staleDraftReason = !latestInput
+    ? null
+    : !latestDraft
+      ? 'No draft saved yet from the latest planner inputs.'
+      : latestDraft.monthStart !== currentMonthStart
+        ? 'Saved draft started in an earlier month and needs an explicit refresh.'
+        : (latestDraft.updatedAt || '').slice(0, 10) < today
+          ? 'Saved draft is older than today’s live context.'
+          : null;
+  const draftNeedsExplicitRefresh = Boolean(staleDraftReason);
 
   const contextPayload = buildMonthlyPlannerContextPayload(planner.live, currentDirection, latestInput ? {
     sourceWindowDays: latestInput.sourceWindowDays,
@@ -267,13 +234,26 @@ const draftStatusLabel = latestDraft
         description={heroDescription}
       />
 
-      {(notice || moveConflict) ? (
+      {(notice || moveConflict || draftNeedsExplicitRefresh) ? (
         <section className="mt-18">
           {notice ? (
             <div className="status-list compact-status-list">
               <div className="status-item">
                 <strong>Success</strong>
                 <p>{notice}</p>
+              </div>
+            </div>
+          ) : null}
+          {draftNeedsExplicitRefresh ? (
+            <div className="status-list compact-status-list">
+              <div className="status-item">
+                <strong>Draft refresh needed</strong>
+                <p>{staleDraftReason}</p>
+                <p>Review stays read-only until you explicitly refresh this month from the latest live context.</p>
+                <form action="/api/planner/month/draft" method="post" className="button-row">
+                  <input type="hidden" name="action" value="refresh_latest_input" />
+                  <button type="submit">Refresh draft from latest live data</button>
+                </form>
               </div>
             </div>
           ) : null}

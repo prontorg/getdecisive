@@ -73,7 +73,15 @@ test('draft generation entry points keep the same advanced month inputs across g
     readFile(join(webRoot, 'app/api/planner/month/replan/route.ts'), 'utf8'),
   ]);
 
-  for (const source of [draftRouteSource, trainingPlanPageSource, weekRouteSource]) {
+  assert.match(draftRouteSource, /refresh_latest_input/i);
+  assert.match(draftRouteSource, /getLatestMonthlyPlanInput/i);
+  assert.match(draftRouteSource, /No saved planner inputs found to refresh/i);
+  assert.match(trainingPlanPageSource, /staleDraftReason/i);
+  assert.match(trainingPlanPageSource, /draftNeedsExplicitRefresh/i);
+  assert.match(trainingPlanPageSource, /Refresh draft from latest live data/i);
+  assert.match(trainingPlanPageSource, /Review stays read-only until you explicitly refresh this month from the latest live context\./i);
+
+  for (const source of [draftRouteSource, weekRouteSource]) {
     assert.match(source, /maxWeekdayMinutes: latestInput\?\.mustFollow\.maxWeekdayMinutes|maxWeekdayMinutes: latestInput\.mustFollow\.maxWeekdayMinutes/i);
     assert.match(source, /unavailableDates: latestInput\?\.mustFollow\.unavailableDates|unavailableDates: latestInput\.mustFollow\.unavailableDates/i);
     assert.match(source, /restDay: latestInput\?\.preferences\.restDay|restDay: latestInput\.preferences\.restDay/i);
@@ -81,13 +89,21 @@ test('draft generation entry points keep the same advanced month inputs across g
     assert.match(source, /longRideDay: latestInput\?\.preferences\.longRideDay|longRideDay: latestInput\.preferences\.longRideDay/i);
   }
 
-  for (const source of [draftRouteSource, trainingPlanPageSource, weekRouteSource, replanRouteSource]) {
+  for (const source of [draftRouteSource, weekRouteSource, replanRouteSource]) {
     assert.match(source, /toStoredWeekFromGenerated/i);
   }
 
   for (const source of [weekRouteSource, replanRouteSource]) {
     assert.match(source, /appendMonthlyPlanReconciliationEvent/i);
   }
+  assert.match(weekRouteSource, /intent === 'preview'/i);
+  assert.match(weekRouteSource, /buildWeekActionPreview/i);
+  assert.match(weekRouteSource, /Week mutation preview generated/i);
+  assert.match(weekRouteSource, /summary: action === 'regenerate'/i);
+  assert.match(weekRouteSource, /beforeHours: week\.targetHours/i);
+  assert.match(weekRouteSource, /afterHours: nextWeek\.targetHours/i);
+  assert.match(weekRouteSource, /keyProtectionSummary/i);
+  assert.match(weekRouteSource, /freshnessSummary/i);
   assert.match(weekRouteSource, /eventType: action === 'regenerate' \? 'week_regenerated' : 'week_replanned'/i);
   assert.match(replanRouteSource, /eventType: 'week_replanned'/i);
 });

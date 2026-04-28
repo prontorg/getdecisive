@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { appRoutes } from '../../../../../lib/routes';
 import { buildGoalPayload, buildMonthlyPlannerDraftPayload } from '../../../../../lib/server/planner-data';
 import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
+import type { MonthlyPlanWeek, MonthlyPlanWorkout } from '../../../../../lib/server/planner-customization';
 import { appendMonthlyPlanReconciliationEvent, getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, getUserGoalEntries, listPlanningEvents, replaceMonthlyPlanWeek, updateMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
 import { getSessionUserId } from '../../../../../lib/server/session';
@@ -11,7 +12,7 @@ import { getSessionUserId } from '../../../../../lib/server/session';
 const ROUTE = '/api/planner/month/week';
 
 function tuneWeekFromAction(
-  week: NonNullable<Awaited<ReturnType<typeof getLatestMonthlyPlanDraft>>>['weeks'][number],
+  week: MonthlyPlanWeek,
   action: string,
 ) {
   if (action === 'reduce_load') {
@@ -84,6 +85,98 @@ function tuneWeekFromAction(
   return week;
 }
 
+function summarizeWeekPreviewWorkout(workout: MonthlyPlanWorkout) {
+  const parts = [workout.label || 'Session'];
+  if (workout.intervalLabel) parts.push(workout.intervalLabel);
+  const metrics = [
+    workout.durationMinutes ? `${workout.durationMinutes} min` : null,
+    workout.targetLoad ? `${workout.targetLoad} load` : null,
+  ].filter(Boolean);
+  if (metrics.length) parts.push(metrics.join(' • '));
+  return parts.join(' • ');
+}
+
+function weekActionTitle(action: string) {
+  switch (action) {
+    case 'regenerate': return 'Regenerate this week';
+    case 'reduce_load': return 'Reduce load this week';
+    case 'increase_specificity': return 'Increase specificity this week';
+    case 'lighter_weekend': return 'Make weekend lighter';
+    default: return action.replace(/_/g, ' ');
+  }
+}
+
+function weekActionProtectionSummary(action: string, week: MonthlyPlanWeek, nextWeek: MonthlyPlanWeek) {
+  const nextKey = nextWeek.workouts.find((workout) => ['repeatability', 'threshold_support', 'race_like'].includes(workout.category));
+  const keyDay = nextKey?.date || week.workouts.find((workout) => ['repeatability', 'threshold_support', 'race_like'].includes(workout.category))?.date || 'still resolving';
+  switch (action) {
+    case 'reduce_load': return `Protects ${keyDay} by trimming surrounding cost before touching the key slot.`;
+    case 'increase_specificity': return `Protects ${keyDay} and sharpens one remaining slot toward race demand.`;
+    case 'lighter_weekend': return `Protects ${keyDay} by taking support cost out of the weekend instead of the key work.`;
+    case 'regenerate': return `Protects ${keyDay} by rebuilding the week from the latest live context and saved month rules.`;
+    default: return `Protects ${keyDay} while adjusting the week's structure.`;
+  }
+}
+
+function weekActionFreshnessSummary(action: string, week: MonthlyPlanWeek, nextWeek: MonthlyPlanWeek) {
+  if (nextWeek.targetHours < week.targetHours || nextWeek.targetLoad < week.targetLoad) {
+    return 'Freshness cost comes down before apply.';
+  }
+  if (action === 'increase_specificity') {
+    return 'Freshness cost rises slightly, but only around one sharper slot.';
+  }
+  return 'Freshness cost stays broadly in line with the current saved week.';
+}
+
+function buildWeekActionPreview(week: MonthlyPlanWeek, nextWeek: MonthlyPlanWeek, action: string) {
+  const changes = nextWeek.workouts.flatMap((afterWorkout, index) => {
+    const beforeWorkout = week.workouts.find((candidate) => candidate.id === afterWorkout.id)
+      || week.workouts.find((candidate) => candidate.date === afterWorkout.date)
+      || week.workouts[index];
+    if (!beforeWorkout) return [];
+    const before = summarizeWeekPreviewWorkout(beforeWorkout);
+    const after = summarizeWeekPreviewWorkout(afterWorkout);
+    if (before === after) return [];
+    return [{
+      date: afterWorkout.date,
+      before,
+      after,
+      beforeIntervalLabel: beforeWorkout.intervalLabel,
+      afterIntervalLabel: afterWorkout.intervalLabel,
+      beforeFamilyIntent: beforeWorkout.familyIntent,
+      afterFamilyIntent: afterWorkout.familyIntent,
+      reason: action === 'regenerate'
+        ? 'Rebuilt from latest planner inputs and live context.'
+        : action === 'reduce_load'
+          ? 'Reduced cost while trying to keep the same weekly shape.'
+          : action === 'increase_specificity'
+            ? 'Pulled the week closer to race-like demand.'
+            : 'Reduced support cost later in the week to protect freshness.',
+    }];
+  }).slice(0, 4);
+
+  return {
+    action,
+    actionLabel: weekActionTitle(action),
+    weekId: week.id,
+    weekLabel: week.label,
+    summary: action === 'regenerate'
+      ? 'Rebuild this week from the latest saved month inputs and live context before applying.'
+      : action === 'reduce_load'
+        ? 'Cut cost across this week before applying the adjustment.'
+        : action === 'increase_specificity'
+          ? 'Sharpen one eligible slot before applying the more race-like week.'
+          : 'Ease the weekend support load before applying the lighter finish.',
+    beforeHours: week.targetHours,
+    afterHours: nextWeek.targetHours,
+    beforeLoad: week.targetLoad,
+    afterLoad: nextWeek.targetLoad,
+    keyProtectionSummary: weekActionProtectionSummary(action, week, nextWeek),
+    freshnessSummary: weekActionFreshnessSummary(action, week, nextWeek),
+    changes,
+  };
+}
+
 export async function POST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) return redirectWithNotice(ROUTE, request, appRoutes.login, { reason: 'no_session' });
@@ -100,7 +193,8 @@ export async function POST(request: Request) {
   const draftId = String(pick('draftId') || '');
   const weekId = String(pick('weekId') || '');
   const action = String(pick('action') || '');
-  if (!draftId || !weekId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, weekId, action });
+  const intent = String(pick('intent') || (parsed instanceof FormData ? 'apply' : 'apply'));
+  if (!draftId || !weekId || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, weekId, action, intent });
 
   try {
     const draft = await getLatestMonthlyPlanDraft(userId);
@@ -108,7 +202,7 @@ export async function POST(request: Request) {
     const week = draft?.weeks.find((item) => item.id === weekId);
     if (!draft || draft.id !== draftId || !week) return routeErrorResponse(ROUTE, 404, 'Draft or week not found', { userId, draftId, weekId, action });
 
-    let nextDraft = null;
+    let nextWeek: MonthlyPlanWeek | null = null;
     if (action === 'regenerate') {
       const currentDirection = buildGoalPayload(planner.live, await getUserGoalEntries(userId)).goalHistory[0]?.title;
       const planEvents = await listPlanningEvents(userId);
@@ -134,11 +228,21 @@ export async function POST(request: Request) {
         },
         planEvents,
       }).weeks[week.weekIndex - 1];
-      if (!regenerated) return routeErrorResponse(ROUTE, 500, 'Could not regenerate week', { userId, draftId, weekId, action });
-      nextDraft = await replaceMonthlyPlanWeek(userId, draftId, toStoredWeekFromGenerated(regenerated, week));
+      if (!regenerated) return routeErrorResponse(ROUTE, 500, 'Could not regenerate week', { userId, draftId, weekId, action, intent });
+      nextWeek = toStoredWeekFromGenerated(regenerated, week);
     } else {
-      nextDraft = await updateMonthlyPlanWeek(userId, draftId, weekId, tuneWeekFromAction(week, action));
+      nextWeek = { ...week, ...tuneWeekFromAction(week, action) };
     }
+
+    if (intent === 'preview') {
+      const preview = buildWeekActionPreview(week, nextWeek, action);
+      logRouteEvent(ROUTE, 'info', 'Week mutation preview generated', { userId, draftId, weekId, action, intent, isJson });
+      return NextResponse.json({ draftId, weekId, action, intent, preview });
+    }
+
+    const nextDraft = action === 'regenerate'
+      ? await replaceMonthlyPlanWeek(userId, draftId, nextWeek)
+      : await updateMonthlyPlanWeek(userId, draftId, weekId, nextWeek);
 
     logRouteEvent(ROUTE, 'info', 'Week mutation applied', { userId, draftId, weekId, action, isJson });
     await appendMonthlyPlanReconciliationEvent(userId, {
