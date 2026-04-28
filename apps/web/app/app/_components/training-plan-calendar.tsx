@@ -475,6 +475,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                   const showMoveDateField = selectedAction === 'move_day';
                   const submitLabel = actionSubmitLabel(selectedAction);
                   const closeMenuAfterSubmit = shouldCloseMenuAfterSubmit(selectedAction);
+                  const destructiveActionSelected = selectedAction === 'remove';
                   return (
                   <div
                     key={workout.id}
@@ -536,7 +537,12 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                                 <input type="date" name="moveDate" defaultValue={workout.date} />
                               </label>
                             ) : null}
-                            <button type="submit">{submitLabel}</button>
+                            <button
+                              type="submit"
+                              className={destructiveActionSelected ? 'training-plan-inline-menu__submit-danger' : undefined}
+                            >
+                              {submitLabel}
+                            </button>
                           </form>
                         </details>
                       </div>

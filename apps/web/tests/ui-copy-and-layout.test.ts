@@ -239,6 +239,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-session-card-status-replaced/i);
   assert.match(calendarStyles, /training-plan-session-card-status-completed-modified/i);
   assert.match(calendarStyles, /training-plan-session-card__inline-feedback/i);
+  assert.match(calendarStyles, /training-plan-inline-menu__submit-danger/i);
   assert.match(calendarStyles, /training-plan-current-week-panel/i);
   assert.match(calendarStyles, /training-plan-session-card__tag-family/i);
   assert.match(calendarStyles, /training-plan-intent-compare-card__kicker/i);
@@ -252,6 +253,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /actionSubmitLabel/i);
   assert.match(calendarSource, /shouldCloseMenuAfterSubmit/i);
   assert.match(calendarSource, /closeMenuAfterSubmit/i);
+  assert.match(calendarSource, /destructiveActionSelected/i);
+  assert.match(calendarSource, /training-plan-inline-menu__submit-danger/i);
   assert.match(calendarSource, /closest\('details'\)/i);
   assert.match(calendarSource, /HTMLDetailsElement/i);
   assert.match(calendarSource, /Move to day/i);
