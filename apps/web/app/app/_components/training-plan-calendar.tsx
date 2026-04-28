@@ -278,6 +278,15 @@ function quickActionState(
   return 'idle';
 }
 
+function settledReconciliationLabel(status: Workout['status']) {
+  switch (status) {
+    case 'skipped': return 'Skipped';
+    case 'replaced': return 'Support';
+    case 'completed_modified': return 'Done*';
+    default: return null;
+  }
+}
+
 function sessionToneClass(category: Workout['category'] | undefined) {
   switch (category) {
     case 'repeatability': return 'session-tone-repeatability';
@@ -429,7 +438,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
     return { tone: 'safe' as const, text: 'Drop looks usable' };
   }
 
-  async function mutateWorkout(workoutId: string, action: 'lock' | 'easier' | 'harder' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified', extra: Record<string, unknown> = {}) {
+  async function mutateWorkout(workoutId: string, action: 'lock' | 'easier' | 'harder' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified' | 'reset_reconciliation', extra: Record<string, unknown> = {}) {
     const workout = workoutsById.get(workoutId);
     if (!workout) return;
     setSuccessNotice(null);
@@ -538,9 +547,9 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
           const planEvents = planEventsByDate.get(date) || [];
           return (
             <div
-                  key={date}
-                  className={`training-plan-day-card ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''} ${isHinted && activeHint?.tone === 'warning' ? 'training-plan-day-card-drop-warning' : ''} ${isHinted && activeHint?.tone === 'safe' ? 'training-plan-day-card-drop-safe' : ''}`}
-onDragOver={(event) => {
+              key={date}
+              className={`training-plan-day-card ${isRestLike ? 'rest-day-subtle' : ''} ${isOutsidePlannedRange ? 'training-plan-day-card-empty' : ''} ${isHinted && activeHint?.tone === 'warning' ? 'training-plan-day-card-drop-warning' : ''} ${isHinted && activeHint?.tone === 'safe' ? 'training-plan-day-card-drop-safe' : ''}`}
+              onDragOver={(event) => {
                 event.preventDefault();
                 setHoverDate(date);
                 event.dataTransfer.dropEffect = 'move';
@@ -601,6 +610,7 @@ onDragOver={(event) => {
                   const skipActionState = quickActionState(workout, 'skip');
                   const supportActionState = quickActionState(workout, 'replace_with_support');
                   const doneModifiedActionState = quickActionState(workout, 'mark_done_modified');
+                  const settledReconciliation = settledReconciliationLabel(workout.status);
                   return (
                   <div
                     key={workout.id}
@@ -651,6 +661,18 @@ onDragOver={(event) => {
                               </button>
                             );
                           })}
+                          {settledReconciliation ? (
+                            <>
+                              <span className="training-plan-session-card__quick-action-settled">{settledReconciliation}</span>
+                              <button
+                                type="button"
+                                className="button-secondary training-plan-session-card__quick-action training-plan-session-card__quick-action-undo"
+                                onClick={() => mutateWorkout(workout.id, 'reset_reconciliation')}
+                              >
+                                Undo
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>

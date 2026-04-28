@@ -15,7 +15,7 @@ import { getSessionUserId } from '../../../../../lib/server/session';
 const hardCategories = new Set(['repeatability', 'threshold_support', 'race_like']);
 const ROUTE = '/api/planner/month/workout';
 
-type WorkoutAction = 'lock' | 'easier' | 'harder' | 'move_day' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified';
+type WorkoutAction = 'lock' | 'easier' | 'harder' | 'move_day' | 'remove' | 'skip' | 'replace_with_support' | 'mark_done_modified' | 'reset_reconciliation';
 
 function workoutConflictSummary(
   draft: NonNullable<Awaited<ReturnType<typeof getLatestMonthlyPlanDraft>>>,
@@ -181,6 +181,12 @@ export async function POST(request: Request) {
         detail: `Completed with modified execution versus the original planned structure.`,
         date: workout.date,
       };
+    } else if (action === 'reset_reconciliation') {
+      nextDraft = await updateMonthlyPlanWorkout(userId, draftId, workoutId, {
+        status: 'planned',
+        locked: false,
+        reconciliationNote: undefined,
+      });
     } else if (action === 'remove') {
       nextDraft = await removeMonthlyPlanWorkout(userId, draftId, workoutId);
     } else {

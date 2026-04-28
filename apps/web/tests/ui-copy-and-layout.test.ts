@@ -236,6 +236,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /aria-disabled=\{quickActionDisabled\}/i);
   assert.match(calendarSource, /training-plan-session-card__quick-action-disabled/i);
   assert.match(calendarSource, /training-plan-session-card__quick-action-active/i);
+  assert.match(calendarSource, /training-plan-session-card__quick-action-undo/i);
+  assert.match(calendarSource, /Undo/i);
+  assert.match(calendarSource, /mutateWorkout\(workout\.id, 'reset_reconciliation'\)/i);
   assert.match(calendarSource, /state === 'active'/i);
   assert.match(calendarSource, /state === 'disabled'/i);
   assert.match(calendarSource, /training-plan-inline-menu__action-list/i);
@@ -263,6 +266,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-session-card__inline-feedback/i);
   assert.match(calendarStyles, /training-plan-session-card__quick-action-disabled/i);
   assert.match(calendarStyles, /training-plan-session-card__quick-action-active/i);
+  assert.match(calendarStyles, /training-plan-session-card__quick-action-undo/i);
   assert.doesNotMatch(calendarStyles, /training-plan-day-card-drop-blocked/i);
   assert.doesNotMatch(calendarStyles, /training-plan-day-card__drop-hint-blocked/i);
   assert.doesNotMatch(calendarStyles, /training-plan-inline-menu__select-danger/i);

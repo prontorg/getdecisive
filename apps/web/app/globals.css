@@ -902,6 +902,19 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   border-color: rgba(255,255,255,0.04);
   color: #8fa1b8;
 }
+.training-plan-session-card__quick-action-settled {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(122,167,255,0.1);
+  color: #dbeafe;
+  font-size: 9px;
+}
+.training-plan-session-card__quick-action-undo {
+  border-color: rgba(122,167,255,0.22);
+  color: #eef4ff;
+}
 .training-plan-session-card__tag {
   display:inline-flex;
   align-items:center;
