@@ -957,6 +957,15 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-inline-panel__content .button-link { justify-content: center; }
 .training-plan-inline-menu__content select,
 .training-plan-inline-menu__content input { margin-top:4px; padding: 7px 8px; font-size: 12px; }
+.training-plan-inline-menu__select-danger {
+  background: linear-gradient(180deg, rgba(69,10,10,0.78), rgba(28,9,12,0.96));
+  border-color: rgba(248,113,113,0.34);
+  color: #ffe4e6;
+}
+.training-plan-inline-menu__select-danger:focus-visible {
+  outline-color: rgba(252,165,165,0.5);
+  border-color: rgba(252,165,165,0.48);
+}
 .training-plan-inline-menu__content button,
 .training-plan-inline-panel__content button { padding: 7px 8px; font-size: 12px; }
 .training-plan-inline-menu__submit-danger {

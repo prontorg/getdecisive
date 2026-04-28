@@ -476,6 +476,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                   const submitLabel = actionSubmitLabel(selectedAction);
                   const closeMenuAfterSubmit = shouldCloseMenuAfterSubmit(selectedAction);
                   const destructiveActionSelected = selectedAction === 'remove';
+                  const actionSelectClassName = destructiveActionSelected ? 'training-plan-inline-menu__select-danger' : undefined;
                   return (
                   <div
                     key={workout.id}
@@ -518,6 +519,7 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                               <span>Action</span>
                               <select
                                 name="action"
+                                className={actionSelectClassName}
                                 value={selectedAction}
                                 onChange={(event) => setMenuActionByWorkout((current) => ({
                                   ...current,
