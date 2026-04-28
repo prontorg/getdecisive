@@ -994,6 +994,10 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   display: grid;
   gap: 4px;
 }
+.training-plan-current-week-panel__consequence span {
+  color: #9fb0c7;
+  font-size: 12px;
+}
 .training-plan-current-week-panel__actions {
   display: flex;
   gap: 8px;

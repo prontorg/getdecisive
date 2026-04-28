@@ -245,6 +245,8 @@ const draftStatusLabel = latestDraft
   const keySessionProtected = Boolean(activePlanning.todayDecision?.recommendedNextKeyDay || currentWeekReplan.recommendedNextKeyDay);
   const protectedKeyDayLabel = activePlanning.todayDecision?.recommendedNextKeyDay || currentWeekReplan.recommendedNextKeyDay || 'Still resolving';
   const tomorrowFallbackIfTodayMisses = activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || 'Support endurance';
+  const tomorrowIfTodayLands = activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || 'the intended follow-through';
+  const protectionOutcome = keySessionProtected ? `Key work stays protected for ${protectedKeyDayLabel}.` : 'Key work is no longer clearly protected.';
 
   return (
     <AppPageShell>
@@ -405,7 +407,8 @@ const draftStatusLabel = latestDraft
                   ) : null}
                   <div className="training-plan-current-week-panel__consequence status-item">
                     <strong>If today slips</strong>
-                    <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || 'the intended follow-through'}.</p>
+                    <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>
+                    <span>{protectionOutcome}</span>
                   </div>
                   {latestRuntimeRepair ? (
                     <div className="training-plan-current-week-panel__latest-repair status-item">
@@ -417,8 +420,6 @@ const draftStatusLabel = latestDraft
                   <div className="training-plan-current-week-panel__actions">
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="missed_session" /><button type="submit" className="button-secondary button-link">Repair</button></form>
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="fatigued" /><button type="submit" className="button-secondary button-link">Too fatigued</button></form>
-                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="fresher" /><button type="submit" className="button-secondary button-link">Use freshness</button></form>
-                    <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="reduce_load" /><button type="submit" className="button-secondary button-link">Cut load</button></form>
                     <form action="/api/planner/month/replan" method="post"><input type="hidden" name="draftId" value={latestDraft.id} /><input type="hidden" name="scenario" value="increase_specificity" /><button type="submit" className="button-secondary button-link">Race-like</button></form>
                   </div>
                 </div>
