@@ -1492,6 +1492,9 @@ test('current-week replanning payload compares planned versus done and recommend
   assert.equal(payload.scenarioPreviews.length, 3);
   assert.match(payload.scenarioPreviews[0]?.title || '', /Repair the live week|Back off but keep the week coherent|Sharpen the next key slot/i);
   assert.match(payload.scenarioPreviews[0]?.impactSummary || '', /slot|No exact slot change/i);
+  assert.match(payload.scenarioPreviews[0]?.todayConsequence || '', /Today/i);
+  assert.match(payload.scenarioPreviews[0]?.tomorrowConsequence || '', /Tomorrow/i);
+  assert.match(payload.scenarioPreviews[0]?.keyProtectionSummary || '', /Protects/i);
   assert.equal(Array.isArray(payload.scenarioPreviews[0]?.changes), true);
   assert.ok(payload.scenarioPreviews[0]?.changes[0]?.beforeIntervalLabel !== undefined || payload.scenarioPreviews[0]?.changes[0]?.afterIntervalLabel !== undefined);
   assert.ok(payload.scenarioPreviews[0]?.changes[0]?.rationaleTags === undefined || Array.isArray(payload.scenarioPreviews[0]?.changes[0]?.rationaleTags));

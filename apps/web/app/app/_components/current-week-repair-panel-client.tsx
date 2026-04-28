@@ -10,6 +10,9 @@ type ScenarioPreview = {
   summary: string;
   impactSummary: string;
   protectedKeyDay: string;
+  todayConsequence: string;
+  tomorrowConsequence: string;
+  keyProtectionSummary: string;
   changes: Array<{
     date: string;
     changeType: 'reshaped' | 'sharpened' | 'load_adjusted';
@@ -95,6 +98,11 @@ export function CurrentWeekRepairPanelClient({
             <p>{preview.summary}</p>
             <span>{preview.impactSummary}</span>
             <span>Protected key day: {preview.protectedKeyDay}</span>
+            <div className="training-plan-mini-facts" style={{ marginTop: 8 }}>
+              <span className="training-plan-mini-fact"><strong>Today</strong>{preview.todayConsequence}</span>
+              <span className="training-plan-mini-fact"><strong>Tomorrow</strong>{preview.tomorrowConsequence}</span>
+              <span className="training-plan-mini-fact"><strong>Key slot protection</strong>{preview.keyProtectionSummary}</span>
+            </div>
             {preview.changes.map((change) => (
               <div key={`${preview.scenario}-${change.date}-${change.after}`} className="training-plan-current-week-panel__change-row">
                 <strong>{change.date}</strong>

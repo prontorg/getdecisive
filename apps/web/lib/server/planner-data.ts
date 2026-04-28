@@ -259,6 +259,9 @@ export type CurrentWeekReplanPayload = {
     summary: string;
     impactSummary: string;
     protectedKeyDay: string;
+    todayConsequence: string;
+    tomorrowConsequence: string;
+    keyProtectionSummary: string;
     changes: Array<{
       date: string;
       changeType: 'reshaped' | 'sharpened' | 'load_adjusted';
@@ -2541,6 +2544,45 @@ function scenarioChangeReason(scenario: CurrentWeekReplanPayload['scenarioPrevie
   }
 }
 
+function scenarioTodayConsequence(
+  scenario: CurrentWeekReplanPayload['scenarioPreviews'][number]['scenario'],
+  protectedKeyDay: string,
+) {
+  switch (scenario) {
+    case 'missed_session': return 'Today becomes a repair day: close the execution drift without losing the protected key slot.';
+    case 'fatigued': return 'Today backs off: reduce cost now so the rest of the week stays usable.';
+    case 'fresher': return 'Today can absorb a little more work without changing the week shape.';
+    case 'reduce_load': return 'Today trims cost immediately to keep the week recoverable.';
+    case 'increase_specificity': return `Today stays pointed toward the next decisive slot on ${protectedKeyDay}.`;
+  }
+}
+
+function scenarioTomorrowConsequence(
+  scenario: CurrentWeekReplanPayload['scenarioPreviews'][number]['scenario'],
+  protectedKeyDay: string,
+) {
+  switch (scenario) {
+    case 'missed_session': return `Tomorrow stays aligned behind the repaired week, with ${protectedKeyDay} still protected.`;
+    case 'fatigued': return 'Tomorrow remains lower-risk because today already absorbed the freshness cut.';
+    case 'fresher': return 'Tomorrow keeps its planned shape because extra freshness was used carefully today.';
+    case 'reduce_load': return 'Tomorrow remains easier to execute because total week cost is already lower.';
+    case 'increase_specificity': return `Tomorrow keeps the sharper bridge into ${protectedKeyDay} instead of drifting generic.`;
+  }
+}
+
+function scenarioKeyProtectionSummary(
+  scenario: CurrentWeekReplanPayload['scenarioPreviews'][number]['scenario'],
+  protectedKeyDay: string,
+) {
+  switch (scenario) {
+    case 'missed_session': return `Protects ${protectedKeyDay} while repairing missed work around it.`;
+    case 'fatigued': return `Protects ${protectedKeyDay} by lowering surrounding cost first.`;
+    case 'fresher': return `Protects ${protectedKeyDay} while using extra freshness more aggressively.`;
+    case 'reduce_load': return `Protects ${protectedKeyDay} by cutting week cost instead of sacrificing structure.`;
+    case 'increase_specificity': return `Protects ${protectedKeyDay} and pulls the next editable slot closer to race demand.`;
+  }
+}
+
 function buildCurrentWeekScenarioPreviews(
   live: LiveState | null | undefined,
   draft: MonthlyPlannerDraftPayload | null | undefined,
@@ -2590,6 +2632,9 @@ function buildCurrentWeekScenarioPreviews(
       summary,
       impactSummary,
       protectedKeyDay,
+      todayConsequence: scenarioTodayConsequence(scenario, protectedKeyDay),
+      tomorrowConsequence: scenarioTomorrowConsequence(scenario, protectedKeyDay),
+      keyProtectionSummary: scenarioKeyProtectionSummary(scenario, protectedKeyDay),
       changes,
     };
   });

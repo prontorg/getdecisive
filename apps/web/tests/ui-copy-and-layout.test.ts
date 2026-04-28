@@ -155,6 +155,12 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(repairPanelSource, /After intent:/i);
   assert.match(repairPanelSource, /Why this family:/i);
   assert.match(repairPanelSource, /Protected key day:/i);
+  assert.match(repairPanelSource, /<strong>Today<\/strong>/i);
+  assert.match(repairPanelSource, /<strong>Tomorrow<\/strong>/i);
+  assert.match(repairPanelSource, /Key slot protection/i);
+  assert.match(repairPanelSource, /preview\.todayConsequence/i);
+  assert.match(repairPanelSource, /preview\.tomorrowConsequence/i);
+  assert.match(repairPanelSource, /preview\.keyProtectionSummary/i);
   assert.match(repairPanelSource, /previews\.map/i);
   assert.match(repairPanelSource, /\/api\/planner\/month\/replan/i);
   assert.match(repairPanelSource, /preview\.actionLabel/i);
