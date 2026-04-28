@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 
 import { appRoutes } from '../../../../../lib/routes';
-import { replanCurrentWeekForScenario } from '../../../../../lib/server/planner-data';
+import { buildCurrentWeekReplanPayload, replanCurrentWeekForScenario } from '../../../../../lib/server/planner-data';
 import { toStoredWeekFromGenerated } from '../../../../../lib/server/monthly-plan-persistence';
 import { appendMonthlyPlanReconciliationEvent, getLatestMonthlyPlanDraft, getLatestMonthlyPlanInput, replaceMonthlyPlanWeek } from '../../../../../lib/server/planner-customization';
 import { captureRouteError, logRouteEvent, redirectWithNotice, requirePlanningApiAccess, routeErrorResponse } from '../../../../../lib/server/route-observability';
@@ -36,14 +36,15 @@ export async function POST(request: Request) {
   const pick = (key: string) => parsed instanceof FormData ? parsed.get(key) : parsed[key];
   const draftId = String(pick('draftId') || '');
   const scenario = String(pick('scenario') || '');
-  if (!draftId || !scenario) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, scenario });
+  const intent = String(pick('intent') || (parsed instanceof FormData ? 'apply' : 'apply'));
+  if (!draftId || !scenario) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, scenario, intent });
 
   try {
     const draft = await getLatestMonthlyPlanDraft(userId);
     const latestInput = await getLatestMonthlyPlanInput(userId);
-    if (!draft || draft.id !== draftId || !latestInput) return routeErrorResponse(ROUTE, 404, 'Draft or input not found', { userId, draftId, scenario });
+    if (!draft || draft.id !== draftId || !latestInput) return routeErrorResponse(ROUTE, 404, 'Draft or input not found', { userId, draftId, scenario, intent });
 
-    const nextWeek = replanCurrentWeekForScenario(planner.live, {
+    const draftPayload = {
       monthStart: draft.monthStart,
       objective: latestInput.objective,
       ambition: latestInput.ambition,
@@ -56,7 +57,8 @@ export async function POST(request: Request) {
         guardrailSummary: draft.assumptions.guardrailSummary,
       },
       weeks: draft.weeks,
-    }, {
+    };
+    const inputPayload = {
       objective: latestInput.objective,
       ambition: latestInput.ambition,
       currentDirection: undefined,
@@ -69,7 +71,16 @@ export async function POST(request: Request) {
         restDaysPerWeek: latestInput.preferences.restDaysPerWeek,
         longRideDay: latestInput.preferences.longRideDay,
       },
-    }, scenario as 'missed_session' | 'fatigued' | 'fresher' | 'reduce_load' | 'increase_specificity');
+    };
+
+    if (intent === 'preview') {
+      const preview = buildCurrentWeekReplanPayload(planner.live, draftPayload, inputPayload);
+      const previewScenario = preview.scenarioPreviews.find((entry) => entry.scenario === scenario) || null;
+      logRouteEvent(ROUTE, 'info', 'Current-week repair preview generated', { userId, draftId, scenario, intent, isJson });
+      return NextResponse.json({ draftId, scenario, intent, previewScenario, preview });
+    }
+
+    const nextWeek = replanCurrentWeekForScenario(planner.live, draftPayload, inputPayload, scenario as 'missed_session' | 'fatigued' | 'fresher' | 'reduce_load' | 'increase_specificity');
 
     const existingWeek = draft.weeks.find((week) => week.weekIndex === nextWeek.weekIndex)!;
     const scenarioLabel = replanScenarioLabel(scenario);

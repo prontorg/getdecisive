@@ -21,6 +21,7 @@ import { getSessionUserId } from '../../../lib/server/session';
 import { getLatestSnapshotForUser } from '../../../lib/server/sync-store';
 import { AppCard, AppHero, AppPageShell } from './material-shell';
 import { TrainingPlanCalendar } from './training-plan-calendar';
+import { CurrentWeekRepairPanelClient } from './current-week-repair-panel-client';
 import { TrainingPlanStatefulBuilderClient } from './training-plan-stateful-builder-client';
 
 const objectiveOptions = [
@@ -436,35 +437,10 @@ const draftStatusLabel = latestDraft
                       <span>Target planned slot: {latestRuntimeRepairTarget}</span>
                     </div>
                   ) : null}
-                  <div className="training-plan-current-week-panel__scenario-list">
-                    <div className="kicker">Preview exact week changes</div>
-                    {currentWeekReplan.scenarioPreviews.map((preview) => (
-                      <div key={preview.scenario} className="training-plan-current-week-panel__scenario-card status-item">
-                        <strong>{preview.title}</strong>
-                        <p>{preview.summary}</p>
-                        <span>{preview.impactSummary}</span>
-                        <span>Protected key day: {preview.protectedKeyDay}</span>
-                        {preview.changes.map((change) => (
-                          <div key={`${preview.scenario}-${change.date}-${change.after}`} className="training-plan-current-week-panel__change-row">
-                            <strong>{change.date}</strong>
-                            <p>{change.before}</p>
-                            {change.beforeIntervalLabel ? <span>Before structure: {change.beforeIntervalLabel}</span> : null}
-                            {change.beforeFamilyIntent ? <span>Before intent: {change.beforeFamilyIntent}</span> : null}
-                            <p>→ {change.after}</p>
-                            {change.afterIntervalLabel ? <span>After structure: {change.afterIntervalLabel}</span> : null}
-                            {change.afterFamilyIntent ? <span>After intent: {change.afterFamilyIntent}</span> : null}
-                            {change.rationaleTags?.length ? <span>Why this family: {change.rationaleTags.join(' • ')}</span> : null}
-                            <span>{change.reason}</span>
-                          </div>
-                        ))}
-                        <form action="/api/planner/month/replan" method="post">
-                          <input type="hidden" name="draftId" value={latestDraft.id} />
-                          <input type="hidden" name="scenario" value={preview.scenario} />
-                          <button type="submit" className="button-secondary button-link">{preview.actionLabel}</button>
-                        </form>
-                      </div>
-                    ))}
-                  </div>
+                  <CurrentWeekRepairPanelClient
+                    draftId={latestDraft.id}
+                    initialPreviews={currentWeekReplan.scenarioPreviews as any}
+                  />
                 </div>
               ) : null}
 

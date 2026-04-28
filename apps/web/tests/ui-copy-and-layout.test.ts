@@ -10,6 +10,7 @@ const headerPath = join(webRoot, 'app/app/_components/app-header.tsx');
 const planPagePath = join(webRoot, 'app/app/plan/page.tsx');
 const trainingPlanPagePath = join(webRoot, 'app/app/_components/training-plan-page.tsx');
 const trainingPlanCalendarPath = join(webRoot, 'app/app/_components/training-plan-calendar.tsx');
+const currentWeekRepairPanelClientPath = join(webRoot, 'app/app/_components/current-week-repair-panel-client.tsx');
 const calendarStylesPath = join(webRoot, 'app/globals.css');
 const calendarPagePath = join(webRoot, 'app/app/calendar/page.tsx');
 const accountPagePath = join(webRoot, 'app/app/account/page.tsx');
@@ -51,10 +52,11 @@ test('login screen copy and auth-page header chrome match the latest product wor
 });
 
 test('training plan page uses the latest decisive monthly-planner framing and layout', async () => {
-  const [planPageSource, source, calendarSource, calendarStyles, calendarPageSource, statefulBuilderSource, planRacesPageSource] = await Promise.all([
+  const [planPageSource, source, calendarSource, repairPanelSource, calendarStyles, calendarPageSource, statefulBuilderSource, planRacesPageSource] = await Promise.all([
     readFile(planPagePath, 'utf8'),
     readFile(trainingPlanPagePath, 'utf8'),
     readFile(trainingPlanCalendarPath, 'utf8'),
+    readFile(currentWeekRepairPanelClientPath, 'utf8'),
     readFile(calendarStylesPath, 'utf8'),
     readFile(calendarPagePath, 'utf8'),
     readFile(join(webRoot, 'app/app/_components/training-plan-stateful-builder-client.tsx'), 'utf8'),
@@ -135,20 +137,28 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Latest runtime repair/i);
   assert.match(source, /Target planned slot:/i);
   assert.match(source, /training-plan-current-week-panel__latest-repair/i);
-  assert.match(source, /Preview exact week changes/i);
-  assert.match(source, /training-plan-current-week-panel__scenario-list/i);
-  assert.match(source, /training-plan-current-week-panel__scenario-card/i);
-  assert.match(source, /training-plan-current-week-panel__change-row/i);
-  assert.match(source, /Before structure:/i);
-  assert.match(source, /After structure:/i);
-  assert.match(source, /Before intent:/i);
-  assert.match(source, /After intent:/i);
-  assert.match(source, /Why this family:/i);
-  assert.match(source, /Protected key day:/i);
-  assert.match(source, /currentWeekReplan\.scenarioPreviews\.map/i);
-  assert.match(source, /\/api\/planner\/month\/replan/i);
-  assert.match(source, /preview\.actionLabel/i);
-  assert.match(source, /preview\.scenario/i);
+  assert.match(source, /CurrentWeekRepairPanelClient/i);
+  assert.match(source, /initialPreviews=\{currentWeekReplan\.scenarioPreviews/i);
+  assert.match(repairPanelSource, /'use client';/i);
+  assert.match(repairPanelSource, /fetch\('\/api\/planner\/month\/replan'/i);
+  assert.match(repairPanelSource, /intent: 'preview'/i);
+  assert.match(repairPanelSource, /intent: 'apply'/i);
+  assert.match(repairPanelSource, /Refresh preview/i);
+  assert.match(repairPanelSource, /router\.refresh\(\)/i);
+  assert.match(repairPanelSource, /Preview exact week changes/i);
+  assert.match(repairPanelSource, /training-plan-current-week-panel__scenario-list/i);
+  assert.match(repairPanelSource, /training-plan-current-week-panel__scenario-card/i);
+  assert.match(repairPanelSource, /training-plan-current-week-panel__change-row/i);
+  assert.match(repairPanelSource, /Before structure:/i);
+  assert.match(repairPanelSource, /After structure:/i);
+  assert.match(repairPanelSource, /Before intent:/i);
+  assert.match(repairPanelSource, /After intent:/i);
+  assert.match(repairPanelSource, /Why this family:/i);
+  assert.match(repairPanelSource, /Protected key day:/i);
+  assert.match(repairPanelSource, /previews\.map/i);
+  assert.match(repairPanelSource, /\/api\/planner\/month\/replan/i);
+  assert.match(repairPanelSource, /preview\.actionLabel/i);
+  assert.match(repairPanelSource, /preview\.scenario/i);
   assert.match(source, /button-secondary button-link/i);
   assert.doesNotMatch(source, /Use freshness/i);
   assert.doesNotMatch(source, /Cut load/i);
@@ -380,7 +390,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-mini-fact/i);
   assert.doesNotMatch(source, /training-plan-week-decision-grid/i);
   assert.doesNotMatch(source, /training-plan-week-decision-callout/i);
-  assert.match(source, /preview\.actionLabel/i);
+  assert.match(repairPanelSource, /preview\.actionLabel/i);
   assert.doesNotMatch(source, /Cut load/i);
   assert.doesNotMatch(source, /Use freshness/i);
   assert.match(plannerDataSource, /Race-like|Too fatigued|Repair/i);
@@ -422,8 +432,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-current-week-panel__decision-grid/i);
   assert.match(source, /training-plan-current-week-panel__completed-today/i);
   assert.match(source, /training-plan-current-week-panel__consequence/i);
-  assert.match(source, /preview\.actionLabel/i);
-  assert.match(source, /preview\.scenario/i);
+  assert.match(repairPanelSource, /preview\.actionLabel/i);
+  assert.match(repairPanelSource, /preview\.scenario/i);
   assert.doesNotMatch(source, /<button type="submit" className="button-secondary button-link">Use freshness<\/button>/i);
   assert.doesNotMatch(source, /<button type="submit" className="button-secondary button-link">Cut load<\/button>/i);
   assert.doesNotMatch(source, /<strong>Hours left<\/strong>/i);
@@ -551,7 +561,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /training-plan-calendar-toolbar/i);
   assert.match(source, /Next key day/i);
   assert.doesNotMatch(source, /Risk:/i);
-  assert.match(source, /\/api\/planner\/month\/replan/i);
+  assert.match(repairPanelSource, /\/api\/planner\/month\/replan/i);
   assert.match(calendarSource, /moveFeedback/i);
   assert.match(calendarSource, /successNotice/i);
   assert.match(calendarSource, /Move applied/i);
