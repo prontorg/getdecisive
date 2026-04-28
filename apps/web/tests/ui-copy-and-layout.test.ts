@@ -221,8 +221,14 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(calendarSource, /router\.refresh\(\)/i);
   assert.match(calendarSource, /training-plan-inline-menu/i);
   assert.match(calendarSource, /training-plan-session-card__quick-actions/i);
-  assert.doesNotMatch(calendarSource, /mutateWorkout\(workout\.id, 'easier'\)/i);
   assert.match(calendarSource, /mutateWorkout\(workout\.id, 'skip'\)/i);
+  assert.match(calendarSource, /mutateWorkout\(workout\.id, 'replace_with_support'\)/i);
+  assert.match(calendarSource, /mutateWorkout\(workout\.id, 'mark_done_modified'\)/i);
+  assert.doesNotMatch(calendarSource, /mutateWorkout\(workout\.id, 'easier'\)/i);
+  assert.doesNotMatch(calendarSource, /mutateWorkout\(workout\.id, 'remove'\)/i);
+  assert.match(calendarSource, /Skip<\/button>/i);
+  assert.match(calendarSource, /Support<\/button>/i);
+  assert.match(calendarSource, /Done\*<\/button>/i);
   assert.match(calendarSource, /training-plan-inline-menu__action-list/i);
   assert.match(calendarSource, /training-plan-inline-menu__action-pill/i);
   assert.match(calendarSource, /training-plan-inline-menu__action-pill-active/i);
@@ -302,6 +308,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /Mark done\*/i);
   assert.match(calendarSource, /WORKOUT_ACTIONS\.map\(\(action\) => \{/i);
   assert.match(calendarSource, /aria-pressed=\{actionActive \? 'true' : 'false'\}/i);
+  assert.doesNotMatch(calendarSource, /action === 'skip'/i);
+  assert.doesNotMatch(calendarSource, /action === 'replace_with_support'/i);
+  assert.doesNotMatch(calendarSource, /action === 'mark_done_modified'/i);
+  assert.match(calendarSource, /action === 'remove'/i);
   assert.match(calendarSource, /statusTagLabel/i);
   assert.match(calendarSource, /statusToneClass/i);
   assert.match(calendarSource, /isVisiblePastPlannedWorkout/i);

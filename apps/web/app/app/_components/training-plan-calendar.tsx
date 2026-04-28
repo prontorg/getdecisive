@@ -146,7 +146,7 @@ function actionSelectionLabel(action: string) {
   }
 }
 
-const WORKOUT_ACTIONS = ['move_day', 'skip', 'replace_with_support', 'mark_done_modified', 'remove'] as const;
+const WORKOUT_ACTIONS = ['move_day', 'remove'] as const;
 
 function shouldCloseMenuAfterSubmit(action: string) {
   return action !== 'move_day';
@@ -605,6 +605,8 @@ export function TrainingPlanCalendar({ draftId, weeks: initialWeeks, today, plan
                         {workout.status !== 'planned' ? <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span> : null}
                         <div className="training-plan-session-card__quick-actions">
                           <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'skip')}>Skip</button>
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'replace_with_support')}>Support</button>
+                          <button type="button" className="button-secondary training-plan-session-card__quick-action" onClick={() => mutateWorkout(workout.id, 'mark_done_modified')}>Done*</button>
                         </div>
                         <details className="training-plan-inline-menu">
                           <summary title="Session actions">⋯</summary>
