@@ -441,6 +441,10 @@ const draftStatusLabel = latestDraft
                     </div>
                   </div>
                   <p className="training-plan-execution-changes__summary">{truthSummary.summary}</p>
+                  <div className="training-plan-mini-facts training-plan-execution-changes__facts">
+                    <span className="training-plan-mini-fact"><strong>Drift:</strong>{truthSummary.currentWeekSeverity}</span>
+                    <span className="training-plan-mini-fact"><strong>Today truth</strong>{truthSummary.currentWeekToday.summary}</span>
+                  </div>
                   <p className="training-plan-execution-changes__signal">{truthSummary.currentWeekSignal}</p>
                   <div className="training-plan-execution-changes__events">
                     {truthSummary.recentEvents.map((event) => (

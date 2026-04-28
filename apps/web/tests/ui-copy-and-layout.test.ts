@@ -355,6 +355,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /buildPlannerTruthSummaryPayload/i);
   assert.match(source, /Execution changes/i);
   assert.match(source, /truthSummary\.summary/i);
+  assert.match(source, /truthSummary\.currentWeekSeverity/i);
+  assert.match(source, /truthSummary\.currentWeekToday\.summary/i);
+  assert.match(source, /Drift:/i);
+  assert.match(source, /Today truth/i);
   assert.match(source, /truthSummary\.currentWeekSignal/i);
   assert.match(source, /truthSummary\.recentEvents\.map/i);
   assert.match(source, /truthSummary\.counters\.skipped/i);

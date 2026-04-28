@@ -59,6 +59,13 @@ export type PlannerTruthSummaryPayload = {
     moved: number;
     repaired: number;
   };
+  currentWeekSeverity: 'low' | 'moderate' | 'high';
+  currentWeekToday: {
+    planned: number;
+    completed: number;
+    changed: number;
+    summary: string;
+  };
   currentWeekSignal: string;
   recentEvents: MonthlyPlanReconciliationEvent[];
 };
@@ -1122,6 +1129,36 @@ function currentWeekTruthSignal(
   return 'Current week drift is present but the block intent still looks mostly intact.';
 }
 
+function currentWeekTruthSeverity(
+  weekEvents: MonthlyPlanReconciliationEvent[],
+  counters: PlannerTruthSummaryPayload['counters'],
+): PlannerTruthSummaryPayload['currentWeekSeverity'] {
+  const hardDisruptions = counters.skipped + counters.replaced + counters.completedModified;
+  const runtimeRepair = weekEvents.some((event) => event.eventType === 'week_replanned');
+  const movedOnly = counters.moved > 0 && hardDisruptions === 0 && counters.repaired === 0;
+
+  if (!weekEvents.length) return 'low';
+  if (hardDisruptions >= 3 || (hardDisruptions >= 2 && runtimeRepair)) return 'high';
+  if (runtimeRepair || hardDisruptions >= 1) return 'moderate';
+  if (movedOnly) return 'low';
+  return 'moderate';
+}
+
+function currentWeekTodayTruth(
+  currentWeek: MonthlyPlanDraft['weeks'][number] | undefined,
+  today: string,
+): PlannerTruthSummaryPayload['currentWeekToday'] {
+  const todaysWorkouts = (currentWeek?.workouts || []).filter((workout) => workout.date === today);
+  const changed = todaysWorkouts.filter((workout) => workout.status !== 'planned' && workout.status !== 'published_local' && workout.status !== 'published_intervals').length;
+  const completed = todaysWorkouts.filter((workout) => workout.status === 'completed' || workout.status === 'completed_modified').length;
+  const planned = todaysWorkouts.length;
+  const summary = planned
+    ? `Today truth: ${planned} planned • ${completed} completed • ${changed} changed.`
+    : 'Today truth: no draft session sat on today.';
+
+  return { planned, completed, changed, summary };
+}
+
 export async function buildPlannerTruthSummaryPayload(
   userId: string,
   draft?: MonthlyPlanDraft | null,
@@ -1131,6 +1168,13 @@ export async function buildPlannerTruthSummaryPayload(
   const empty: PlannerTruthSummaryPayload = {
     summary: 'No execution changes recorded yet. Block intent is still intact.',
     counters: { skipped: 0, replaced: 0, completedModified: 0, moved: 0, repaired: 0 },
+    currentWeekSeverity: 'low',
+    currentWeekToday: {
+      planned: 0,
+      completed: 0,
+      changed: 0,
+      summary: 'Today truth: no draft session sat on today.',
+    },
     currentWeekSignal: 'Current week drift is low and the block intent is still intact.',
     recentEvents: [],
   };
@@ -1180,6 +1224,8 @@ export async function buildPlannerTruthSummaryPayload(
   return {
     summary,
     counters,
+    currentWeekSeverity: currentWeekTruthSeverity(currentWeekEvents, counters),
+    currentWeekToday: currentWeekTodayTruth(currentWeek, today),
     currentWeekSignal: currentWeekTruthSignal(currentWeekEvents, counters),
     recentEvents,
   };

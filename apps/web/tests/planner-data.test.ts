@@ -1777,6 +1777,11 @@ test('planner truth summary payload counts execution changes and reports current
     assert.match(payload.summary, /1 skipped/i);
     assert.match(payload.summary, /1 replaced/i);
     assert.match(payload.summary, /block intent/i);
+    assert.equal(payload.currentWeekSeverity, 'high');
+    assert.equal(payload.currentWeekToday.planned, 1);
+    assert.equal(payload.currentWeekToday.completed, 1);
+    assert.equal(payload.currentWeekToday.changed, 1);
+    assert.match(payload.currentWeekToday.summary, /today.*1 planned/i);
     assert.match(payload.currentWeekSignal, /current week drift/i);
     assert.equal(payload.recentEvents.length, 5);
     assert.equal(payload.recentEvents[0]?.eventType, 'workout_replaced');
