@@ -690,11 +690,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Use suggested day/i);
   assert.match(source, /moveConflictReason/i);
   assert.match(source, /moveConflictSuggestedDate/i);
-  assert.match(source, /Draft refresh needed/i);
-  assert.match(source, /Refresh draft from latest live data/i);
+  assert.match(source, /training-plan-stale-draft-banner/i);
+  assert.match(source, /Draft is stale:/i);
+  assert.match(source, /Refresh draft/i);
   assert.match(source, /staleDraftReason/i);
   assert.match(source, /draftNeedsExplicitRefresh/i);
-  assert.match(source, /Review stays read-only until you explicitly refresh this month from the latest live context\./i);
+  assert.match(source, /Review stays locked until refresh\./i);
+  assert.doesNotMatch(source, /Refresh draft from latest live data/i);
   assert.match(source, /recentWindow/i);
   assert.match(source, /draftWindow/i);
   assert.match(source, /categoryComparison/i);

@@ -78,8 +78,10 @@ test('draft generation entry points keep the same advanced month inputs across g
   assert.match(draftRouteSource, /No saved planner inputs found to refresh/i);
   assert.match(trainingPlanPageSource, /staleDraftReason/i);
   assert.match(trainingPlanPageSource, /draftNeedsExplicitRefresh/i);
-  assert.match(trainingPlanPageSource, /Refresh draft from latest live data/i);
-  assert.match(trainingPlanPageSource, /Review stays read-only until you explicitly refresh this month from the latest live context\./i);
+  assert.match(trainingPlanPageSource, /training-plan-stale-draft-banner/i);
+  assert.match(trainingPlanPageSource, /Draft is stale:/i);
+  assert.match(trainingPlanPageSource, /Review stays locked until refresh\./i);
+  assert.match(trainingPlanPageSource, /Refresh draft/i);
 
   for (const source of [draftRouteSource, weekRouteSource]) {
     assert.match(source, /maxWeekdayMinutes: latestInput\?\.mustFollow\.maxWeekdayMinutes|maxWeekdayMinutes: latestInput\.mustFollow\.maxWeekdayMinutes/i);

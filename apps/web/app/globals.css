@@ -322,6 +322,19 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .md-section-stack { display: grid; gap: 18px; }
 .md-highlights-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 .compact-status-list { gap: 10px; }
+.training-plan-stale-draft-banner {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid rgba(245, 158, 11, 0.28);
+  background:linear-gradient(180deg, rgba(61, 41, 10, 0.38), rgba(28, 20, 7, 0.32));
+}
+.training-plan-stale-draft-banner strong { display:block; color:#f8deb0; }
+.training-plan-stale-draft-banner p { margin:4px 0 0; color:#d9c8aa; font-size:13px; }
+.training-plan-stale-draft-banner .button-row { margin-left:auto; }
 .dashboard-fragment-shell { max-width: 1600px; }
 .dashboard-fragment-host .wrap.wrap-embedded { padding: 0; }
 .dashboard-fragment-host .timeline-overlay { z-index: 90; }

@@ -260,16 +260,15 @@ const draftStatusLabel = latestDraft
             </div>
           ) : null}
           {draftNeedsExplicitRefresh ? (
-            <div className="status-list compact-status-list">
-              <div className="status-item">
-                <strong>Draft refresh needed</strong>
-                <p>{staleDraftReason}</p>
-                <p>Review stays read-only until you explicitly refresh this month from the latest live context.</p>
-                <form action="/api/planner/month/draft" method="post" className="button-row">
-                  <input type="hidden" name="action" value="refresh_latest_input" />
-                  <button type="submit">Refresh draft from latest live data</button>
-                </form>
+            <div className="training-plan-stale-draft-banner">
+              <div>
+                <strong>Draft is stale: {staleDraftReason}</strong>
+                <p>Review stays locked until refresh.</p>
               </div>
+              <form action="/api/planner/month/draft" method="post" className="button-row">
+                <input type="hidden" name="action" value="refresh_latest_input" />
+                <button type="submit">Refresh draft</button>
+              </form>
             </div>
           ) : null}
           {moveConflict ? (
