@@ -298,17 +298,32 @@ const draftStatusLabel = latestDraft
         <section className="training-plan-workspace-shell mt-18">
           <div className="training-plan-workspace-compact-grid">
               <div className="training-plan-workspace-rail">
-              <AppCard className="training-plan-workspace-card">
+              <AppCard className="training-plan-workspace-card training-plan-current-week-panel">
                 <div className="kicker">{plannerWorkspaceCards.currentWeekRail}</div>
-                <h3>What should actually happen</h3>
-                <p>{currentWeekReplan.recommendationText}</p>
-                <div className="training-plan-mini-facts">
-                  <span className="training-plan-mini-fact"><strong>Planned today</strong>{activePlanning.todayDecision?.plannedForToday || activePlanning.summary?.plannedToday || 'Pending'}</span>
-                  <span className="training-plan-mini-fact"><strong>Planned tomorrow</strong>{activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
-                  <span className="training-plan-mini-fact"><strong>What should actually happen</strong>{activePlanning.todayDecision?.actualRecommendationForToday || activePlanning.summary?.actualToday || currentWeekReplan.recommendationText}</span>
-                  <span className="training-plan-mini-fact"><strong>Freshness</strong>{contextPayload.currentState.freshnessSummary}</span>
-                  <span className="training-plan-mini-fact"><strong>Next key move</strong>{protectedKeyDayLabel}</span>
-                  <span className="training-plan-mini-fact"><strong>Updated</strong>{liveSyncStamp}</span>
+                <div className="training-plan-current-week-panel__header">
+                  <div>
+                    <h3>What should actually happen</h3>
+                    <p className="training-plan-current-week-panel__summary">{currentWeekReplan.recommendationText}</p>
+                  </div>
+                </div>
+                <div className="training-plan-current-week-panel__anchor-grid">
+                  <span className="training-plan-mini-fact training-plan-current-week-panel__anchor-tile">
+                    <strong>Planned today</strong>
+                    {activePlanning.todayDecision?.plannedForToday || activePlanning.summary?.plannedToday || 'Pending'}
+                  </span>
+                  <span className="training-plan-mini-fact training-plan-current-week-panel__anchor-tile">
+                    <strong>Planned tomorrow</strong>
+                    {activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || '—'}
+                  </span>
+                  <span className="training-plan-mini-fact training-plan-current-week-panel__anchor-tile training-plan-current-week-panel__anchor-tile-primary">
+                    <strong>What should actually happen</strong>
+                    {activePlanning.todayDecision?.actualRecommendationForToday || activePlanning.summary?.actualToday || currentWeekReplan.recommendationText}
+                  </span>
+                </div>
+                <div className="training-plan-current-week-panel__meta-grid">
+                  <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Freshness</strong>{contextPayload.currentState.freshnessSummary}</span>
+                  <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Next key move</strong>{protectedKeyDayLabel}</span>
+                  <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Updated</strong>{liveSyncStamp}</span>
                 </div>
               </AppCard>
 
@@ -358,13 +373,13 @@ const draftStatusLabel = latestDraft
                           <span key={risk} className="training-plan-mini-fact training-plan-mini-fact-warning">{risk}</span>
                         ))}
                       </div>
-                      <div className="training-plan-current-week-panel__fact-grid">
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Done so far</strong>{todayReconciliation.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Mismatch</strong>{plannedVsDoneMismatch ? `Yes • ${todayReconciliation.mismatchReason}` : 'No • prescription still matches execution'}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Matched planned slot</strong>{matchedTodaySummary}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Unmatched done</strong>{unmatchedTodaySummary}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
+                      <div className="training-plan-current-week-panel__meta-grid">
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Done so far</strong>{todayReconciliation.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Mismatch</strong>{plannedVsDoneMismatch ? `Yes • ${todayReconciliation.mismatchReason}` : 'No • prescription still matches execution'}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Matched planned slot</strong>{matchedTodaySummary}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Unmatched done</strong>{unmatchedTodaySummary}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
                       </div>
                       {completedTodaySummary ? (
                         <div className="training-plan-current-week-panel__completed-today training-plan-current-week-panel__support-card status-item">

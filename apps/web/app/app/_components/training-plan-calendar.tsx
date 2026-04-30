@@ -115,6 +115,14 @@ function weekSummaryLabel(week: Week) {
   return week.weekTypeLabel || week.intent?.replace(/\.$/, '') || 'Repeatable week';
 }
 
+function weekVolumeLabel(hours: number, load: number) {
+  return `${hours.toFixed(1)} h • L${load}`;
+}
+
+function weekSessionCountLabel(count: number) {
+  return `${count} ${count === 1 ? 'session' : 'sessions'}`;
+}
+
 function shortCategoryLabel(category: Workout['category']) {
   switch (category) {
     case 'threshold_support': return 'threshold';
@@ -720,6 +728,9 @@ export function TrainingPlanCalendar({
         <div className="training-plan-workspace-calendar-header">
           <div className="kicker">Month workspace</div>
           <strong>Current planning month</strong>
+          <p className="training-plan-workspace-calendar-copy">
+            {weekView ? 'Only the live week stays in view with its action rail.' : 'Scan the whole month, then tighten a single week when needed.'}
+          </p>
           <div className="button-row training-plan-calendar-view-toggle">
             <button type="button" className={!weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(false)}>Full month view</button>
             <button type="button" className={weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(true)}>Current week view</button>
@@ -972,6 +983,11 @@ export function TrainingPlanCalendar({
       </div>
 
       <aside className="training-plan-week-summary-column training-plan-workspace-week-rail">
+        <div className="training-plan-week-summary-column-header">
+          <span className="training-plan-week-summary-column__eyebrow">{weekView ? 'Current week focus' : 'Month overview'}</span>
+          <strong>{weekView ? 'Current week action rail' : 'Week summaries'}</strong>
+          <p>{weekView ? 'Only the live week stays in view with its action rail.' : 'Scan the whole month, then tighten a single week when needed.'}</p>
+        </div>
         {(weekView
           ? weeks.filter((week) => rowIndexByWeekIndex.get(week.weekIndex) === currentWeekRowIndex)
           : weeks
@@ -994,13 +1010,32 @@ export function TrainingPlanCalendar({
           return (
             <div key={week.id} className="training-plan-week-summary-card training-plan-week-summary-card-premium" style={rowIndexByWeekIndex.get(week.weekIndex) ? { gridRow: rowIndexByWeekIndex.get(week.weekIndex) } : undefined}>
               <div className="training-plan-week-summary-card__inner">
-                <div className="training-plan-week-summary-card__kicker">W{week.weekIndex}</div>
-                <strong>{week.label}</strong>
-                <p>{summaryLabel} • {week.targetHours.toFixed(1)} h • L{week.targetLoad}</p>
-                <p>{eventAdjustedHoursLabel}</p>
-                <p>Completed • {completedCount} sessions • {(completedMinutes / 60).toFixed(1)} h • L{completedLoad}</p>
-                <p>Planned • {plannedCount} sessions • {(plannedMinutes / 60).toFixed(1)} h • L{plannedLoad}</p>
-                <div className="button-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                <div className="training-plan-week-summary-card__header">
+                  <div>
+                    <div className="training-plan-week-summary-card__kicker">W{week.weekIndex}</div>
+                    <strong>{week.label}</strong>
+                  </div>
+                  <span className="training-plan-week-summary-card__badge">{weekView ? 'Live week' : summaryLabel}</span>
+                </div>
+                <p className="training-plan-week-summary-card__intent">{summaryLabel}</p>
+                <div className="training-plan-week-summary-card__stats">
+                  <div className="training-plan-week-summary-card__stat">
+                    <span className="training-plan-week-summary-card__stat-label">Target</span>
+                    <strong>{weekVolumeLabel(week.targetHours, week.targetLoad)}</strong>
+                    <span>{eventAdjustedHoursLabel}</span>
+                  </div>
+                  <div className="training-plan-week-summary-card__stat">
+                    <span className="training-plan-week-summary-card__stat-label">Done</span>
+                    <strong>{weekVolumeLabel(completedMinutes / 60, completedLoad)}</strong>
+                    <span>{weekSessionCountLabel(completedCount)}</span>
+                  </div>
+                  <div className="training-plan-week-summary-card__stat">
+                    <span className="training-plan-week-summary-card__stat-label">Planned</span>
+                    <strong>{weekVolumeLabel(plannedMinutes / 60, plannedLoad)}</strong>
+                    <span>{weekSessionCountLabel(plannedCount)}</span>
+                  </div>
+                </div>
+                <div className="training-plan-week-summary-card__actions">
                   {WEEK_ACTIONS.map((action) => (
                     <button
                       key={action}
@@ -1014,7 +1049,7 @@ export function TrainingPlanCalendar({
                   ))}
                 </div>
                 {weekPreview ? (
-                  <div className="status-item" style={{ marginTop: 10 }}>
+                  <div className="training-plan-week-summary-preview status-item">
                     <strong>{weekPreview.actionLabel}</strong>
                     <p>{weekPreview.summary}</p>
                     <span>{weekPreview.beforeHours.toFixed(1)} h / L{weekPreview.beforeLoad} → {weekPreview.afterHours.toFixed(1)} h / L{weekPreview.afterLoad}</span>
