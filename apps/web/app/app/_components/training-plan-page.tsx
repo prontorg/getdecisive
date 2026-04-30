@@ -342,99 +342,81 @@ const draftStatusLabel = latestDraft
                   </div>
                 </div>
 
-              {latestDraft ? (
-                <div className="training-plan-current-week-panel training-plan-current-week-panel-premium">
-                  <div className="training-plan-current-week-panel__header">
-                    <div>
-                      <div className="kicker">Current week</div>
-                      <strong>What should actually happen this week</strong>
-                    </div>
-                    <div className="chip-row">
-                      <span className="chip">Focus: {currentWeekReplan.recommendedFocus.replace('_', ' ')}</span>
-                      <span className="chip">{currentWeekReplan.remainingWeekHours.toFixed(1)} h left</span>
-                    </div>
-                  </div>
-                  <div className="training-plan-current-week-panel__decision-grid training-plan-current-week-panel__fact-grid">
-                    <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Planned today</strong>{activePlanning.todayDecision?.plannedForToday || activePlanning.summary?.plannedToday || 'Pending'}</span>
-                    <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>What should actually happen</strong>{activePlanning.todayDecision?.actualRecommendationForToday || activePlanning.summary?.actualToday || currentWeekReplan.recommendationText}</span>
-                    <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Planned tomorrow</strong>{activePlanning.todayDecision?.plannedForTomorrow || activePlanning.summary?.plannedTomorrow || '—'}</span>
-                    <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Tomorrow if today lands</strong>{activePlanning.todayDecision?.likelyTomorrowAfterToday || activePlanning.summary?.likelyTomorrow || '—'}</span>
-                  </div>
-                  <details className="training-plan-compare-panel">
-                    <summary>Repair and reconciliation</summary>
-                    <div className="training-plan-current-week-panel__trace training-plan-mini-facts">
-                      {[
-                        activePlanning.todayDecision?.reasonSummary,
-                        activePlanning.todayDecision?.decisionBasis?.weeklyBalance,
-                      ].filter(Boolean).slice(0, 2).map((reason) => (
-                        <span key={reason} className="training-plan-mini-fact">{reason}</span>
-                      ))}
-                      {((activePlanning.todayDecision?.risks?.length
-                        ? activePlanning.todayDecision.risks
-                        : ['No immediate runtime risk flags.']).slice(0, 2)).map((risk) => (
-                        <span key={risk} className="training-plan-mini-fact training-plan-mini-fact-warning">{risk}</span>
-                      ))}
-                    </div>
-                    <div className="training-plan-current-week-panel__fact-grid">
-                      <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Done so far</strong>{todayReconciliation.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
-                      <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Mismatch</strong>{plannedVsDoneMismatch ? `Yes • ${todayReconciliation.mismatchReason}` : 'No • prescription still matches execution'}</span>
-                      <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Matched planned slot</strong>{matchedTodaySummary}</span>
-                      <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Unmatched done</strong>{unmatchedTodaySummary}</span>
-                      <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
-                      <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
-                    </div>
-                    {completedTodaySummary ? (
-                      <div className="training-plan-current-week-panel__completed-today training-plan-current-week-panel__support-card status-item">
-                        <strong>Done today</strong>
-                        <p>{completedTodaySummary}</p>
-                      </div>
-                    ) : null}
-                    <div className="training-plan-current-week-panel__consequence training-plan-current-week-panel__support-card status-item">
-                      <strong>If today slips</strong>
-                      <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>
-                      <span>{mismatchConsequence}</span>
-                      <span>{protectionOutcome}</span>
-                    </div>
-                    {latestRuntimeRepair ? (
-                      <div className="training-plan-current-week-panel__latest-repair training-plan-current-week-panel__support-card status-item">
-                        <strong>Latest runtime repair</strong>
-                        <p>{latestRuntimeRepair.title}</p>
-                        <span>{latestRuntimeRepair.date} • {latestRuntimeRepair.detail}</span>
-                        <span>Target planned slot: {latestRuntimeRepairTarget}</span>
-                      </div>
-                    ) : null}
-                    <CurrentWeekRepairPanelClient
-                      draftId={latestDraft.id}
-                      initialPreviews={currentWeekReplan.scenarioPreviews as any}
-                      initialDraftRevision={latestDraft.revision || 0}
-                    />
-                    <div className="training-plan-execution-changes">
-                      <div className="training-plan-execution-changes__header">
-                        <div>
-                          <div className="kicker">Week reconciliation</div>
-                          <strong>Runtime bridge</strong>
-                        </div>
-                        <div className="chip-row">
-                          <span className="chip">{weekPayload.riskFlags[0] || 'No live risk flag yet'}</span>
-                          <span className="chip">Block state: {blockPayload.blockState}</span>
-                        </div>
-                      </div>
-                      <p className="training-plan-execution-changes__summary">{slotDiffSummary}</p>
-                      <div className="training-plan-execution-changes__events">
-                        {currentWeekTruthRows.map((row) => (
-                          <div key={`${row.date}-${row.plannedLabel}`} className="training-plan-execution-changes__event-row status-item">
-                            <strong>{row.date} • {row.status.replaceAll('_', ' ')}</strong>
-                            <p>Planned: {row.plannedLabel}</p>
-                            <span>Completed: {row.completedLabel}</span>
-                            <span>Runtime bridge: {row.runtimeLabel}</span>
-                            <span>{row.driftSummary}</span>
-                          </div>
+                  {latestDraft ? (
+                    <details className="training-plan-compare-panel">
+                      <summary>Repair and reconciliation</summary>
+                      <div className="training-plan-current-week-panel__trace training-plan-mini-facts">
+                        {[
+                          activePlanning.todayDecision?.reasonSummary,
+                          activePlanning.todayDecision?.decisionBasis?.weeklyBalance,
+                        ].filter(Boolean).slice(0, 2).map((reason) => (
+                          <span key={reason} className="training-plan-mini-fact">{reason}</span>
+                        ))}
+                        {((activePlanning.todayDecision?.risks?.length
+                          ? activePlanning.todayDecision.risks
+                          : ['No immediate runtime risk flags.']).slice(0, 2)).map((risk) => (
+                          <span key={risk} className="training-plan-mini-fact training-plan-mini-fact-warning">{risk}</span>
                         ))}
                       </div>
-                    </div>
-                  </details>
-                </div>
-              ) : null}
+                      <div className="training-plan-current-week-panel__fact-grid">
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Done so far</strong>{todayReconciliation.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Mismatch</strong>{plannedVsDoneMismatch ? `Yes • ${todayReconciliation.mismatchReason}` : 'No • prescription still matches execution'}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Matched planned slot</strong>{matchedTodaySummary}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Unmatched done</strong>{unmatchedTodaySummary}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
+                        <span className="training-plan-mini-fact training-plan-current-week-panel__fact-tile"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
+                      </div>
+                      {completedTodaySummary ? (
+                        <div className="training-plan-current-week-panel__completed-today training-plan-current-week-panel__support-card status-item">
+                          <strong>Done today</strong>
+                          <p>{completedTodaySummary}</p>
+                        </div>
+                      ) : null}
+                      <div className="training-plan-current-week-panel__consequence training-plan-current-week-panel__support-card status-item">
+                        <strong>If today slips</strong>
+                        <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>
+                        <span>{mismatchConsequence}</span>
+                        <span>{protectionOutcome}</span>
+                      </div>
+                      {latestRuntimeRepair ? (
+                        <div className="training-plan-current-week-panel__latest-repair training-plan-current-week-panel__support-card status-item">
+                          <strong>Latest runtime repair</strong>
+                          <p>{latestRuntimeRepair.title}</p>
+                          <span>{latestRuntimeRepair.date} • {latestRuntimeRepair.detail}</span>
+                          <span>Target planned slot: {latestRuntimeRepairTarget}</span>
+                        </div>
+                      ) : null}
+                      <CurrentWeekRepairPanelClient
+                        draftId={latestDraft.id}
+                        initialPreviews={currentWeekReplan.scenarioPreviews as any}
+                        initialDraftRevision={latestDraft.revision || 0}
+                      />
+                      <div className="training-plan-execution-changes">
+                        <div className="training-plan-execution-changes__header">
+                          <div>
+                            <div className="kicker">Week reconciliation</div>
+                            <strong>Runtime bridge</strong>
+                          </div>
+                          <div className="chip-row">
+                            <span className="chip">{weekPayload.riskFlags[0] || 'No live risk flag yet'}</span>
+                            <span className="chip">Block state: {blockPayload.blockState}</span>
+                          </div>
+                        </div>
+                        <p className="training-plan-execution-changes__summary">{slotDiffSummary}</p>
+                        <div className="training-plan-execution-changes__events">
+                          {currentWeekTruthRows.map((row) => (
+                            <div key={`${row.date}-${row.plannedLabel}`} className="training-plan-execution-changes__event-row status-item">
+                              <strong>{row.date} • {row.status.replaceAll('_', ' ')}</strong>
+                              <p>Planned: {row.plannedLabel}</p>
+                              <span>Completed: {row.completedLabel}</span>
+                              <span>Runtime bridge: {row.runtimeLabel}</span>
+                              <span>{row.driftSummary}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </details>
+                  ) : null}
 
               <TrainingPlanStatefulBuilderClient
                 objectiveOptions={objectiveOptions}

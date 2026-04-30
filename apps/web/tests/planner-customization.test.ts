@@ -452,7 +452,7 @@ test('monthly drafts publish only future workouts locally while leaving live-wee
   });
 });
 
-test('moving a workout onto another workout day should be rejected as a conflict', async () => {
+test('moving a workout onto another workout day should be allowed so multiple planned activities can share a day', async () => {
   await withPlannerCustomizationModule(async ({ saveMonthlyPlanDraft, getLatestMonthlyPlanDraft, updateMonthlyPlanWorkout }) => {
     const drafts = await saveMonthlyPlanDraft('user_1', {
       monthStart: '2026-04-01',
@@ -486,8 +486,10 @@ test('moving a workout onto another workout day should be rejected as a conflict
     assert.equal(hasConflict, true);
     if (!hasConflict) throw new Error('expected seeded conflict');
 
-    const after = await updateMonthlyPlanWorkout('user_1', draftId, 'w_1', { date: '2026-04-07' });
-    assert.equal(after?.weeks[0]?.workouts[0]?.date, '2026-04-07');
+    const after = await updateMonthlyPlanWorkout('user_1', draftId, 'w_1', { date: '2026-04-08' });
+    const stackedWorkouts = after?.weeks[0]?.workouts.filter((workout) => workout.date === '2026-04-08') || [];
+    assert.equal(stackedWorkouts.length, 2);
+    assert.deepEqual(stackedWorkouts.map((workout) => workout.id).sort(), ['w_1', 'w_2']);
   });
 });
 

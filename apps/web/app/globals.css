@@ -442,6 +442,7 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-analysis-panel { min-width: 0; }
 .training-plan-workspace-calendar-shell { display:grid; gap: 14px; }
 .training-plan-workspace-calendar-header { display:grid; gap: 6px; }
+.training-plan-calendar-view-toggle { margin-top: 6px; }
 .training-plan-workspace-week-rail { align-self:start; }
 .training-plan-month-grid-compact { gap: 12px; }
 .training-plan-quick-builder { display:grid; gap: 14px; }

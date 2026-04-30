@@ -23,19 +23,18 @@ function workoutConflictSummary(
   moveDate: string,
 ) {
   const workouts = draft.weeks.flatMap((week) => week.workouts);
-  const moving = workouts.find((item) => item.id === workoutId);
+  const moving = workouts.find((item) => item.id === workoutId || item.plannerSlotId === workoutId);
   if (!moving) return { sameDayConflict: false, backToBackHard: false, sameDayWorkout: null as typeof moving | null };
-  const sameDayWorkout = workouts.find((item) => item.id !== workoutId && item.date === moveDate) || null;
   const movingHard = hardCategories.has(moving.category);
   const adjacentHard = workouts.some((item) => {
-    if (item.id === workoutId || !hardCategories.has(item.category)) return false;
+    if ((item.id === moving.id || item.plannerSlotId === moving.plannerSlotId) || !hardCategories.has(item.category)) return false;
     const daysApart = Math.abs(Math.round((new Date(`${item.date}T00:00:00Z`).getTime() - new Date(`${moveDate}T00:00:00Z`).getTime()) / 86400000));
     return daysApart <= 1;
   });
   return {
-    sameDayConflict: Boolean(sameDayWorkout),
+    sameDayConflict: false,
     backToBackHard: movingHard && adjacentHard,
-    sameDayWorkout,
+    sameDayWorkout: null,
   };
 }
 
@@ -100,7 +99,6 @@ export async function POST(request: Request) {
       if (conflict.sameDayConflict || conflict.backToBackHard) {
         const saferDay = suggestSaferDay(draft, workoutId, moveDate);
         const reasons = [
-          conflict.sameDayConflict ? `same-day conflict with ${conflict.sameDayWorkout?.label || 'another workout'}` : null,
           conflict.backToBackHard ? 'back-to-back hard-day conflict' : null,
         ].filter(Boolean).join(' and ');
         if (parsed instanceof FormData) {

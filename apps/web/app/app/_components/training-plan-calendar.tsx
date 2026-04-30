@@ -429,6 +429,7 @@ export function TrainingPlanCalendar({
     return grouped;
   }, [reconciliationEvents]);
   const [draggingWorkoutId, setDraggingWorkoutId] = useState<string | null>(null);
+  const [weekView, setWeekView] = useState(false);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
   const [busyDate, setBusyDate] = useState<string | null>(null);
   const [moveFeedback, setMoveFeedback] = useState<MoveFeedback | null>(null);
@@ -494,6 +495,17 @@ export function TrainingPlanCalendar({
     });
     return rowMap;
   }, [calendarRows, workoutsByDate]);
+  const currentWeekRowIndex = useMemo(() => {
+    if (!today) return 0;
+    const directWeekIndex = workoutsByDate.get(today)?.weekIndex;
+    if (directWeekIndex) return rowIndexByWeekIndex.get(directWeekIndex) || 0;
+    return calendarRows.findIndex((row) => row.includes(today)) + 1;
+  }, [calendarRows, rowIndexByWeekIndex, today, workoutsByDate]);
+  const weekRowsToRender = useMemo(() => {
+    if (!currentWeekRowIndex) return calendarRows.slice(0, 1);
+    return calendarRows.slice(currentWeekRowIndex - 1, currentWeekRowIndex);
+  }, [calendarRows, currentWeekRowIndex]);
+  const calendarRowsToRender = weekView ? weekRowsToRender : calendarRows;
 
   const workoutsById = useMemo(() => {
     const map = new Map<string, Workout>();
@@ -708,9 +720,13 @@ export function TrainingPlanCalendar({
         <div className="training-plan-workspace-calendar-header">
           <div className="kicker">Month workspace</div>
           <strong>Current planning month</strong>
+          <div className="button-row training-plan-calendar-view-toggle">
+            <button type="button" className={!weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(false)}>Full month view</button>
+            <button type="button" className={weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(true)}>Current week view</button>
+          </div>
         </div>
       <div className="training-plan-month-grid training-plan-month-grid-compact training-plan-month-grid-premium">
-        {calendarDays.map((date) => {
+        {calendarRowsToRender.flat().map((date) => {
           const dayData = workoutsByDate.get(date) || { completed: [], planned: [], weekIndex: undefined };
           const isPastDay = Boolean(today) && date <= today;
           const plannedForDisplay = isPastDay ? dayData.planned.filter((workout) => isVisiblePastPlannedWorkout(workout)) : dayData.planned;
@@ -809,10 +825,11 @@ export function TrainingPlanCalendar({
                             title="Drag to move this session"
                             aria-label="Drag to move this session"
                             onDragStart={(event) => {
-                              setDraggingWorkoutId(workout.id);
+                              const workoutIdentity = workout.plannerSlotId || workout.id;
+                              setDraggingWorkoutId(workoutIdentity);
                               setHoverDate(null);
                               event.dataTransfer.effectAllowed = 'move';
-                              event.dataTransfer.setData('text/plain', workout.id);
+                              event.dataTransfer.setData('text/plain', workoutIdentity);
                             }}
                             onDragEnd={() => {
                               setDraggingWorkoutId(null);
@@ -955,7 +972,10 @@ export function TrainingPlanCalendar({
       </div>
 
       <aside className="training-plan-week-summary-column training-plan-workspace-week-rail">
-        {weeks.map((week) => {
+        {(weekView
+          ? weeks.filter((week) => rowIndexByWeekIndex.get(week.weekIndex) === currentWeekRowIndex)
+          : weeks
+        ).map((week) => {
           const completedMinutes = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
           const plannedMinutes = week.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
           const completedLoad = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);

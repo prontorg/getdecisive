@@ -256,16 +256,8 @@ export function TrainingPlanStatefulBuilderClient({
 
         <div className="training-plan-quick-notes">
           <div className="training-plan-quick-note training-plan-quick-note-emphasis">
-            <strong>Direction</strong>
-            <p>{selectedSummary}</p>
-          </div>
-          <div className="training-plan-quick-note">
-            <strong>{builderStatusLabel}</strong>
-            <p>{buildNotice}</p>
-          </div>
-          <div className="training-plan-quick-note">
-            <strong>Active constraints</strong>
-            <p>{activeConstraints.join(' • ')}</p>
+            <strong>Plan snapshot</strong>
+            <p>{selectedSummary} • {maxWeeklyHours} h • {restDay} rest</p>
           </div>
         </div>
 
