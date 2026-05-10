@@ -6,9 +6,7 @@ import {
   buildGoalPayload,
   buildMonthlyPlannerComparePayload,
   buildMonthlyPlannerContextPayload,
-  buildPlannerBlockPayload,
   buildPlannerTruthSummaryPayload,
-  buildPlannerWeekPayload,
   buildPlanningRecommendationPayload,
   buildPowerProfilePayload,
   buildTodayReconciliationPayload,
@@ -177,11 +175,6 @@ export async function TrainingPlanPage({
         live: planner.live,
       })
     : null;
-const draftStatusLabel = latestDraft
-    ? latestDraft.publishState === 'published'
-      ? 'Draft saved and locally published'
-      : 'Draft saved locally and still editable'
-    : 'No draft saved yet';
   const publishStateLabel = latestDraft?.publishState === 'published'
     ? 'Future weeks published locally'
     : 'Draft only';
@@ -199,8 +192,6 @@ const draftStatusLabel = latestDraft
     objective: latestInput.objective,
     mustFollow: { maxWeeklyHours: latestInput.mustFollow.maxWeeklyHours },
   } : undefined);
-  const weekPayload = buildPlannerWeekPayload(planner.live);
-  const blockPayload = buildPlannerBlockPayload(planner.live);
   const selectedObjectiveValue = latestInput?.objective || recommendationPayload.primary.objective;
   const selectedDirectionLabel = objectiveOptions.find((item) => item.value === selectedObjectiveValue)?.label || selectedObjectiveValue || 'No direction selected yet';
   const selectedRecommendation = latestInput?.selectedRecommendation || (latestInput
@@ -217,8 +208,6 @@ const draftStatusLabel = latestDraft
   const latestRuntimeRepairTarget = latestRuntimeRepair?.matchedPlannedWorkoutLabel || 'No linked planned slot';
   const completedTodayRows = (planner.live?.recent_rows || []).filter((row) => row.start_date_local.slice(0, 10) === today);
   const completedTodaySummary = completedTodayRows.map((row) => row.summary?.short_label || row.session_type || row.name || 'Completed').slice(0, 2).join(' • ');
-  const matchedTodaySummary = truthSummary?.currentWeekToday.matchedPlannedWorkoutLabels.join(' • ') || 'No matched planned slot yet';
-  const unmatchedTodaySummary = truthSummary?.currentWeekToday.unmatchedCompletedLabels.join(' • ') || 'No unmatched completed work';
   const todayReconciliation = buildTodayReconciliationPayload({
     decision: activePlanning.todayDecision,
     truth: truthSummary,
@@ -230,18 +219,15 @@ const draftStatusLabel = latestDraft
   const protectionOutcome = keySessionProtected ? `Key work stays protected for ${protectedKeyDayLabel}.` : 'Key work is no longer clearly protected.';
   const plannedVsDoneMismatch = todayReconciliation.mismatch;
   const mismatchConsequence = todayReconciliation.tomorrowConsequence;
-  const currentWeekTruthRows = truthSummary?.currentWeekTruthRows || [];
-  const recentMutationEvents = truthSummary?.recentEvents || [];
-  const slotDiffSummary = recentMutationEvents[0]?.diffSummary || recentMutationEvents[0]?.detail || 'No exact slot change recorded yet.';
   const draftNutshellTitle = latestInput?.selectedRecommendation?.title || latestDraft?.assumptions.selectedRecommendationTitle || draftOriginLabel;
   const draftProtectedLine = latestDraft?.weeks[0]?.rationale.protected || latestDraft?.weeks[0]?.rationale.carriedForward || 'Protect the strongest recent support while keeping the month repeatable.';
   const draftAimLine = latestDraft?.weeks[0]?.rationale.mainAim || comparePayload.summary;
+  const recentFocusSummary = contextPayload.statusQuo.recentFocus.slice(0, 2).join(' • ') || 'No clear recent focus yet';
   const plannerWorkspaceCards = {
     currentWeekRail: 'Current-week summary',
     monthWorkspace: 'Month workspace',
     builderPublish: 'Build and review',
     builderPublishCopy: 'Keep the month simple: choose direction, set limits, review the draft.',
-    builderPolishTagline: 'Keep today, tomorrow, and the next key move visible.',
   };
 
   return (
@@ -331,13 +317,12 @@ const draftStatusLabel = latestDraft
               </AppCard>
 
               <AppCard className="training-plan-workspace-card">
-                <div className="kicker">Races and focus</div>
-                <h3>Races and focus</h3>
+                <div className="kicker">Focus</div>
+                <h3>Focus</h3>
                 <p>{draftOriginLabel}</p>
                 <div className="training-plan-mini-facts">
-                  <span className="training-plan-mini-fact"><strong>Upcoming races</strong>{planEvents.length ? String(planEvents.length) : '0'}</span>
                   <span className="training-plan-mini-fact"><strong>Next event</strong>{planEvents[0] ? `${planEvents[0].title} • ${planEvents[0].date}` : 'No events added yet'}</span>
-                  <span className="training-plan-mini-fact"><strong>Recent focus</strong>{contextPayload.statusQuo.recentFocus.join(' • ')}</span>
+                  <span className="training-plan-mini-fact"><strong>Recent focus</strong>{recentFocusSummary}</span>
                 </div>
               </AppCard>
             </div>
@@ -350,16 +335,12 @@ const draftStatusLabel = latestDraft
                       <div className="kicker">{plannerWorkspaceCards.builderPublish}</div>
                       <h3>Month direction</h3>
                       <p>{plannerWorkspaceCards.builderPublishCopy}</p>
-                      <p className="training-plan-quick-builder__tagline">{plannerWorkspaceCards.builderPolishTagline}</p>
                     </div>
-<div className="chip-row planning-recommendation-chip-row">
-                    <span className="chip">Draft: {draftStatusLabel}</span>
-                  </div>
                 </div>
 
                   {latestDraft ? (
                     <details className="training-plan-compare-panel">
-                      <summary>Repair and reconciliation</summary>
+                      <summary>Today check</summary>
                       <div className="training-plan-current-week-panel__trace training-plan-mini-facts">
                         {[
                           activePlanning.todayDecision?.reasonSummary,
@@ -369,24 +350,15 @@ const draftStatusLabel = latestDraft
                         ))}
                         {((activePlanning.todayDecision?.risks?.length
                           ? activePlanning.todayDecision.risks
-                          : ['No immediate runtime risk flags.']).slice(0, 2)).map((risk) => (
+                          : ['No immediate runtime risk flags.']).slice(0, 1)).map((risk) => (
                           <span key={risk} className="training-plan-mini-fact training-plan-mini-fact-warning">{risk}</span>
                         ))}
                       </div>
                       <div className="training-plan-current-week-panel__meta-grid">
                         <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Done so far</strong>{todayReconciliation.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
                         <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Mismatch</strong>{plannedVsDoneMismatch ? `Yes • ${todayReconciliation.mismatchReason}` : 'No • prescription still matches execution'}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Matched planned slot</strong>{matchedTodaySummary}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Unmatched done</strong>{unmatchedTodaySummary}</span>
                         <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Key session protected</strong>{keySessionProtected ? `Yes • ${protectedKeyDayLabel}` : 'No'}</span>
                       </div>
-                      {completedTodaySummary ? (
-                        <div className="training-plan-current-week-panel__completed-today training-plan-current-week-panel__support-card status-item">
-                          <strong>Done today</strong>
-                          <p>{completedTodaySummary}</p>
-                        </div>
-                      ) : null}
                       <div className="training-plan-current-week-panel__consequence training-plan-current-week-panel__support-card status-item">
                         <strong>If today slips</strong>
                         <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>

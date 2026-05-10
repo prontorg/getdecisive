@@ -71,11 +71,12 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(planPageSource, /mode=\"plan\"/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
   assert.match(source, /What should actually happen/i);
-  assert.match(source, /Races and focus/i);
+  assert.match(source, /Focus/i);
   assert.match(source, /Month direction/i);
   assert.match(source, /Future draft/i);
   assert.match(source, /contextPayload\.statusQuo/i);
   assert.match(source, /Recent focus/i);
+  assert.doesNotMatch(source, /Upcoming races/i);
   assert.doesNotMatch(source, /<h3>Status quo<\/h3>/i);
   assert.doesNotMatch(source, /Main implication/i);
   assert.doesNotMatch(source, /Event proximity/i);
@@ -147,8 +148,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /No immediate runtime risk flags\./i);
   assert.match(source, /latestRuntimeRepair/i);
   assert.match(source, /latestRuntimeRepairTarget/i);
-  assert.match(source, /Matched planned slot/i);
-  assert.match(source, /Unmatched done/i);
   assert.match(source, /Latest runtime repair/i);
   assert.match(source, /Target planned slot:/i);
   assert.match(source, /training-plan-current-week-panel__latest-repair/i);
@@ -168,8 +167,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Current-week summary/i);
   assert.match(source, /Month workspace/i);
   assert.match(source, /Build and review/i);
-  assert.match(source, /Keep today, tomorrow, and the next key move visible\./i);
-  assert.match(source, /Repair and reconciliation/i);
+  assert.match(source, /Today check/i);
   assert.match(source, /Month details/i);
   assert.match(source, /Draft in a nutshell/i);
   assert.doesNotMatch(statefulBuilderSource, /<span>Recommended<\/span>/i);
@@ -186,8 +184,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /training-plan-step-card-parameters/i);
   assert.doesNotMatch(source, /training-plan-step-card-draft/i);
   assert.match(source, /CurrentWeekRepairPanelClient/i);
-  assert.match(source, /Repair and reconciliation/i);
-  assert.match(source, /<summary>Repair and reconciliation<\/summary>/i);
+  assert.match(source, /Today check/i);
+  assert.match(source, /<summary>Today check<\/summary>/i);
   assert.doesNotMatch(source, /Week reconciliation/i);
   assert.doesNotMatch(source, /Runtime bridge/i);
   assert.doesNotMatch(source, /<div className=\"kicker\">Current week<\/div>/i);
@@ -258,7 +256,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-inline-panel|Publish future draft/i);
   assert.match(source, /Publish future draft/i);
   assert.match(source, /Live week stays runtime-backed/i);
-  assert.match(source, /Future draft published locally|Draft saved and locally published/i);
   assert.match(source, /publishStateLabel/i);
   assert.match(source, /Publish state/i);
   assert.match(source, /Future weeks published locally/i);
@@ -550,8 +547,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /<strong>Planned tomorrow<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Tomorrow if today lands<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Completed today<\/strong>/i);
-  assert.match(source, /<strong>Key session protected<\/strong>/i);
-  assert.match(source, /<strong>Done today<\/strong>/i);
+  assert.doesNotMatch(source, /<strong>Key session protected<\/strong>/i);
+  assert.doesNotMatch(source, /<strong>Done today<\/strong>/i);
   assert.match(source, /plannedVsDoneMismatch/i);
   assert.doesNotMatch(source, /Do now/i);
   assert.match(source, /Done so far/i);
@@ -565,7 +562,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /tomorrowIfTodayLands/i);
   assert.match(source, /If today slips/i);
   assert.doesNotMatch(source, /training-plan-current-week-panel__decision-grid/i);
-  assert.match(source, /training-plan-current-week-panel__completed-today/i);
+  assert.doesNotMatch(source, /training-plan-current-week-panel__completed-today/i);
   assert.match(source, /training-plan-current-week-panel__consequence/i);
   assert.match(repairPanelSource, /preview\.actionLabel/i);
   assert.match(repairPanelSource, /preview\.scenario/i);
