@@ -329,6 +329,16 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /reconciliationEvents/i);
   assert.doesNotMatch(calendarSource, /training-plan-session-card__subhead-audit/i);
   assert.match(calendarSource, /training-plan-day-card__events|planner-race-badge/i);
+  assert.match(calendarSource, /training-plan-day-card__event-stack/i);
+  assert.match(calendarSource, /training-plan-day-card__event-quick-pills/i);
+  assert.match(calendarSource, /training-plan-day-card__event-quick-form/i);
+  assert.match(calendarSource, /planEventShortTypeLabel/i);
+  assert.match(calendarSource, /planEventPriorityLabel/i);
+  assert.match(calendarSource, /shiftIsoDate/i);
+  assert.match(calendarSource, /name=\"type\" value=\{type\}/i);
+  assert.match(calendarSource, /name=\"priority\" value=\{priority\}/i);
+  assert.match(calendarSource, /−1d/i);
+  assert.match(calendarSource, /\+1d/i);
   assert.match(calendarSource, /training-plan-day-card-empty/i);
   assert.doesNotMatch(calendarSource, /<span className=\"training-plan-session-card__tag training-plan-session-card__tag-family\"/i);
   assert.doesNotMatch(calendarSource, /<span className=\"training-plan-session-card__tag\">\{shortCategoryLabel\(workout\.category\)\}<\/span>/i);
@@ -497,6 +507,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-intent-compare-card__kicker/i);
   assert.match(calendarStyles, /letter-spacing:\s*-0\.12em/i);
   assert.match(calendarStyles, /training-plan-day-card-drop-warning/i);
+  assert.match(calendarStyles, /training-plan-day-card__event-stack/i);
+  assert.match(calendarStyles, /training-plan-day-card__event-quick-pills/i);
+  assert.match(calendarStyles, /training-plan-day-card__event-quick-form/i);
 
   assert.doesNotMatch(calendarStyles, /training-plan-day-card-drop-blocked/i);
   assert.match(calendarSource, /Move day/i);

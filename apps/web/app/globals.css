@@ -884,6 +884,26 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-day-card__header strong { font-size: 11px; color: #f7fbff; }
 .training-plan-day-card__header span, .training-plan-day-card__summary { color: var(--muted); font-size: 10px; }
 .training-plan-day-card__summary { margin: 2px 0 6px; }
+.training-plan-day-card__event-stack {
+  display: grid;
+  gap: 4px;
+}
+.training-plan-day-card__event-quick-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.training-plan-day-card__event-quick-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+}
+.training-plan-day-card__event-quick-form button {
+  min-height: 22px;
+  padding: 3px 7px;
+  font-size: 10px;
+}
 .training-plan-day-card__drop-hint { margin: 0 0 5px; font-size: 9px; line-height: 1.2; }
 .training-plan-day-card__drop-hint-safe { color: #9ec5ff; }
 .training-plan-day-card__drop-hint-warning { color: #ffcf85; }

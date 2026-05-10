@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { appRoutes } from '../../../lib/routes';
+
 type MoveFeedback = {
   workoutId: string;
   requestedDate: string;
@@ -61,6 +63,7 @@ type PlanEvent = {
   type: 'A_race' | 'B_race' | 'C_race' | 'training_camp' | 'travel' | 'blackout';
   priority: 'primary' | 'support' | 'optional';
   durationHours?: number;
+  notes?: string;
 };
 
 type ReconciliationAuditEvent = {
@@ -377,6 +380,34 @@ function planEventBadgeClass(type: PlanEvent['type']) {
     case 'blackout': return 'planner-race-badge-blackout';
     default: return 'planner-race-badge-b';
   }
+}
+
+function planEventShortTypeLabel(type: PlanEvent['type']) {
+  switch (type) {
+    case 'A_race': return 'A';
+    case 'B_race': return 'B';
+    case 'C_race': return 'C';
+    case 'training_camp': return 'Camp';
+    case 'travel': return 'Travel';
+    case 'blackout': return 'Blackout';
+    default: return 'Event';
+  }
+}
+
+function planEventPriorityLabel(priority: PlanEvent['priority']) {
+  switch (priority) {
+    case 'primary': return 'Key';
+    case 'support': return 'Support';
+    case 'optional': return 'Optional';
+    default: return 'Support';
+  }
+}
+
+function shiftIsoDate(date: string, days: number) {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
 }
 
 export function TrainingPlanCalendar({
@@ -756,9 +787,55 @@ export function TrainingPlanCalendar({
               {planEvents.length ? (
                 <div className="chip-row training-plan-day-card__events">
                   {planEvents.map((event) => (
-                    <span key={event.id} className={`chip planner-race-badge ${planEventBadgeClass(event.type)}`}>
-                      {event.title}{event.durationHours ? ` • ${event.durationHours}h` : ''}
-                    </span>
+                    <div key={event.id} className="training-plan-day-card__event-stack">
+                      <span className={`chip planner-race-badge ${planEventBadgeClass(event.type)}`}>
+                        {event.title}{event.durationHours ? ` • ${event.durationHours}h` : ''}
+                      </span>
+                      <div className="training-plan-day-card__event-quick-pills">
+                        <form action="/api/planner/month/events" method="post" className="training-plan-day-card__event-quick-form">
+                          <input type="hidden" name="action" value="update" />
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                          <input type="hidden" name="title" value={event.title} />
+                          <input type="hidden" name="date" value={event.date} />
+                          <input type="hidden" name="priority" value={event.priority} />
+                          <input type="hidden" name="durationHours" value={event.durationHours ?? ''} />
+                          <input type="hidden" name="notes" value={event.notes || ''} />
+                          {(['A_race', 'B_race', 'C_race'] as const).map((type) => (
+                            <button key={type} type="submit" name="type" value={type} className={event.type === type ? 'button-secondary button-link' : 'button-secondary'}>
+                              {planEventShortTypeLabel(type)}
+                            </button>
+                          ))}
+                        </form>
+                        <form action="/api/planner/month/events" method="post" className="training-plan-day-card__event-quick-form">
+                          <input type="hidden" name="action" value="update" />
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                          <input type="hidden" name="title" value={event.title} />
+                          <input type="hidden" name="date" value={event.date} />
+                          <input type="hidden" name="type" value={event.type} />
+                          <input type="hidden" name="durationHours" value={event.durationHours ?? ''} />
+                          <input type="hidden" name="notes" value={event.notes || ''} />
+                          {(['primary', 'support', 'optional'] as const).map((priority) => (
+                            <button key={priority} type="submit" name="priority" value={priority} className={event.priority === priority ? 'button-secondary button-link' : 'button-secondary'}>
+                              {planEventPriorityLabel(priority)}
+                            </button>
+                          ))}
+                        </form>
+                        <form action="/api/planner/month/events" method="post" className="training-plan-day-card__event-quick-form">
+                          <input type="hidden" name="action" value="update" />
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                          <input type="hidden" name="title" value={event.title} />
+                          <input type="hidden" name="type" value={event.type} />
+                          <input type="hidden" name="priority" value={event.priority} />
+                          <input type="hidden" name="durationHours" value={event.durationHours ?? ''} />
+                          <input type="hidden" name="notes" value={event.notes || ''} />
+                          <button type="submit" name="date" value={shiftIsoDate(event.date, -1)} className="button-secondary">−1d</button>
+                          <button type="submit" name="date" value={shiftIsoDate(event.date, 1)} className="button-secondary">+1d</button>
+                        </form>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : null}
