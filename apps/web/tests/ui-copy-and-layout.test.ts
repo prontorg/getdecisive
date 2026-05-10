@@ -87,6 +87,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Add race or event/i);
   assert.match(source, /Add event/i);
   assert.match(source, /Edit events/i);
+  assert.match(source, /training-plan-focus-event-card/i);
+  assert.match(source, /training-plan-inline-panel-event/i);
+  assert.match(source, /training-plan-inline-event-form/i);
+  assert.match(source, /name=\"action\" value=\"update\"/i);
+  assert.match(source, /name=\"action\" value=\"remove\"/i);
+  assert.match(source, /Save event/i);
+  assert.match(source, /Remove/i);
   assert.match(source, /name=\"returnTo\" value=\{appRoutes\.plan\}/i);
   assert.match(source, /planEventTypeLabel/i);
   assert.match(source, /Event flow/i);
@@ -469,6 +476,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-inline-menu__submit-danger/i);
   assert.match(calendarStyles, /training-plan-inline-menu__danger-hint/i);
   assert.match(calendarStyles, /training-plan-inline-menu__action-hint/i);
+  assert.match(calendarStyles, /training-plan-inline-panel-event/i);
+  assert.match(calendarStyles, /training-plan-focus-event-card/i);
+  assert.match(calendarStyles, /training-plan-inline-event-form/i);
   assert.doesNotMatch(calendarStyles, /training-plan-inline-menu__selected-action-row/i);
   assert.match(calendarStyles, /training-plan-inline-menu__panel-title/i);
   assert.match(calendarStyles, /training-plan-inline-menu__panel-copy/i);

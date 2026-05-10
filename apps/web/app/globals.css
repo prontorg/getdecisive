@@ -1041,8 +1041,32 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 }
 .training-plan-inline-panel-week-actions { align-self: stretch; }
 .training-plan-inline-panel-week-actions summary { align-self: stretch; }
+.training-plan-inline-panel-event { justify-self: end; }
+.training-plan-focus-event-card {
+  align-items: start;
+  gap: 6px;
+}
+.training-plan-focus-event-card > span {
+  color: #d7e2f0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.training-plan-inline-event-form {
+  display: grid;
+  gap: 8px;
+}
+.training-plan-inline-event-form label {
+  display: grid;
+  gap: 4px;
+}
+.training-plan-inline-event-form label span {
+  color: #9fb0c7;
+  font-size: 11px;
+}
 .training-plan-inline-panel__content .button-link { justify-content: center; }
 .training-plan-inline-menu__content input { margin-top:4px; padding: 7px 8px; font-size: 12px; }
+.training-plan-inline-panel__content input,
+.training-plan-inline-panel__content select { margin-top:4px; padding: 7px 8px; font-size: 12px; }
 .training-plan-inline-menu__action-list {
   display: flex;
   flex-wrap: wrap;

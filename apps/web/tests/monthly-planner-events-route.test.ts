@@ -6,12 +6,17 @@ import { join } from 'node:path';
 const webRoot = process.cwd();
 const routePath = join(webRoot, 'app/api/planner/month/events/route.ts');
 
-test('planner month events route supports list/create for form and JSON callers', async () => {
+test('planner month events route supports list/create/update/remove for form and JSON callers', async () => {
   const source = await readFile(routePath, 'utf8');
 
   assert.match(source, /getSessionUserId/i);
   assert.match(source, /listPlanningEvents/i);
   assert.match(source, /savePlanningEvent/i);
+  assert.match(source, /updatePlanningEvent/i);
+  assert.match(source, /removePlanningEvent/i);
+  assert.match(source, /action === 'update'/i);
+  assert.match(source, /action === 'remove'/i);
+  assert.match(source, /eventId/i);
   assert.match(source, /request\.headers\.get\('content-type'\)/i);
   assert.match(source, /application\/json/i);
   assert.match(source, /formData\(/i);

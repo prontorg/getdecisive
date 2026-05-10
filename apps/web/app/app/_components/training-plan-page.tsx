@@ -337,7 +337,62 @@ export async function TrainingPlanPage({
                 </form>
                 <div className="training-plan-mini-facts">
                   {upcomingEvents.length ? upcomingEvents.map((event) => (
-                    <span key={event.id} className="training-plan-mini-fact"><strong>{planEventTypeLabel(event.type)}</strong>{event.title} • {event.date}</span>
+                    <div key={event.id} className="training-plan-mini-fact training-plan-focus-event-card">
+                      <strong>{planEventTypeLabel(event.type)}</strong>
+                      <span>{event.title} • {event.date}</span>
+                      <details className="training-plan-inline-panel training-plan-inline-panel-event">
+                        <summary title="Edit event">⋯</summary>
+                        <div className="training-plan-inline-panel__content">
+                          <form action="/api/planner/month/events" method="post" className="training-plan-inline-event-form">
+                            <input type="hidden" name="action" value="update" />
+                            <input type="hidden" name="eventId" value={event.id} />
+                            <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                            <label>
+                              <span>Title</span>
+                              <input name="title" type="text" defaultValue={event.title} />
+                            </label>
+                            <label>
+                              <span>Date</span>
+                              <input name="date" type="date" defaultValue={event.date} />
+                            </label>
+                            <label>
+                              <span>Type</span>
+                              <select name="type" defaultValue={event.type}>
+                                <option value="A_race">A race</option>
+                                <option value="B_race">B race</option>
+                                <option value="C_race">C race</option>
+                                <option value="training_camp">Training camp</option>
+                                <option value="travel">Travel</option>
+                                <option value="blackout">Blackout</option>
+                              </select>
+                            </label>
+                            <label>
+                              <span>Priority</span>
+                              <select name="priority" defaultValue={event.priority}>
+                                <option value="primary">Primary</option>
+                                <option value="support">Support</option>
+                                <option value="optional">Optional</option>
+                              </select>
+                            </label>
+                            <label>
+                              <span>Hours</span>
+                              <input name="durationHours" type="number" min="0" step="0.5" defaultValue={event.durationHours ?? ''} />
+                            </label>
+                            <label>
+                              <span>Notes</span>
+                              <input name="notes" type="text" defaultValue={event.notes || ''} />
+                            </label>
+                            <button type="submit">Save event</button>
+                          </form>
+                          <form action="/api/planner/month/events" method="post">
+                            <input type="hidden" name="action" value="remove" />
+                            <input type="hidden" name="eventId" value={event.id} />
+                            <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                            <button type="submit" className="button-secondary">Remove</button>
+                          </form>
+                        </div>
+                      </details>
+                    </div>
                   )) : (
                     <span className="training-plan-mini-fact"><strong>Event flow</strong>Add the next race here, then refine details only if needed.</span>
                   )}
