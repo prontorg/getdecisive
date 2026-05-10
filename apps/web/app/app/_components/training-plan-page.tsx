@@ -236,7 +236,6 @@ export async function TrainingPlanPage({
     currentWeekRail: 'Current-week summary',
     monthWorkspace: 'Month workspace',
     builderPublish: 'Build and review',
-    builderPublishCopy: 'Keep the month simple: choose direction, set limits, review the draft.',
   };
 
   return (
@@ -328,8 +327,8 @@ export async function TrainingPlanPage({
               <AppCard className="training-plan-workspace-card">
                 <div className="kicker">Focus</div>
                 <h3>Focus</h3>
-                <p>{draftOriginLabel}</p>
                 <div className="training-plan-mini-facts">
+                  <span className="training-plan-mini-fact"><strong>Direction</strong>{draftOriginLabel}</span>
                   <span className="training-plan-mini-fact"><strong>Next event</strong>{nextEvent ? `${nextEvent.title} • ${nextEvent.date}` : 'No events added yet'}</span>
                   <span className="training-plan-mini-fact"><strong>Recent focus</strong>{recentFocusSummary}</span>
                 </div>
@@ -339,11 +338,11 @@ export async function TrainingPlanPage({
                   <input name="date" type="date" aria-label="Event date" />
                   <input type="hidden" name="type" value="B_race" />
                   <input type="hidden" name="priority" value="support" />
-                  <button type="submit">Add event</button>
-                  <a href={appRoutes.planRaces} className="button-secondary button-link">Edit events</a>
+                  <button type="submit">Add</button>
+                  <a href={appRoutes.planRaces} className="button-secondary button-link">Events</a>
                 </form>
                 <div className="training-plan-mini-facts">
-                  {upcomingEvents.length ? upcomingEvents.map((event) => (
+                  {upcomingEvents.length ? upcomingEvents.slice(0, 1).map((event) => (
                     <div key={event.id} className="training-plan-mini-fact training-plan-focus-event-card">
                       <strong>{planEventTypeLabel(event.type)}</strong>
                       <span>{event.title} • {event.date}</span>
@@ -451,8 +450,11 @@ export async function TrainingPlanPage({
                       </details>
                     </div>
                   )) : (
-                    <span className="training-plan-mini-fact"><strong>Event flow</strong>Add the next race here, then refine details only if needed.</span>
+                    <span className="training-plan-mini-fact"><strong>Event flow</strong>No events yet. Add the next race here.</span>
                   )}
+                  {upcomingEvents.length > 1 ? (
+                    <span className="training-plan-mini-fact"><strong>More events</strong>{upcomingEvents.length - 1} more • <a href={appRoutes.planRaces}>Events</a></span>
+                  ) : null}
                 </div>
               </AppCard>
             </div>
@@ -464,7 +466,7 @@ export async function TrainingPlanPage({
                     <div>
                       <div className="kicker">{plannerWorkspaceCards.builderPublish}</div>
                       <h3>Month direction</h3>
-                      <p>{plannerWorkspaceCards.builderPublishCopy}</p>
+                      <p>Choose direction, set limits, review the draft.</p>
                     </div>
                 </div>
 
@@ -559,8 +561,6 @@ export async function TrainingPlanPage({
                 <div>
                       <div className="kicker">{plannerWorkspaceCards.monthWorkspace}</div>
                       <h2>Generated month</h2>
-                      <p>Future draft</p>
-                      <p>{plannerWorkspaceCards.builderPublishCopy}</p>
 {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
                 </div>
                 {latestDraft ? null : null}
@@ -602,9 +602,11 @@ export async function TrainingPlanPage({
                   </div>
                   <div className="status-item" style={{ marginTop: 12 }}>
                     <strong>Draft in a nutshell</strong>
-                    <p>{draftNutshellTitle}</p>
-                    <span>{draftProtectedLine}</span>
-                    <span>{draftAimLine}</span>
+                    <div className="training-plan-mini-facts">
+                      <span className="training-plan-mini-fact"><strong>Direction</strong>{draftNutshellTitle}</span>
+                      <span className="training-plan-mini-fact"><strong>Protecting</strong>{draftProtectedLine}</span>
+                      <span className="training-plan-mini-fact"><strong>Main aim</strong>{draftAimLine}</span>
+                    </div>
                   </div>
                   <details className="training-plan-compare-panel">
                     <summary>Month details</summary>

@@ -85,8 +85,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
 
   assert.match(source, /nextEvent = planEvents\[0\] \|\| null/i);
   assert.match(source, /Add race or event/i);
-  assert.match(source, /Add event/i);
-  assert.match(source, /Edit events/i);
+  assert.match(source, /Add\b/i);
+  assert.match(source, /Events/i);
+  assert.match(source, /More events/i);
   assert.match(source, /training-plan-focus-event-card/i);
   assert.match(source, /training-plan-inline-panel-event/i);
   assert.match(source, /training-plan-inline-event-form/i);
@@ -151,6 +152,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(await readFile(join(webRoot, 'app/api/planner/month/draft/route.ts'), 'utf8'), /appRoutes\.plan\?notice=.*Draft generated|revalidatePath\(appRoutes\.calendar\)/i);
   assert.doesNotMatch(source, /Open full calendar/i);
   assert.match(source, /Generated month/i);
+  assert.doesNotMatch(source, /<p>Future draft<\/p>/i);
+  assert.doesNotMatch(source, /Keep the month simple: choose direction, set limits, review the draft\./i);
   assert.doesNotMatch(source, /What should actually happen this week/i);
   assert.match(source, /currentWeekReplan/i);
   assert.doesNotMatch(source, /remainingWeekHours/i);
@@ -193,6 +196,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Today check/i);
   assert.match(source, /Month details/i);
   assert.match(source, /Draft in a nutshell/i);
+  assert.match(source, /Direction/i);
+  assert.match(source, /Protecting/i);
+  assert.match(source, /Main aim/i);
   assert.doesNotMatch(source, /training-plan-category-grid/i);
   assert.doesNotMatch(source, /training-plan-intent-compare-card/i);
   assert.doesNotMatch(statefulBuilderSource, /<span>Recommended<\/span>/i);
@@ -215,7 +221,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /Runtime bridge/i);
   assert.doesNotMatch(source, /<div className=\"kicker\">Current week<\/div>/i);
   assert.doesNotMatch(source, /<strong>What should actually happen this week<\/strong>/i);
-  assert.doesNotMatch(source, /<strong>Direction<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Saved<\/strong>|<strong>Unsaved changes<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Active constraints<\/strong>/i);
   assert.match(source, /initialPreviews=\{currentWeekReplan\.scenarioPreviews/i);
