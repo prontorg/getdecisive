@@ -28,6 +28,14 @@ login_html = login.text
 ensure('Application error' not in login_html, 'Public smoke failed: /login contains application error markup')
 ensure('Get decisive' in login_html or 'GET DECISIVE' in login_html, 'Public smoke failed: /login missing decisive login copy')
 
+css_match = re.search(r'(/_next/static/css/[^"\']+\.css)', login_html)
+ensure(css_match is not None, 'Public smoke failed: could not find login stylesheet in /login HTML')
+css_url = urljoin(BASE_URL, css_match.group(1))
+css_response = SESSION.get(css_url, timeout=TIMEOUT)
+ensure(css_response.status_code == 200, f'Public smoke failed: stylesheet returned {css_response.status_code} for {css_url}')
+ensure('Bad Request' not in css_response.text, 'Public smoke failed: stylesheet body returned Bad Request page')
+ensure(':root' in css_response.text or '.app-topbar' in css_response.text, 'Public smoke failed: stylesheet body does not look like the app CSS payload')
+
 layout_match = re.search(r'(/_next/static/chunks/app/layout-[^"\']+\.js)', login_html)
 ensure(layout_match is not None, 'Public smoke failed: could not find app layout chunk in /login HTML')
 layout_url = urljoin(BASE_URL, layout_match.group(1))
@@ -40,4 +48,5 @@ root_html = root.text
 ensure('Application error' not in root_html, 'Public smoke failed: root path contains application error markup')
 
 print('Public smoke passed for', BASE_URL)
+print('Stylesheet:', css_url)
 print('Layout chunk:', layout_url)

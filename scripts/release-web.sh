@@ -31,9 +31,8 @@ for attempt in $(seq 1 20); do
   sleep 1
 done
 
-echo "[5/7] Running local login smoke check"
-curl -fsS "$PLANNER_BASE_URL/login" | grep -q "Get decisive"
-curl -fsS "$PLANNER_BASE_URL/login" | grep -qv "Application error"
+echo "[5/7] Running local platform state smoke check"
+"$ROOT_DIR/scripts/check-platform-state.sh"
 
 echo "[6/7] Running public smoke check"
 "$ROOT_DIR/scripts/smoke-public-web.py" "$PUBLIC_BASE_URL"
