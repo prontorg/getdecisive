@@ -214,16 +214,16 @@ export function TrainingPlanStatefulBuilderClient({
         <input type="hidden" name="restDaysPerWeek" value={restDaysPerWeek} />
         <button type="submit">Generate draft</button>
 
-        <div className="training-plan-quick-notes">
-          <div className="training-plan-quick-note training-plan-quick-note-emphasis">
-            <strong>Plan snapshot</strong>
-            <p>{selectedSummary} • {maxWeeklyHours} h • {restDay} rest</p>
-          </div>
-        </div>
-
         <details className="training-plan-builder-advanced">
           <summary>More options</summary>
           <div className="training-plan-builder-advanced__body">
+            <div className="training-plan-quick-notes">
+              <div className="training-plan-quick-note training-plan-quick-note-emphasis">
+                <strong>Plan snapshot</strong>
+                <p>{selectedSummary} • {maxWeeklyHours} h • {restDay} rest</p>
+              </div>
+            </div>
+            <p className="training-plan-workspace-calendar-copy">Advanced planning controls only when you need them.</p>
             <div className="training-plan-direction-grid">
               <label>
                 <span>Ambition</span>
@@ -285,7 +285,7 @@ export function TrainingPlanStatefulBuilderClient({
               </div>
             </fieldset>
             <fieldset className="training-plan-success-fieldset">
-              <legend>Success</legend>
+              <legend>Success markers</legend>
               <div className="chip-row">
                 {successOptions.map((item) => (
                   <label key={item} className="chip">

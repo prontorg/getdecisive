@@ -159,10 +159,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /remainingWeekHours/i);
   assert.doesNotMatch(source, /remainingQualityBudget/i);
   assert.doesNotMatch(source, /activePlanning\.todayDecision\?\.confidence/i);
-  assert.match(source, /activePlanning\.todayDecision\?\.reasonSummary/i);
-  assert.match(source, /activePlanning\.todayDecision\?\.decisionBasis\?\.weeklyBalance/i);
-  assert.match(source, /activePlanning\.todayDecision\?\.risks/i);
-  assert.match(source, /training-plan-current-week-panel__trace/i);
+  assert.doesNotMatch(source, /activePlanning\.todayDecision\?\.reasonSummary/i);
+  assert.doesNotMatch(source, /activePlanning\.todayDecision\?\.decisionBasis\?\.weeklyBalance/i);
+  assert.doesNotMatch(source, /activePlanning\.todayDecision\?\.risks/i);
+  assert.doesNotMatch(source, /training-plan-current-week-panel__trace/i);
   assert.doesNotMatch(source, /training-plan-current-week-panel-premium/i);
   assert.match(source, /training-plan-current-week-panel__anchor-grid/i);
   assert.match(source, /training-plan-current-week-panel__anchor-tile/i);
@@ -170,8 +170,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-current-week-panel__meta-tile/i);
   assert.doesNotMatch(source, /training-plan-current-week-panel__summary-callout/i);
   assert.match(source, /training-plan-current-week-panel__support-card/i);
-  assert.match(source, /training-plan-mini-fact-warning/i);
-  assert.match(source, /No immediate runtime risk flags\./i);
+  assert.doesNotMatch(source, /training-plan-mini-fact-warning/i);
+  assert.doesNotMatch(source, /No immediate runtime risk flags\./i);
   assert.match(source, /latestRuntimeRepair/i);
   assert.match(source, /latestRuntimeRepairTarget/i);
   assert.match(source, /Latest runtime repair/i);
@@ -217,6 +217,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /CurrentWeekRepairPanelClient/i);
   assert.match(source, /Today check/i);
   assert.match(source, /<summary>Today check<\/summary>/i);
+  assert.match(source, /preview only if you need to repair the live week/i);
   assert.doesNotMatch(source, /Week reconciliation/i);
   assert.doesNotMatch(source, /Runtime bridge/i);
   assert.doesNotMatch(source, /<div className=\"kicker\">Current week<\/div>/i);
@@ -676,6 +677,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /return selectedRecommendationSource === 'alternative' && selectedFocusObjective === objective \? 'true' : 'false'/i);
   assert.doesNotMatch(statefulBuilderSource, /className=\"training-plan-focus-chip-form\"/i);
   assert.match(statefulBuilderSource, /More options/i);
+  assert.match(statefulBuilderSource, /Advanced planning controls/i);
+  assert.match(statefulBuilderSource, /Plan snapshot/i);
+  assert.match(statefulBuilderSource, /Success markers/i);
   assert.doesNotMatch(statefulBuilderSource, /Active constraints/i);
   assert.doesNotMatch(statefulBuilderSource, /<strong>Saved<\/strong>|<strong>Unsaved changes<\/strong>/i);
   assert.doesNotMatch(statefulBuilderSource, /<p>Draft updated<\/p>/i);

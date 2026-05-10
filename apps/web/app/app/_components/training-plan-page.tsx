@@ -470,48 +470,35 @@ export async function TrainingPlanPage({
                     </div>
                 </div>
 
-                  {latestDraft ? (
-                    <details className="training-plan-compare-panel">
-                      <summary>Today check</summary>
-                      <div className="training-plan-current-week-panel__trace training-plan-mini-facts">
-                        {[
-                          activePlanning.todayDecision?.reasonSummary,
-                          activePlanning.todayDecision?.decisionBasis?.weeklyBalance,
-                        ].filter(Boolean).slice(0, 2).map((reason) => (
-                          <span key={reason} className="training-plan-mini-fact">{reason}</span>
-                        ))}
-                        {((activePlanning.todayDecision?.risks?.length
-                          ? activePlanning.todayDecision.risks
-                          : ['No immediate runtime risk flags.']).slice(0, 1)).map((risk) => (
-                          <span key={risk} className="training-plan-mini-fact training-plan-mini-fact-warning">{risk}</span>
-                        ))}
-                      </div>
-                      <div className="training-plan-current-week-panel__meta-grid">
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Done so far</strong>{todayReconciliation.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Mismatch</strong>{plannedVsDoneMismatch ? `Yes • ${todayReconciliation.mismatchReason}` : 'No • prescription still matches execution'}</span>
-                        <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
-                      </div>
-                      <div className="training-plan-current-week-panel__consequence training-plan-current-week-panel__support-card status-item">
-                        <strong>If today slips</strong>
-                        <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>
-                        <span>{mismatchConsequence}</span>
-                        <span>{protectionOutcome}</span>
-                      </div>
-                      {latestRuntimeRepair ? (
-                        <div className="training-plan-current-week-panel__latest-repair training-plan-current-week-panel__support-card status-item">
-                          <strong>Latest runtime repair</strong>
-                          <p>{latestRuntimeRepair.title}</p>
-                          <span>{latestRuntimeRepair.date} • {latestRuntimeRepair.detail}</span>
-                          <span>Target planned slot: {latestRuntimeRepairTarget}</span>
-                        </div>
+                      {latestDraft ? (
+                        <details className="training-plan-compare-panel">
+                          <summary>Today check</summary>
+                          <p className="training-plan-workspace-calendar-copy">Preview only if you need to repair the live week.</p>
+                          <div className="training-plan-current-week-panel__meta-grid">
+                            <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Done so far</strong>{todayReconciliation.doneLabel || completedTodaySummary || 'Nothing completed yet'}</span>
+                            <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Mismatch</strong>{plannedVsDoneMismatch ? `Yes • ${todayReconciliation.mismatchReason}` : 'No • prescription still matches execution'}</span>
+                            <span className="training-plan-mini-fact training-plan-current-week-panel__meta-tile"><strong>Next key day</strong>{currentWeekReplan.recommendedNextKeyDay}</span>
+                          </div>
+                          <div className="training-plan-current-week-panel__consequence training-plan-current-week-panel__support-card status-item">
+                            <strong>If today slips</strong>
+                            <p>Tomorrow falls back toward {tomorrowFallbackIfTodayMisses} instead of {tomorrowIfTodayLands}.</p>
+                            <span>{mismatchConsequence}</span>
+                            <span>{protectionOutcome}</span>
+                          </div>
+                          {latestRuntimeRepair ? (
+                            <div className="training-plan-current-week-panel__latest-repair training-plan-current-week-panel__support-card status-item">
+                              <strong>Latest runtime repair</strong>
+                              <span>{latestRuntimeRepair.date} • {latestRuntimeRepair.detail}</span>
+                              <span>Target planned slot: {latestRuntimeRepairTarget}</span>
+                            </div>
+                          ) : null}
+                          <CurrentWeekRepairPanelClient
+                            draftId={latestDraft.id}
+                            initialPreviews={currentWeekReplan.scenarioPreviews as any}
+                            initialDraftRevision={latestDraft.revision || 0}
+                          />
+                        </details>
                       ) : null}
-                      <CurrentWeekRepairPanelClient
-                        draftId={latestDraft.id}
-                        initialPreviews={currentWeekReplan.scenarioPreviews as any}
-                        initialDraftRevision={latestDraft.revision || 0}
-                      />
-                    </details>
-                  ) : null}
 
               <TrainingPlanStatefulBuilderClient
                 objectiveOptions={objectiveOptions}
