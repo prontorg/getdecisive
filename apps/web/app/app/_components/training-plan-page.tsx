@@ -328,16 +328,13 @@ const draftStatusLabel = latestDraft
               </AppCard>
 
               <AppCard className="training-plan-workspace-card">
-                <div className="kicker">Goals and races</div>
-                <h3>Goals and races</h3>
+                <div className="kicker">Races and focus</div>
+                <h3>Races and focus</h3>
                 <p>{draftOriginLabel}</p>
                 <div className="training-plan-mini-facts">
                   <span className="training-plan-mini-fact"><strong>Upcoming races</strong>{planEvents.length ? String(planEvents.length) : '0'}</span>
                   <span className="training-plan-mini-fact"><strong>Next event</strong>{planEvents[0] ? `${planEvents[0].title} • ${planEvents[0].date}` : 'No events added yet'}</span>
                   <span className="training-plan-mini-fact"><strong>Recent focus</strong>{contextPayload.statusQuo.recentFocus.join(' • ')}</span>
-                </div>
-                <div className="training-plan-top-strip__actions">
-                  <a href={appRoutes.planRaces} className="button-secondary button-link button-secondary-premium">Open race calendar</a>
                 </div>
               </AppCard>
             </div>
@@ -348,7 +345,7 @@ const draftStatusLabel = latestDraft
                 <div className="training-plan-quick-builder__header">
                     <div>
                       <div className="kicker">{plannerWorkspaceCards.builderPublish}</div>
-                      <h3>Parameters</h3>
+                      <h3>Month direction</h3>
                       <p>{plannerWorkspaceCards.builderPublishCopy}</p>
                       <p className="training-plan-quick-builder__tagline">{plannerWorkspaceCards.builderPolishTagline}</p>
                     </div>
@@ -482,7 +479,7 @@ const draftStatusLabel = latestDraft
                 <div>
                       <div className="kicker">{plannerWorkspaceCards.monthWorkspace}</div>
                       <h2>Generated month</h2>
-                      <p>Draft next month</p>
+                      <p>Future draft</p>
                       <p>{plannerWorkspaceCards.builderPublishCopy}</p>
 {nextFourWeekRange ? <p className="training-plan-range-headline">{nextFourWeekRange}</p> : null}
                 </div>
@@ -517,6 +514,7 @@ const draftStatusLabel = latestDraft
                           <p>{publishStateDetail}</p>
                         </div>
                         <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
+                        <a href={appRoutes.planRaces} className="button-secondary button-link">Race calendar</a>
                         <form action="/api/planner/month/publish" method="post">
                           <input type="hidden" name="draftId" value={latestDraft.id} />
                           <button type="submit">Publish plan</button>

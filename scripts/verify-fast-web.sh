@@ -19,7 +19,10 @@ fi
 echo "[fast 3/4] Running web typecheck"
 npm run typecheck -w apps/web
 
-echo "[fast 4/4] Running focused reliability regression suite"
+echo "[fast 4/5] Running focused reliability regression suite"
 npm test -w apps/web -- app-header.test.ts login-page.test.ts logout-route.test.ts device-location-route.test.ts ui-copy-and-layout.test.ts monthly-planner-replan-route.test.ts planning-store.test.ts
+
+echo "[fast 5/5] Checking live platform state"
+./scripts/check-platform-state.sh
 
 echo "Fast verification passed."

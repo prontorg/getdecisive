@@ -71,9 +71,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(planPageSource, /mode=\"plan\"/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
   assert.match(source, /What should actually happen/i);
-  assert.match(source, /Goals and races/i);
-  assert.match(source, /Parameters/i);
-  assert.match(source, /Draft next month/i);
+  assert.match(source, /Races and focus/i);
+  assert.match(source, /Month direction/i);
+  assert.match(source, /Future draft/i);
   assert.match(source, /contextPayload\.statusQuo/i);
   assert.match(source, /Recent focus/i);
   assert.doesNotMatch(source, /<h3>Status quo<\/h3>/i);
@@ -96,10 +96,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /training-plan-step-card-parameters/i);
   assert.doesNotMatch(source, /training-plan-step-card-draft/i);
   assert.doesNotMatch(source, /Go to style guide/i);
-  assert.match(source, /Open race calendar/i);
+  assert.doesNotMatch(source, /Open race calendar/i);
   assert.match(statefulBuilderSource, /Generate next month/i);
   assert.doesNotMatch(source, /appRoutes\.styleGuide/i);
-  assert.match(source, /appRoutes\.planRaces/i);
+  assert.match(source, /Race calendar/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
   assert.match(source, /Live week first\. Future weeks stay editable\./i);
@@ -248,7 +248,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /Week preview is stale\. Refresh the preview before applying\.|Refresh preview first/i);
   assert.match(calendarSource, /Workout mutation is stale\. Refresh the planner before applying another change\./i);
   assert.match(source, /draftRevision=\{latestDraft\.revision \|\| 0\}/i);
-  assert.match(source, /button-secondary button-link button-secondary-premium/i);
+  assert.match(source, /button-secondary button-link/i);
   assert.doesNotMatch(source, /Use freshness/i);
   assert.doesNotMatch(source, /Cut load/i);
   assert.match(source, /training-plan-mini-fact/i);
