@@ -125,18 +125,6 @@ function weekSessionCountLabel(count: number) {
   return `${count} ${count === 1 ? 'session' : 'sessions'}`;
 }
 
-function shortCategoryLabel(category: Workout['category']) {
-  switch (category) {
-    case 'threshold_support': return 'threshold';
-    case 'repeatability': return 'repeat';
-    case 'race_like': return 'race';
-    case 'endurance': return 'endurance';
-    case 'recovery': return 'recovery';
-    case 'rest': return 'rest';
-    default: return category;
-  }
-}
-
 function weekActionButtonLabel(action: WeekAction) {
   switch (action) {
     case 'regenerate': return 'Regenerate';
@@ -155,29 +143,7 @@ function weekActionCompactLabel(action: WeekAction) {
   }
 }
 
-const WEEK_ACTIONS: WeekAction[] = ['regenerate', 'reduce_load', 'increase_specificity', 'lighter_weekend'];
-
-function familyIntentLabel(workout: Pick<Workout, 'category' | 'label' | 'intervalLabel' | 'familyIntent'>) {
-  if (workout.familyIntent) return workout.familyIntent;
-  const text = `${workout.label} ${workout.intervalLabel || ''}`.toLowerCase();
-  if (/standing-start|torque/.test(text)) return 'standing start';
-  if (/sprint primer|neuromuscular sprint/.test(text)) return 'sprint';
-  if (/openers/.test(text)) return 'openers';
-  if (workout.category === 'threshold_support') return /sweetspot/.test(text) ? 'sweetspot' : /tempo/.test(text) ? 'tempo' : 'threshold';
-  if (workout.category === 'repeatability') return /vo2|max aerobic/.test(text) ? 'vo2' : 'repeatability';
-  if (workout.category === 'race_like') return /race-pace bridge/.test(text) ? 'race bridge' : 'race specific';
-  if (workout.category === 'endurance') return /long endurance/.test(text) ? 'long endurance' : 'endurance';
-  if (workout.category === 'recovery') return 'recovery';
-  return 'rest';
-}
-
-function selectionRationaleLabel(tags?: string[]) {
-  if (!tags?.length) return null;
-  return tags
-    .slice(0, 2)
-    .map((tag) => tag.replaceAll('_', ' '))
-    .join(' • ');
-}
+const WEEK_ACTIONS: WeekAction[] = ['regenerate', 'reduce_load', 'increase_specificity'];
 
 function weekdayLabel(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
@@ -980,8 +946,6 @@ export function TrainingPlanCalendar({
                     <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
                       <span>{workout.durationMinutes || 0}m</span>
                       <span>L{workout.targetLoad || 0}</span>
-                      <span className="training-plan-session-card__tag training-plan-session-card__tag-family" title={selectionRationaleLabel(workout.selectionRationale) || undefined}>{familyIntentLabel(workout)}</span>
-                      <span className="training-plan-session-card__tag">{shortCategoryLabel(workout.category)}</span>
                     </div>
                   </div>
                   );

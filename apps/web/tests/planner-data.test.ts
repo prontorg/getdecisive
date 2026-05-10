@@ -486,6 +486,109 @@ test('monthly planner draft payload applies selected rest day, configurable rest
   assert.match(configuredWeek.intent, /^Race-like focus\.|^Threshold focus\.|^Repeatability focus\.|^Lighter week\./i);
 });
 
+test('monthly planner draft payload keeps exactly one rest day when one is selected', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 102, atl: 106 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 128, duration_s: 5400, summary: { short_label: '30/15 set' } },
+      { activity_id: '2', start_date_local: '2026-04-13T09:00:00', session_type: 'endurance / Z2 ride', training_load: 82, duration_s: 10800, summary: { short_label: 'Endurance' } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build repeatability cleanly without hidden extra rest',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+    preferences: { restDay: 'Wednesday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+  });
+
+  const configuredWeek = payload.weeks[1]!;
+  const restWorkouts = configuredWeek.workouts.filter((workout) => workout.category === 'rest');
+
+  assert.equal(restWorkouts.length, 1);
+  assert.equal(restWorkouts[0]?.date, '2026-04-22');
+});
+
+test('monthly planner draft payload protects race day and uses the event itself as the key effort', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 103, atl: 107 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 7200, summary: { short_label: '3x12 threshold' } },
+      { activity_id: '2', start_date_local: '2026-04-13T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 122, duration_s: 5100, summary: { short_label: '30/15 set' } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen for race specificity without putting training on race day',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+    preferences: { restDay: 'Saturday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+    planEvents: [{ id: 'race-1', date: '2026-04-25', type: 'A_race', title: 'Track omnium', priority: 'primary', durationHours: 2 }],
+  });
+
+  const raceWeek = payload.weeks[1]!;
+  const raceDayWorkout = raceWeek.workouts.find((workout) => workout.date === '2026-04-25');
+
+  assert.ok(raceDayWorkout);
+  assert.equal(raceDayWorkout?.category, 'race_like');
+  assert.equal(raceDayWorkout?.label, 'Track omnium');
+  assert.match(raceDayWorkout?.intervalLabel || '', /event itself is the key effort/i);
+  assert.doesNotMatch(raceDayWorkout?.intervalLabel || '', /3x8x30\/15|2x15|3x12/i);
+});
+
+test('monthly planner draft payload keeps event weeks inside the reduced weekly budget after inserting the event workout', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 103, atl: 107 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'threshold / race-support ride', training_load: 138, duration_s: 7200, summary: { short_label: '3x12 threshold' } },
+      { activity_id: '2', start_date_local: '2026-04-13T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 122, duration_s: 5100, summary: { short_label: '30/15 set' } },
+    ],
+  }, {
+    objective: 'race_specificity',
+    ambition: 'balanced',
+    currentDirection: 'Sharpen for race specificity while respecting the week cap around the race',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+    preferences: { restDay: 'Saturday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+    planEvents: [{ id: 'race-1', date: '2026-04-25', type: 'A_race', title: 'Track omnium', priority: 'primary', durationHours: 2 }],
+  });
+
+  const raceWeek = payload.weeks[1]!;
+  const plannedHours = Number((raceWeek.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0) / 60).toFixed(1));
+
+  assert.equal(plannedHours <= raceWeek.targetHours, true);
+  assert.equal(plannedHours <= (raceWeek.availableHours || raceWeek.targetHours), true);
+});
+
+test('monthly planner draft payload counts travel as the chosen weekly rest day instead of adding a second rest day', () => {
+  const payload = buildMonthlyPlannerDraftPayload({
+    today: '2026-04-16',
+    goal_race_date: '2026-05-12',
+    wellness: { ctl: 101, atl: 105 },
+    recent_rows: [
+      { activity_id: '1', start_date_local: '2026-04-15T09:00:00', session_type: 'broken VO2 / repeatability session', training_load: 126, duration_s: 5400, summary: { short_label: '30/15 set' } },
+      { activity_id: '2', start_date_local: '2026-04-13T09:00:00', session_type: 'endurance / Z2 ride', training_load: 80, duration_s: 10200, summary: { short_label: 'Endurance' } },
+    ],
+  }, {
+    objective: 'repeatability',
+    ambition: 'balanced',
+    currentDirection: 'Build repeatability cleanly around a travel day',
+    mustFollow: { noBackToBackHardDays: true, maxWeeklyHours: 10 },
+    preferences: { restDay: 'Saturday', restDaysPerWeek: 1, longRideDay: 'Sunday' },
+    planEvents: [{ id: 'travel-1', date: '2026-04-24', type: 'travel', title: 'Travel to race', priority: 'support', durationHours: 0 }],
+  });
+
+  const travelWeek = payload.weeks[1]!;
+  const restWorkouts = travelWeek.workouts.filter((workout) => workout.category === 'rest');
+
+  assert.equal(restWorkouts.length, 1);
+  assert.equal(restWorkouts[0]?.date, '2026-04-24');
+  assert.equal(restWorkouts[0]?.label, 'Travel to race');
+});
+
 test('monthly planner draft payload avoids unavailable dates and caps weekday durations', () => {
   const payload = buildMonthlyPlannerDraftPayload({
     today: '2026-04-16',

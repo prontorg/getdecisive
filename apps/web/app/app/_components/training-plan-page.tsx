@@ -233,6 +233,9 @@ const draftStatusLabel = latestDraft
   const currentWeekTruthRows = truthSummary?.currentWeekTruthRows || [];
   const recentMutationEvents = truthSummary?.recentEvents || [];
   const slotDiffSummary = recentMutationEvents[0]?.diffSummary || recentMutationEvents[0]?.detail || 'No exact slot change recorded yet.';
+  const draftNutshellTitle = latestInput?.selectedRecommendation?.title || latestDraft?.assumptions.selectedRecommendationTitle || draftOriginLabel;
+  const draftProtectedLine = latestDraft?.weeks[0]?.rationale.protected || latestDraft?.weeks[0]?.rationale.carriedForward || 'Protect the strongest recent support while keeping the month repeatable.';
+  const draftAimLine = latestDraft?.weeks[0]?.rationale.mainAim || comparePayload.summary;
   const plannerWorkspaceCards = {
     currentWeekRail: 'Current-week summary',
     monthWorkspace: 'Month workspace',
@@ -403,30 +406,6 @@ const draftStatusLabel = latestDraft
                         initialPreviews={currentWeekReplan.scenarioPreviews as any}
                         initialDraftRevision={latestDraft.revision || 0}
                       />
-                      <div className="training-plan-execution-changes">
-                        <div className="training-plan-execution-changes__header">
-                          <div>
-                            <div className="kicker">Week reconciliation</div>
-                            <strong>Runtime bridge</strong>
-                          </div>
-                          <div className="chip-row">
-                            <span className="chip">{weekPayload.riskFlags[0] || 'No live risk flag yet'}</span>
-                            <span className="chip">Block state: {blockPayload.blockState}</span>
-                          </div>
-                        </div>
-                        <p className="training-plan-execution-changes__summary">{slotDiffSummary}</p>
-                        <div className="training-plan-execution-changes__events">
-                          {currentWeekTruthRows.map((row) => (
-                            <div key={`${row.date}-${row.plannedLabel}`} className="training-plan-execution-changes__event-row status-item">
-                              <strong>{row.date} • {row.status.replaceAll('_', ' ')}</strong>
-                              <p>Planned: {row.plannedLabel}</p>
-                              <span>Completed: {row.completedLabel}</span>
-                              <span>Runtime bridge: {row.runtimeLabel}</span>
-                              <span>{row.driftSummary}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     </details>
                   ) : null}
 
@@ -460,7 +439,6 @@ const draftStatusLabel = latestDraft
                   note: latestInput?.note || '',
                 }}
                 successOptions={successOptions}
-                notice={notice}
               />
             </div>
           </AppCard>
@@ -496,15 +474,13 @@ const draftStatusLabel = latestDraft
                             planEvents={planEvents}
                             reconciliationEvents={truthSummary?.recentEvents || []}
                           />
-<div className="training-plan-top-strip__actions mt-18">
+                  <div className="training-plan-top-strip__actions mt-18">
                     {!isCalendarMode ? (
                       <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
                     ) : (
                       <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
                     )}
                     <span className="chip">Built from: {latestDraft.assumptions?.selectedRecommendationTitle || latestInput?.selectedRecommendation?.title || latestInput?.objective || 'latest planner inputs'} • {fmtHours(latestInput?.mustFollow.maxWeeklyHours || 10.5)} • {latestInput?.preferences.restDay || 'Saturday'} rest</span>
-                    <span className="chip">Publish state: {publishStateLabel}</span>
-                    <span className="chip">Sync: {publishSyncLabel}</span>
                     <details className="training-plan-inline-panel">
                       <summary title="More month actions">⋯</summary>
                       <div className="training-plan-inline-panel__content">
@@ -513,14 +489,22 @@ const draftStatusLabel = latestDraft
                           <p>Future weeks only. Live week stays runtime-backed.</p>
                           <p>{publishStateDetail}</p>
                         </div>
+                        <span className="chip">Publish state: {publishStateLabel}</span>
+                        <span className="chip">Sync: {publishSyncLabel}</span>
                         <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
                         <a href={appRoutes.planRaces} className="button-secondary button-link">Race calendar</a>
                         <form action="/api/planner/month/publish" method="post">
                           <input type="hidden" name="draftId" value={latestDraft.id} />
-                          <button type="submit">Publish plan</button>
+                          <button type="submit">Publish future draft</button>
                         </form>
                       </div>
                     </details>
+                  </div>
+                  <div className="status-item" style={{ marginTop: 12 }}>
+                    <strong>Draft in a nutshell</strong>
+                    <p>{draftNutshellTitle}</p>
+                    <span>{draftProtectedLine}</span>
+                    <span>{draftAimLine}</span>
                   </div>
                   <details className="training-plan-compare-panel">
                     <summary>Month details</summary>
@@ -545,7 +529,6 @@ const draftStatusLabel = latestDraft
                       <p className="training-plan-intent-compare-card__kicker">{item.category}</p>
                       <p>Recent: {item.recentSessions} sessions / {fmtHours(item.recentHours)}</p>
                       <p>Planned: {item.plannedSessions} sessions / {fmtHours(item.plannedHours)}</p>
-                      <p>Delta sessions: {item.deltaSessions >= 0 ? '+' : ''}{item.deltaSessions}</p>
                     </div>
                   ))}
                 </div>

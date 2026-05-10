@@ -97,7 +97,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /training-plan-step-card-draft/i);
   assert.doesNotMatch(source, /Go to style guide/i);
   assert.doesNotMatch(source, /Open race calendar/i);
-  assert.match(statefulBuilderSource, /Generate next month/i);
+  assert.match(statefulBuilderSource, /Generate draft/i);
   assert.doesNotMatch(source, /appRoutes\.styleGuide/i);
   assert.match(source, /Race calendar/i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
@@ -123,7 +123,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(source, /Live week first\. Future weeks stay editable\./i);
   assert.doesNotMatch(source, /Live week on top, editable month underneath\./i);
-  assert.match(statefulBuilderSource, /Generate next month/i);
+  assert.match(statefulBuilderSource, /Generate draft/i);
   assert.match(await readFile(join(webRoot, 'app/api/planner/month/draft/route.ts'), 'utf8'), /appRoutes\.plan\?notice=.*Draft generated|revalidatePath\(appRoutes\.calendar\)/i);
   assert.doesNotMatch(source, /Open full calendar/i);
   assert.match(source, /Generated month/i);
@@ -152,11 +152,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Latest runtime repair/i);
   assert.match(source, /Target planned slot:/i);
   assert.match(source, /training-plan-current-week-panel__latest-repair/i);
-  assert.match(source, /Week reconciliation/i);
-  assert.match(source, /Runtime bridge/i);
-  assert.match(source, /currentWeekTruthRows/i);
-  assert.match(source, /slotDiffSummary/i);
-  assert.match(source, /recentMutationEvents/i);
+  assert.doesNotMatch(source, /Week reconciliation/i);
+  assert.doesNotMatch(source, /Runtime bridge/i);
   assert.doesNotMatch(source, /builderAnalysisCards/i);
   assert.doesNotMatch(source, /Planning snapshot/i);
   assert.doesNotMatch(source, /Strengths/i);
@@ -174,8 +171,11 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Keep today, tomorrow, and the next key move visible\./i);
   assert.match(source, /Repair and reconciliation/i);
   assert.match(source, /Month details/i);
+  assert.match(source, /Draft in a nutshell/i);
+  assert.doesNotMatch(statefulBuilderSource, /<span>Recommended<\/span>/i);
+  assert.doesNotMatch(statefulBuilderSource, /<strong>Why<\/strong>/i);
+  assert.doesNotMatch(statefulBuilderSource, /<strong>Evidence<\/strong>/i);
   assert.doesNotMatch(source, /Builder, publish, analysis/i);
-  assert.doesNotMatch(source, /Choose, tune, review/i);
   assert.match(source, /training-plan-publish-panel/i);
   assert.match(source, /training-plan-builder-panel/i);
   assert.match(source, /training-plan-analysis-panel/i);
@@ -188,6 +188,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /CurrentWeekRepairPanelClient/i);
   assert.match(source, /Repair and reconciliation/i);
   assert.match(source, /<summary>Repair and reconciliation<\/summary>/i);
+  assert.doesNotMatch(source, /Week reconciliation/i);
+  assert.doesNotMatch(source, /Runtime bridge/i);
   assert.doesNotMatch(source, /<div className=\"kicker\">Current week<\/div>/i);
   assert.doesNotMatch(source, /<strong>What should actually happen this week<\/strong>/i);
   assert.doesNotMatch(source, /<strong>Direction<\/strong>/i);
@@ -228,6 +230,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /training-plan-week-summary-card__stat/i);
   assert.match(calendarSource, /training-plan-week-summary-card__intent/i);
   assert.match(calendarSource, /training-plan-week-summary-card__actions/i);
+  assert.match(calendarSource, /WEEK_ACTIONS: WeekAction\[] = \['regenerate', 'reduce_load', 'increase_specificity'\]/i);
   assert.match(calendarSource, /training-plan-week-summary-preview/i);
   assert.match(calendarSource, /weekView \? 'Current week focus' : 'Month overview'/i);
   assert.match(calendarSource, /weekView \? 'Only the live week stays in view with its action rail\.' : 'Scan the whole month, then tighten a single week when needed\.'/i);
@@ -270,7 +273,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /training-plan-session-card__drag-handle/i);
   assert.doesNotMatch(calendarSource, /training-plan-session-card__quick-actions/i);
   assert.doesNotMatch(calendarSource, /training-plan-session-card__quick-action/i);
-  assert.match(source, /Publish plan/i);
+  assert.match(source, /Publish future draft/i);
   assert.match(calendarSource, /past/i);
   assert.match(calendarSource, /plannedForDisplay/i);
   assert.match(calendarSource, /training-plan-day-card__summary/i);
@@ -298,10 +301,10 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /workout\.completedLabel/i);
   assert.match(calendarSource, /reconciliationEvents/i);
   assert.match(calendarSource, /training-plan-session-card__subhead/i);
-  assert.match(calendarSource, /familyIntentLabel/i);
-  assert.match(calendarSource, /training-plan-session-card__tag-family/i);
-  assert.match(calendarSource, /standing start|race bridge|race specific/i);
+  assert.match(calendarSource, /training-plan-day-card__events|planner-race-badge/i);
   assert.match(calendarSource, /training-plan-day-card-empty/i);
+  assert.doesNotMatch(calendarSource, /<span className=\"training-plan-session-card__tag training-plan-session-card__tag-family\"/i);
+  assert.doesNotMatch(calendarSource, /<span className=\"training-plan-session-card__tag\">\{shortCategoryLabel\(workout\.category\)\}<\/span>/i);
   assert.match(source, /recentWindow/i);
   assert.match(source, /compareIntentLabel/i);
   assert.match(source, /training-plan-intent-compare-card/i);
@@ -581,7 +584,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(source, /training-plan-quick-builder/i);
   assert.match(statefulBuilderSource, /training-plan-focus-chip/i);
-  assert.match(statefulBuilderSource, /Recommended<\/span>/i);
   assert.match(statefulBuilderSource, /selectedRecommendationReason/i);
   assert.match(statefulBuilderSource, /selectedRecommendationTitle/i);
   assert.match(statefulBuilderSource, /selectedRecommendationSource/i);
@@ -595,7 +597,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /name=\"restDay\" value=\{restDay\}/i);
   assert.match(statefulBuilderSource, /name=\"restDaysPerWeek\" value=\{restDaysPerWeek\}/i);
   assert.doesNotMatch(statefulBuilderSource, /<span>Month focus<\/span>[\s\S]*<select name=\"objectiveVisible\"/i);
-  assert.doesNotMatch(statefulBuilderSource, /training-plan-builder-bar-compact[\s\S]*<span>Rest days \/ week<\/span>[\s\S]*Generate next month/i);
+  assert.doesNotMatch(statefulBuilderSource, /training-plan-builder-bar-compact[\s\S]*<span>Rest days \/ week<\/span>[\s\S]*Generate draft/i);
   assert.match(statefulBuilderSource, /name=\"longRideDay\" value=\{longRideDay\}/i);
   assert.match(statefulBuilderSource, /name=\"useLast28DaysOnly\" value=\"true\"/i);
   assert.match(statefulBuilderSource, /name=\"ignoreSickWeek\" value=\"true\"/i);
@@ -618,7 +620,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Built from/i);
   assert.match(statefulBuilderSource, /Max hours \/ week|Maximum hours \/ week|Weekly cap|upper ceiling/i);
   assert.match(statefulBuilderSource, /parseUnavailableDatesInput/i);
-  assert.match(statefulBuilderSource, /areBuilderInputsDirty/i);
   assert.match(statefulBuilderSource, /setMaxWeekdayMinutes/i);
   assert.match(statefulBuilderSource, /setUnavailableDatesInput/i);
   assert.match(statefulBuilderSource, /name=\"maxWeekdayMinutes\"[^\n]*onChange=/i);
@@ -634,7 +635,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /Ignore sick week/i);
   assert.match(statefulBuilderSource, /Ignore vacation week/i);
   assert.match(statefulBuilderSource, /Exclude non-primary sport/i);
-  assert.match(statefulBuilderSource, /Evidence/i);
   assert.match(statefulBuilderSource, /Month direction/i);
   assert.match(statefulBuilderSource, /name=\"restDay\"/i);
   assert.match(statefulBuilderSource, /name=\"restDaysPerWeek\"/i);
@@ -650,7 +650,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(statefulBuilderSource, /buildBuilderSubmitPayload/i);
   assert.match(statefulBuilderSource, /selectAlternativeRecommendation/i);
   assert.match(statefulBuilderSource, /selectPrimaryRecommendation/i);
-  assert.match(statefulBuilderSource, /Generate next month/i);
+  assert.match(statefulBuilderSource, /Generate draft/i);
   assert.match(source, /Generated month/i);
   assert.match(statefulBuilderSource, /Direction/i);
   assert.doesNotMatch(source, /Builder, publish, analysis/i);
@@ -719,7 +719,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /draftWindow/i);
   assert.match(source, /categoryComparison/i);
   assert.match(source, /comparePayload\.summary/i);
-  assert.match(source, /Publish plan/i);
+  assert.doesNotMatch(source, /Delta sessions:/i);
+  assert.match(source, /Publish future draft/i);
   assert.match(source, /getLatestMonthlyPlanDraft/i);
   assert.match(source, /getLatestMonthlyPlanInput/i);
   assert.match(source, /staleDraftReason/i);

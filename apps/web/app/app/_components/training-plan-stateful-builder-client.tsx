@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 
 import {
   applyManualObjectiveOverride,
-  areBuilderInputsDirty,
   buildBuilderSubmitPayload,
   parseUnavailableDatesInput,
   selectAlternativeRecommendation,
@@ -50,7 +49,6 @@ export function TrainingPlanStatefulBuilderClient({
   initialSelection,
   initialValues,
   successOptions,
-  notice,
 }: {
   objectiveOptions: readonly ObjectiveOption[];
   recommendationPrimary: RecommendationPrimary;
@@ -58,7 +56,6 @@ export function TrainingPlanStatefulBuilderClient({
   initialSelection?: RecommendationSelection;
   initialValues: BuilderDefaults;
   successOptions: readonly string[];
-  notice?: string;
 }) {
   const initialObjective = initialSelection?.objective || initialValues.objective || recommendationPrimary.objective;
   const [selectedFocusObjective, setSelectedFocusObjective] = useState(initialObjective);
@@ -106,33 +103,7 @@ export function TrainingPlanStatefulBuilderClient({
     note,
   };
 
-  const initialBuilderState: BuilderFormState = {
-    objective: initialObjective,
-    recommendationSource: initialSelection?.source || 'manual',
-    recommendationTitle: initialSelection?.title || objectiveOptions.find((item) => item.value === initialObjective)?.label || initialObjective,
-    recommendationReason: initialSelection?.reason || recommendationPrimary.explanation,
-    recommendationConfidence: initialSelection?.confidence || recommendationPrimary.confidence || '',
-    ambition: initialValues.ambition,
-    maxWeeklyHours: String(initialValues.maxWeeklyHours),
-    maxWeekdayMinutes: String(initialValues.maxWeekdayMinutes),
-    restDay: initialValues.restDay,
-    restDaysPerWeek: String(initialValues.restDaysPerWeek),
-    longRideDay: initialValues.longRideDay,
-    unavailableDates: initialValues.unavailableDates,
-    noDoubles: initialValues.noDoubles,
-    noBackToBackHardDays: initialValues.noBackToBackHardDays,
-    useLast28DaysOnly: initialValues.useLast28DaysOnly,
-    ignoreSickWeek: initialValues.ignoreSickWeek,
-    ignoreVacationWeek: initialValues.ignoreVacationWeek,
-    excludeNonPrimarySport: initialValues.excludeNonPrimarySport,
-    successMarkers: initialValues.successMarkers,
-    note: initialValues.note,
-  };
-
   const submitPayload = buildBuilderSubmitPayload(builderState);
-  const isDirty = areBuilderInputsDirty(initialBuilderState, builderState);
-  const builderStatusLabel = isDirty ? 'Unsaved changes' : 'Saved';
-  const buildNotice = notice || 'Draft updated';
 
   const selectedSummary = useMemo(() => {
     if (selectedRecommendationSource === 'primary') return recommendationPrimary.title;
@@ -173,15 +144,6 @@ export function TrainingPlanStatefulBuilderClient({
     setUnavailableDates(parseUnavailableDatesInput(value));
   }
 
-  const activeConstraints = [
-    `Weekday cap ${maxWeekdayMinutes} min`,
-    unavailableDates.length ? `${unavailableDates.length} blocked date${unavailableDates.length === 1 ? '' : 's'}` : 'No blocked dates',
-    useLast28DaysOnly ? 'Last 28 days only' : '42-day source window',
-    ignoreSickWeek ? 'Ignore sick week' : null,
-    ignoreVacationWeek ? 'Ignore vacation week' : null,
-    excludeNonPrimarySport ? 'Exclude non-primary sport' : null,
-  ].filter((item): item is string => Boolean(item));
-
   return (
     <form action="/api/planner/month/draft" method="post" className="training-plan-stateful-builder-client">
       <input type="hidden" name="objective" value={submitPayload.objective} />
@@ -198,11 +160,10 @@ export function TrainingPlanStatefulBuilderClient({
 
       <div className="training-plan-builder-bar">
         <div className="training-plan-focus-row">
-          <div className="training-plan-focus-row__label">
-            <strong>Month direction</strong>
-            <span>Recommended</span>
-          </div>
-          <div className="training-plan-focus-chip-row">
+              <div className="training-plan-focus-row__label">
+                <strong>Month direction</strong>
+              </div>
+<div className="training-plan-focus-chip-row">
             <button
               type="button"
               aria-pressed={primaryChipPressed}
@@ -214,11 +175,10 @@ export function TrainingPlanStatefulBuilderClient({
                 reason: recommendationPrimary.explanation,
                 confidence: recommendationPrimary.confidence,
               })}
-            >
-              <span>Recommended</span>
-              {recommendationPrimary.title}
-            </button>
-            {recommendationAlternatives.map((item) => (
+                >
+                  {recommendationPrimary.title}
+                </button>
+{recommendationAlternatives.map((item) => (
               <button
                 key={item.objective}
                 type="button"
@@ -252,7 +212,7 @@ export function TrainingPlanStatefulBuilderClient({
           </select>
         </label>
         <input type="hidden" name="restDaysPerWeek" value={restDaysPerWeek} />
-        <button type="submit">Generate next month</button>
+        <button type="submit">Generate draft</button>
 
         <div className="training-plan-quick-notes">
           <div className="training-plan-quick-note training-plan-quick-note-emphasis">
@@ -264,16 +224,6 @@ export function TrainingPlanStatefulBuilderClient({
         <details className="training-plan-builder-advanced">
           <summary>More options</summary>
           <div className="training-plan-builder-advanced__body">
-            <div className="training-plan-quick-notes">
-              <div className="training-plan-quick-note">
-                <strong>Why</strong>
-                <p>{selectedRecommendationReason}</p>
-              </div>
-              <div className="training-plan-quick-note">
-                <strong>Evidence</strong>
-                <p>{activeConstraints.join(' • ')}</p>
-              </div>
-            </div>
             <div className="training-plan-direction-grid">
               <label>
                 <span>Ambition</span>

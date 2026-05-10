@@ -2085,7 +2085,6 @@ function ensureRestDayCount(
 ): PlannedWorkout[] {
   if (desiredRestDays <= 0) return workouts.filter((workout) => workout.category !== 'rest');
   const next = [...workouts];
-  const usedDates = new Set(next.map((workout) => workout.date));
   let restCount = next.filter((workout) => workout.category === 'rest').length;
   for (const offset of preferredOffsets) {
     if (restCount >= desiredRestDays) break;
@@ -2096,15 +2095,73 @@ function ensureRestDayCount(
         continue;
       }
       if (next[existingIndex]?.category === 'endurance') {
-        next[existingIndex] = { ...next[existingIndex]!, label: 'Rest', intervalLabel: 'Off / mobility', category: 'rest', durationMinutes: 0, targetLoad: 0 };
+        next[existingIndex] = { ...next[existingIndex]!, label: 'Rest', intervalLabel: 'Off / mobility', category: 'rest', durationMinutes: 0, targetLoad: 0, familyIntent: 'rest', selectionRationale: ['rest_day'] };
         restCount += 1;
         continue;
       }
       continue;
     }
-    next.push({ date, preferredOffset: offset, label: 'Rest', intervalLabel: 'Off / mobility', category: 'rest', durationMinutes: 0, targetLoad: 0, locked: false });
-    usedDates.add(date);
+    next.push({ date, preferredOffset: offset, label: 'Rest', intervalLabel: 'Off / mobility', familyIntent: 'rest', selectionRationale: ['rest_day'], category: 'rest', durationMinutes: 0, targetLoad: 0, locked: false });
     restCount += 1;
+  }
+
+  if (restCount <= desiredRestDays) return next.sort((a, b) => a.date.localeCompare(b.date));
+
+  const preferredDateOrder = preferredOffsets.map((offset) => isoDate(new Date(monday.getTime() + offset * 86400000)));
+  const preferredRank = (date: string) => {
+    const index = preferredDateOrder.indexOf(date);
+    return index >= 0 ? index : preferredDateOrder.length + 1;
+  };
+  const removableRestIndexes = next
+    .map((workout, index) => ({ workout, index }))
+    .filter(({ workout }) => workout.category === 'rest' && !workout.selectionRationale?.some((tag) => tag === 'travel' || tag === 'blackout'))
+    .sort((a, b) => preferredRank(b.workout.date) - preferredRank(a.workout.date));
+
+  for (const { index } of removableRestIndexes) {
+    if (restCount <= desiredRestDays) break;
+    next.splice(index, 1);
+    restCount -= 1;
+  }
+
+  return next.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function applyWeeklyPlanEvents(
+  workouts: PlannedWorkout[],
+  weekEvents: Array<{ id?: string; date: string; type?: string; title?: string; priority?: string; durationHours?: number }>,
+): PlannedWorkout[] {
+  if (!weekEvents.length) return workouts;
+  const next = [...workouts];
+  for (const event of weekEvents) {
+    const eventLabel = event.title || (event.type === 'travel' ? 'Travel day' : 'Event');
+    const eventIntervalLabel = event.type === 'travel'
+      ? 'Travel / logistics'
+      : event.type === 'training_camp'
+        ? 'Event day / camp focus'
+        : 'Event itself is the key effort';
+    const eventCategory: PlannerWorkoutCategory = event.type === 'travel' || event.type === 'blackout' ? 'rest' : 'race_like';
+    const eventDurationMinutes = event.type === 'travel' || event.type === 'blackout'
+      ? 0
+      : Math.max(30, Math.round(Number(event.durationHours || 1.5) * 60));
+    const eventTargetLoad = eventCategory === 'rest' ? 0 : Math.max(60, Math.round(eventDurationMinutes * 0.9));
+    const existingIndex = next.findIndex((workout) => workout.date === event.date);
+    const eventWorkout: PlannedWorkout = {
+      date: event.date,
+      preferredOffset: existingIndex >= 0 ? next[existingIndex]?.preferredOffset : undefined,
+      label: eventLabel,
+      intervalLabel: eventIntervalLabel,
+      familyIntent: eventCategory === 'race_like' ? 'event' : 'rest',
+      selectionRationale: [event.type || 'event_day'],
+      category: eventCategory,
+      durationMinutes: eventDurationMinutes,
+      targetLoad: eventTargetLoad,
+      locked: false,
+    };
+    if (existingIndex >= 0) {
+      next[existingIndex] = { ...next[existingIndex]!, ...eventWorkout };
+    } else {
+      next.push(eventWorkout);
+    }
   }
   return next.sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -2389,9 +2446,12 @@ export function buildMonthlyPlannerDraftPayload(
     });
     const workouts = ensureRestDayCount(
       capWorkoutsToTargetHours(
-        isCurrentWeek
-          ? plannedWorkouts.filter((workout) => workout.date >= planningStartDate)
-          : plannedWorkouts,
+        applyWeeklyPlanEvents(
+          isCurrentWeek
+            ? plannedWorkouts.filter((workout) => workout.date >= planningStartDate)
+            : plannedWorkouts,
+          weekEvents,
+        ),
         targetHours,
       ),
       monday,
