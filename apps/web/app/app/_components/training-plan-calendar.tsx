@@ -121,10 +121,6 @@ function weekVolumeLabel(hours: number, load: number) {
   return `${hours.toFixed(1)} h • L${load}`;
 }
 
-function weekSessionCountLabel(count: number) {
-  return `${count} ${count === 1 ? 'session' : 'sessions'}`;
-}
-
 function weekActionButtonLabel(action: WeekAction) {
   switch (action) {
     case 'regenerate': return 'Regenerate';
@@ -763,30 +759,24 @@ export function TrainingPlanCalendar({
                   const reconciliationKey = workout.plannerSlotId || workout.id;
                   const reconciliationAudit = reconciliationEventByWorkoutId.get(reconciliationKey) || reconciliationEventByWorkoutId.get(workout.id);
                   const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
-                  const changeTrace = slotDiffSummary(reconciliationAudit);
-                  return (
-                  <div key={workout.id} className={`training-plan-session-card training-plan-session-card-premium training-plan-session-card-completed ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)}`}>
-                    <div className="training-plan-session-card__row">
-                      <strong className="training-plan-session-card__label">{workout.label}</strong>
-                      <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span>
-                    </div>
-                    {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
-                    {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
-                    {reconciliationAuditText ? <div className="training-plan-session-card__subhead training-plan-session-card__subhead-audit">{reconciliationAuditText}</div> : null}
-                    {changeTrace ? <div className="training-plan-session-card__change-trace"><strong className="training-plan-session-card__change-trace-title">Before → after</strong><span>{changeTrace}</span></div> : null}
-                    <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
-                      <span>{workout.durationMinutes || 0}m</span>
-                      <span>L{workout.targetLoad || 0}</span>
-                    </div>
-                  </div>
-                )})}
-                {plannedForDisplay.map((workout) => {
+                      return (
+                      <div key={workout.id} className={`training-plan-session-card training-plan-session-card-premium training-plan-session-card-completed ${sessionToneClass(workout.category)} ${statusToneClass(workout.status)}`}>
+                        <div className="training-plan-session-card__row">
+                          <strong className="training-plan-session-card__label">{workout.label}</strong>
+                          <span className="training-plan-session-card__tag">{statusTagLabel(workout.status)}</span>
+                        </div>
+                        {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
+                        <div className="training-plan-session-card__meta training-plan-session-card__meta-compact">
+                          <span>{workout.durationMinutes || 0}m</span>
+                          <span>L{workout.targetLoad || 0}</span>
+                        </div>
+                      </div>
+                    )})}
+{plannedForDisplay.map((workout) => {
                   const inlineMoveFeedback = moveFeedback?.workoutId === workout.id ? moveFeedback : null;
                   const reconciliationKey = workout.plannerSlotId || workout.id;
                   const reconciliationAudit = reconciliationEventByWorkoutId.get(reconciliationKey) || reconciliationEventByWorkoutId.get(workout.id);
-                  const workoutAuditTrail = reconciliationEventsByWorkoutKey.get(reconciliationKey) || [];
                   const reconciliationAuditText = reconciliationAuditLabel(workout, reconciliationAudit);
-                  const changeTrace = slotDiffSummary(reconciliationAudit);
                   const selectedAction = normalizeWorkoutAction(workout, menuActionByWorkout[workout.id] || 'move_day');
                   const busyWorkout = busyDate === date;
                   const showMoveDateField = selectedAction === 'move_day';
@@ -921,13 +911,10 @@ export function TrainingPlanCalendar({
                         </details>
                       </div>
                     </div>
-                    {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
-                    {workout.reconciliationNote ? <div className="training-plan-session-card__subhead">{workout.reconciliationNote}</div> : null}
-                    {reconciliationAuditText ? <div className="training-plan-session-card__subhead training-plan-session-card__subhead-audit">{reconciliationAuditText}</div> : null}
-                    {changeTrace ? <div className="training-plan-session-card__change-trace"><strong className="training-plan-session-card__change-trace-title">Before → after</strong><span>{changeTrace}</span></div> : null}
-                    {workoutAuditTrail.length > 1 ? <div className="training-plan-session-card__change-trace"><strong className="training-plan-session-card__change-trace-title">Change trace</strong><span>{workoutAuditTrail.length} linked events recorded for this slot.</span></div> : null}
-                    {inlineMoveFeedback ? (
-                      <div className="training-plan-session-card__inline-feedback">
+                        {workout.intervalLabel ? <div className="training-plan-session-card__subhead">{workout.intervalLabel}</div> : null}
+                        {reconciliationAuditText ? <div className="training-plan-session-card__subhead">{reconciliationAuditText}</div> : null}
+                        {inlineMoveFeedback ? (
+<div className="training-plan-session-card__inline-feedback">
                         <strong>Move blocked</strong>
                         <p>{inlineMoveFeedback.reason}</p>
                         <p>Requested day: {inlineMoveFeedback.requestedDate}</p>
@@ -960,8 +947,8 @@ export function TrainingPlanCalendar({
       <aside className="training-plan-week-summary-column training-plan-workspace-week-rail">
         <div className="training-plan-week-summary-column-header">
           <span className="training-plan-week-summary-column__eyebrow">{weekView ? 'Current week focus' : 'Month overview'}</span>
-          <strong>{weekView ? 'Current week action rail' : 'Week summaries'}</strong>
-          <p>{weekView ? 'Only the live week stays in view with its action rail.' : 'Scan the whole month, then tighten a single week when needed.'}</p>
+          <strong>{weekView ? 'Week rail' : 'Week summaries'}</strong>
+          <p>{weekView ? 'Live week only.' : 'One card per week.'}</p>
         </div>
         {(weekView
           ? weeks.filter((week) => rowIndexByWeekIndex.get(week.weekIndex) === currentWeekRowIndex)
@@ -971,8 +958,6 @@ export function TrainingPlanCalendar({
           const plannedMinutes = week.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
           const completedLoad = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
           const plannedLoad = week.workouts.reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
-          const completedCount = (week.completedThisWeek || []).length;
-          const plannedCount = week.workouts.length;
           const summaryLabel = weekSummaryLabel(week);
           const availableHoursLabel = typeof week.availableHours === 'number'
             ? `${week.availableHours.toFixed(1)} h available`
@@ -990,7 +975,7 @@ export function TrainingPlanCalendar({
                     <div className="training-plan-week-summary-card__kicker">W{week.weekIndex}</div>
                     <strong>{week.label}</strong>
                   </div>
-                  <span className="training-plan-week-summary-card__badge">{weekView ? 'Live week' : summaryLabel}</span>
+                  <span className="training-plan-week-summary-card__badge">{weekView ? 'Live' : summaryLabel}</span>
                 </div>
                 <p className="training-plan-week-summary-card__intent">{summaryLabel}</p>
                 <div className="training-plan-week-summary-card__stats">
@@ -1002,12 +987,10 @@ export function TrainingPlanCalendar({
                   <div className="training-plan-week-summary-card__stat">
                     <span className="training-plan-week-summary-card__stat-label">Done</span>
                     <strong>{weekVolumeLabel(completedMinutes / 60, completedLoad)}</strong>
-                    <span>{weekSessionCountLabel(completedCount)}</span>
                   </div>
                   <div className="training-plan-week-summary-card__stat">
                     <span className="training-plan-week-summary-card__stat-label">Planned</span>
                     <strong>{weekVolumeLabel(plannedMinutes / 60, plannedLoad)}</strong>
-                    <span>{weekSessionCountLabel(plannedCount)}</span>
                   </div>
                 </div>
                 <div className="training-plan-week-summary-card__actions">

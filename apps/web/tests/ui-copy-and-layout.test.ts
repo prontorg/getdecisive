@@ -233,7 +233,6 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /WEEK_ACTIONS: WeekAction\[] = \['regenerate', 'reduce_load', 'increase_specificity'\]/i);
   assert.match(calendarSource, /training-plan-week-summary-preview/i);
   assert.match(calendarSource, /weekView \? 'Current week focus' : 'Month overview'/i);
-  assert.match(calendarSource, /weekView \? 'Only the live week stays in view with its action rail\.' : 'Scan the whole month, then tighten a single week when needed\.'/i);
   assert.match(repairPanelSource, /initialDraftRevision/i);
   assert.match(repairPanelSource, /previewMetaByScenario/i);
   assert.match(repairPanelSource, /expectedDraftRevision: previewMeta\.draftRevision/i);
@@ -286,9 +285,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /reconciliationEvents/i);
   assert.match(calendarSource, /reconciliationEventByWorkoutId/i);
   assert.match(calendarSource, /reconciliationEventsByWorkoutKey/i);
-  assert.match(calendarSource, /training-plan-session-card__change-trace/i);
-  assert.match(calendarSource, /training-plan-session-card__change-trace-title/i);
-  assert.match(calendarSource, /Before → after/i);
+  assert.doesNotMatch(calendarSource, /training-plan-session-card__change-trace/i);
+  assert.doesNotMatch(calendarSource, /training-plan-session-card__change-trace-title/i);
+  assert.doesNotMatch(calendarSource, /Before → after/i);
   assert.match(calendarSource, /slotDiffSummary/i);
   assert.match(calendarSource, /training-plan-month-grid-compact/i);
   assert.match(calendarSource, /training-plan-month-grid-premium/i);
@@ -299,7 +298,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /workout\.matchedPlannedWorkoutLabel/i);
   assert.match(calendarSource, /workout\.completedLabel/i);
   assert.match(calendarSource, /reconciliationEvents/i);
-  assert.match(calendarSource, /training-plan-session-card__subhead/i);
+  assert.doesNotMatch(calendarSource, /training-plan-session-card__subhead-audit/i);
   assert.match(calendarSource, /training-plan-day-card__events|planner-race-badge/i);
   assert.match(calendarSource, /training-plan-day-card-empty/i);
   assert.doesNotMatch(calendarSource, /<span className=\"training-plan-session-card__tag training-plan-session-card__tag-family\"/i);
@@ -331,7 +330,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /availableHoursLabel/i);
   assert.match(calendarSource, /eventAdjustedHoursLabel/i);
   assert.match(calendarSource, /weekVolumeLabel/i);
-  assert.match(calendarSource, /weekSessionCountLabel/i);
+  assert.doesNotMatch(calendarSource, /weekSessionCountLabel/i);
   assert.doesNotMatch(calendarSource, /Completed • \{completedCount\}/i);
   assert.doesNotMatch(calendarSource, /Planned • \{plannedCount\}/i);
   assert.doesNotMatch(calendarSource, /History: \$\{latestHistory\.label\}/i);
