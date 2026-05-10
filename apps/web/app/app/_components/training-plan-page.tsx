@@ -65,6 +65,18 @@ function formatLiveSyncStamp(value?: string | null) {
   })} UTC`;
 }
 
+function planEventTypeLabel(type: string) {
+  switch (type) {
+    case 'A_race': return 'A race';
+    case 'B_race': return 'B race';
+    case 'C_race': return 'C race';
+    case 'training_camp': return 'Camp';
+    case 'travel': return 'Travel';
+    case 'blackout': return 'Blackout';
+    default: return type;
+  }
+}
+
 export async function TrainingPlanPage({
   mode = 'plan',
   moveConflict,
@@ -211,6 +223,8 @@ export async function TrainingPlanPage({
   const draftProtectedLine = latestDraft?.weeks[0]?.rationale.protected || latestDraft?.weeks[0]?.rationale.carriedForward || 'Protect the strongest recent support while keeping the month repeatable.';
   const draftAimLine = latestDraft?.weeks[0]?.rationale.mainAim || comparePayload.summary;
   const recentFocusSummary = contextPayload.statusQuo.recentFocus.slice(0, 2).join(' • ') || 'No clear recent focus yet';
+  const nextEvent = planEvents[0] || null;
+  const upcomingEvents = planEvents.slice(0, 2);
   const plannerWorkspaceCards = {
     currentWeekRail: 'Current-week summary',
     monthWorkspace: 'Month workspace',
@@ -309,8 +323,24 @@ export async function TrainingPlanPage({
                 <h3>Focus</h3>
                 <p>{draftOriginLabel}</p>
                 <div className="training-plan-mini-facts">
-                  <span className="training-plan-mini-fact"><strong>Next event</strong>{planEvents[0] ? `${planEvents[0].title} • ${planEvents[0].date}` : 'No events added yet'}</span>
+                  <span className="training-plan-mini-fact"><strong>Next event</strong>{nextEvent ? `${nextEvent.title} • ${nextEvent.date}` : 'No events added yet'}</span>
                   <span className="training-plan-mini-fact"><strong>Recent focus</strong>{recentFocusSummary}</span>
+                </div>
+                <form action="/api/planner/month/events" method="post" className="training-plan-top-strip__actions">
+                  <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                  <input name="title" type="text" placeholder="Add race or event" aria-label="Add race or event" />
+                  <input name="date" type="date" aria-label="Event date" />
+                  <input type="hidden" name="type" value="B_race" />
+                  <input type="hidden" name="priority" value="support" />
+                  <button type="submit">Add event</button>
+                  <a href={appRoutes.planRaces} className="button-secondary button-link">Edit events</a>
+                </form>
+                <div className="training-plan-mini-facts">
+                  {upcomingEvents.length ? upcomingEvents.map((event) => (
+                    <span key={event.id} className="training-plan-mini-fact"><strong>{planEventTypeLabel(event.type)}</strong>{event.title} • {event.date}</span>
+                  )) : (
+                    <span className="training-plan-mini-fact"><strong>Event flow</strong>Add the next race here, then refine details only if needed.</span>
+                  )}
                 </div>
               </AppCard>
             </div>

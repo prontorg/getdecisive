@@ -20,20 +20,20 @@ export default async function PlanRacesPage({
     <AppPageShell>
       <AppHero
         eyebrow="Plan"
-        title="Race calendar"
-        description="Manage the upcoming races and planning events that should shape the next monthly draft."
+        title="Events"
+        description="Add the next race fast, then refine event details only when the month needs it."
       />
 
       <section className="mt-18">
         <AppCard className="training-plan-step-card training-plan-step-card-goals">
-          <div className="kicker">Goals and races</div>
-          <h2>Race calendar</h2>
-          <p>This page holds planner-owned race and blackout events for the monthly workspace.</p>
+          <div className="kicker">Events</div>
+          <h2>Events</h2>
+          <p>Add the next race first. Use the extra fields only when the draft needs more detail.</p>
           {params.notice ? <p>{params.notice}</p> : null}
           <form action="/api/planner/month/events" method="post" className="training-plan-direction-grid mt-18">
             <label>
-              <span>Race title</span>
-              <input name="title" type="text" placeholder="Race title" />
+              <span>Title</span>
+              <input name="title" type="text" placeholder="Track meeting Zurich" />
             </label>
             <label>
               <span>Date</span>
@@ -73,8 +73,9 @@ export default async function PlanRacesPage({
               <div key={event.id} className="training-plan-guide-card">
                 <strong>{event.title}</strong>
                 <p>{event.date} • {event.type} • {event.priority}{event.durationHours ? ` • ${event.durationHours} h` : ''}</p>
+                {event.notes ? <p>{event.notes}</p> : null}
               </div>
-            )) : <div className="training-plan-guide-card"><strong>No events yet</strong><p>Add the races that should shape the month.</p></div>}
+            )) : <div className="training-plan-guide-card"><strong>No events yet</strong><p>Add the next race on the plan page or here.</p></div>}
           </div>
           <div className="training-plan-top-strip__actions mt-18">
             <Link href={appRoutes.plan} className="button-secondary button-link">Back to plan</Link>

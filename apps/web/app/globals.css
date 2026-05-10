@@ -973,17 +973,28 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   padding-top:6px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
-.training-plan-inline-menu__selected-action-row {
+.training-plan-session-card__quick-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
 }
-.training-plan-inline-menu__selected-action-label {
-  color: #9fb0c7;
+.training-plan-session-card__quick-action {
+  padding: 3px 7px;
+  min-height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: #cdd8e8;
   font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+}
+.training-plan-session-card__quick-action-active {
+  background: rgba(122,167,255,0.16);
+  border-color: rgba(122,167,255,0.34);
+  color: #eef4ff;
+}
+.training-plan-session-card__quick-action-disabled {
+  opacity: 0.45;
 }
 .training-plan-inline-menu__action-summary {
   display: grid;

@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   const durationHoursRaw = String(isJson ? payload.durationHours || '' : payload.get('durationHours') || '').trim();
   const durationHours = durationHoursRaw ? Number(durationHoursRaw) : undefined;
   const notes = String(isJson ? payload.notes || '' : payload.get('notes') || '').trim();
+  const returnTo = String(isJson ? payload.returnTo || '' : payload.get('returnTo') || '').trim();
 
   if (!title || !date) {
     return NextResponse.json({ error: 'Title and date are required' }, { status: 400 });
@@ -36,5 +37,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ event }, { status: 201 });
   }
 
-  return NextResponse.redirect(new URL(`${appRoutes.planRaces}?notice=Event%20saved`, request.url));
+  const nextPath = returnTo === appRoutes.plan ? appRoutes.plan : appRoutes.planRaces;
+  return NextResponse.redirect(new URL(`${nextPath}?notice=Event%20saved`, request.url));
 }

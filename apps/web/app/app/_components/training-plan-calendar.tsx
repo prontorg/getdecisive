@@ -189,13 +189,16 @@ function actionSelectionLabel(action: string) {
   }
 }
 
-const WORKOUT_ACTIONS = ['move_day', 'skip', 'replace_with_support', 'mark_done_modified', 'remove'] as const;
+const WORKOUT_ACTIONS = ['move_day', 'remove'] as const;
+const QUICK_WORKOUT_ACTIONS = ['skip', 'replace_with_support', 'mark_done_modified'] as const;
 
 type WorkoutAction = typeof WORKOUT_ACTIONS[number];
+type QuickWorkoutAction = typeof QUICK_WORKOUT_ACTIONS[number];
+type ReconciliationAction = WorkoutAction | QuickWorkoutAction;
 
 function workoutActionState(
   workout: Pick<Workout, 'status'>,
-  action: WorkoutAction,
+  action: ReconciliationAction,
 ) {
   if (action === 'move_day' || action === 'remove') return 'idle';
   if (action === 'skip') {
@@ -219,6 +222,15 @@ function normalizeWorkoutAction(
 ) {
   if (!WORKOUT_ACTIONS.includes(action as WorkoutAction)) return 'move_day';
   return workoutActionState(workout, action as WorkoutAction) === 'disabled' ? 'move_day' : action;
+}
+
+function quickActionLabel(action: QuickWorkoutAction) {
+  switch (action) {
+    case 'skip': return 'Skip';
+    case 'replace_with_support': return 'Support';
+    case 'mark_done_modified': return 'Done*';
+    default: return action;
+  }
 }
 
 function shouldCloseMenuAfterSubmit(action: string) {
@@ -788,6 +800,11 @@ export function TrainingPlanCalendar({
                     ? 'training-plan-inline-menu__danger-hint'
                     : 'training-plan-inline-menu__action-hint';
                   const panel = actionPanelContent(selectedAction);
+                  const quickActions = QUICK_WORKOUT_ACTIONS.map((action) => ({
+                    action,
+                    label: quickActionLabel(action),
+                    state: workoutActionState(workout, action),
+                  }));
                   return (
                   <div
                     key={workout.id}
@@ -796,6 +813,32 @@ export function TrainingPlanCalendar({
                     <div className="training-plan-session-card__row">
                       <strong className="training-plan-session-card__label">{workout.label}</strong>
                       <div className="training-plan-session-card__actions">
+                        <div className="training-plan-session-card__quick-actions">
+                          {quickActions.map(({ action, label, state }) => {
+                            const quickActionDisabled = busyWorkout || state === 'disabled';
+                            const quickActionClassName = [
+                              'button-secondary',
+                              'training-plan-session-card__quick-action',
+                              state === 'active' ? 'training-plan-session-card__quick-action-active' : '',
+                              quickActionDisabled ? 'training-plan-session-card__quick-action-disabled' : '',
+                            ].filter(Boolean).join(' ');
+                            return (
+                              <button
+                                key={action}
+                                type="button"
+                                className={quickActionClassName}
+                                disabled={quickActionDisabled}
+                                aria-disabled={quickActionDisabled}
+                                onClick={() => {
+                                  if (quickActionDisabled) return;
+                                  mutateWorkout(workout.id, action);
+                                }}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
                         {!workout.locked ? (
                           <span
                             draggable
@@ -881,10 +924,6 @@ export function TrainingPlanCalendar({
                               ) : null}
                             </div>
                             <input type="hidden" name="action" value={selectedAction} />
-                            <div className="training-plan-inline-menu__selected-action-row">
-                              <span className="training-plan-inline-menu__selected-action-label">Selected</span>
-                              <span className="training-plan-session-card__tag">{actionSelectionLabel(selectedAction)}</span>
-                            </div>
                             <div className="training-plan-inline-menu__action-summary">
                               <strong className="training-plan-inline-menu__panel-title">{panel.title}</strong>
                               <p className="training-plan-inline-menu__panel-copy">{panel.copy}</p>
