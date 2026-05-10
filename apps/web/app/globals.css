@@ -806,6 +806,9 @@ label span { display: block; font-size: 13px; color: var(--muted); }
     align-items:start;
     margin-top: 8px;
   }
+  .training-plan-review-layout-week-inline {
+    grid-template-columns: minmax(0, 1fr);
+  }
 .training-plan-context-grid-compact { gap: 8px; }
 .training-plan-context-grid-fullwidth { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .training-plan-inline-layout__form-fullwidth { width: 100%; }
@@ -1417,6 +1420,14 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-week-summary-card__stat strong { font-size: 13px; }
 .training-plan-week-summary-card__actions { display:flex; flex-wrap:wrap; gap:8px; }
 .training-plan-week-summary-preview { margin-top: 0; display:grid; gap:6px; }
+.training-plan-week-inline-summary-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.training-plan-week-inline-summary {
+  border-color: rgba(122,167,255,0.14);
+}
 .session-tone-repeatability { --session-border: rgba(249,115,22,0.4); --session-bg: rgba(249,115,22,0.14); }
 .session-tone-threshold { --session-border: rgba(239,68,68,0.4); --session-bg: rgba(239,68,68,0.14); }
 .session-tone-race { --session-border: rgba(168,85,247,0.4); --session-bg: rgba(168,85,247,0.14); }

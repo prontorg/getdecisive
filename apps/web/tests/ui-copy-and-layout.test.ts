@@ -257,6 +257,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /training-plan-week-summary-column__eyebrow/i);
   assert.match(calendarSource, /training-plan-week-summary-card__stats/i);
   assert.match(calendarSource, /training-plan-week-summary-card__stat/i);
+  assert.match(calendarSource, /training-plan-week-inline-summary-list/i);
+  assert.match(calendarSource, /training-plan-week-inline-summary/i);
+  assert.match(calendarSource, /training-plan-review-layout-week-inline/i);
   assert.match(calendarSource, /training-plan-week-summary-card__intent/i);
   assert.match(calendarSource, /training-plan-week-summary-card__actions/i);
   assert.match(calendarSource, /WEEK_ACTIONS: WeekAction\[] = \['regenerate', 'reduce_load', 'increase_specificity'\]/i);
@@ -387,6 +390,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /setData\('text\/plain', workoutIdentity\)/i);
   assert.match(calendarSource, /training-plan-week-summary-column/i);
   assert.match(calendarSource, /training-plan-week-summary-card/i);
+  assert.match(calendarSource, /!weekView \? <aside/i);
   assert.match(calendarSource, /calendarRows/i);
   assert.match(calendarSource, /rowIndexByWeekIndex/i);
   assert.match(calendarStyles, /--calendar-row-height:\s*clamp\(138px, 16vw, 176px\)/i);
@@ -415,6 +419,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(calendarStyles, /\.training-plan-week-summary-card \{[^}]*height:\s*var\(--calendar-row-height\)/i);
   assert.match(calendarStyles, /\.training-plan-week-summary-card \{[^}]*height:\s*auto/i);
   assert.match(calendarStyles, /\.training-plan-week-summary-column \{[^}]*grid-auto-rows:\s*minmax\(0, auto\)/i);
+  assert.match(calendarStyles, /\.training-plan-review-layout-week-inline \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/i);
+  assert.match(calendarStyles, /\.training-plan-week-inline-summary-list \{[^}]*margin-top:\s*12px/i);
   assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*background:\s*linear-gradient\(180deg, rgba\(12,15,21,0\.74\), rgba\(10,13,19,0\.62\)\)/i);
   assert.match(calendarStyles, /\.rest-day-subtle \{[^}]*border-color:\s*rgba\(120,134,156,0\.06\)/i);
   assert.match(calendarStyles, /\.rest-day-subtle \.training-plan-day-card__header strong \{[^}]*color:\s*#d7e2f0/i);

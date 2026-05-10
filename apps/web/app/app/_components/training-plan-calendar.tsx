@@ -522,10 +522,13 @@ export function TrainingPlanCalendar({
     return calendarRows.findIndex((row) => row.includes(today)) + 1;
   }, [calendarRows, rowIndexByWeekIndex, today, workoutsByDate]);
   const weekRowsToRender = useMemo(() => {
-    if (!currentWeekRowIndex) return calendarRows.slice(0, 1);
+    if (!weekView) return calendarRows;
     return calendarRows.slice(currentWeekRowIndex - 1, currentWeekRowIndex);
-  }, [calendarRows, currentWeekRowIndex]);
+  }, [calendarRows, currentWeekRowIndex, weekView]);
   const calendarRowsToRender = weekView ? weekRowsToRender : calendarRows;
+  const weeksToSummarize = weekView
+    ? weeks.filter((week) => rowIndexByWeekIndex.get(week.weekIndex) === currentWeekRowIndex)
+    : weeks;
 
   const workoutsById = useMemo(() => {
     const map = new Map<string, Workout>();
@@ -716,7 +719,7 @@ export function TrainingPlanCalendar({
   }
 
   return (
-    <div className="training-plan-review-layout training-plan-workspace-calendar-shell">
+    <div className={`training-plan-review-layout training-plan-workspace-calendar-shell ${weekView ? 'training-plan-review-layout-week-inline' : ''}`}>
       <div>
         {activeNotice ? (
           <div className="status-list compact-status-list" style={{ marginBottom: 12 }}>
@@ -1058,18 +1061,77 @@ export function TrainingPlanCalendar({
           );
         })}
       </div>
+      {weekView ? (
+        <div className="training-plan-week-inline-summary-list">
+          {weeksToSummarize.map((week) => {
+            const completedMinutes = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
+            const plannedMinutes = week.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
+            const completedLoad = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
+            const plannedLoad = week.workouts.reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
+            const summaryLabel = weekSummaryLabel(week);
+            const weekPreview = weekPreviewByWeekId[week.id] || null;
+            const busyWeekAction = busyWeekActionByWeekId[week.id] || null;
+            return (
+              <div key={`inline-${week.id}`} className="training-plan-week-inline-summary training-plan-week-summary-card training-plan-week-summary-card-premium">
+                <div className="training-plan-week-summary-card__inner">
+                  <div className="training-plan-week-summary-card__header">
+                    <div>
+                      <div className="training-plan-week-summary-card__kicker">Live week</div>
+                      <strong>{week.label}</strong>
+                    </div>
+                    <span className="training-plan-week-summary-card__badge">{summaryLabel}</span>
+                  </div>
+                  <div className="training-plan-week-summary-card__stats">
+                    <div className="training-plan-week-summary-card__stat">
+                      <span className="training-plan-week-summary-card__stat-label">Target</span>
+                      <strong>{weekVolumeLabel(week.targetHours, week.targetLoad)}</strong>
+                    </div>
+                    <div className="training-plan-week-summary-card__stat">
+                      <span className="training-plan-week-summary-card__stat-label">Done</span>
+                      <strong>{weekVolumeLabel(completedMinutes / 60, completedLoad)}</strong>
+                    </div>
+                    <div className="training-plan-week-summary-card__stat">
+                      <span className="training-plan-week-summary-card__stat-label">Planned</span>
+                      <strong>{weekVolumeLabel(plannedMinutes / 60, plannedLoad)}</strong>
+                    </div>
+                  </div>
+                  <div className="training-plan-week-summary-card__actions">
+                    {WEEK_ACTIONS.map((action) => (
+                      <button
+                        key={`inline-${week.id}-${action}`}
+                        type="button"
+                        className="button-secondary"
+                        disabled={Boolean(busyWeekAction)}
+                        onClick={() => previewWeekAction(week.id, action)}
+                      >
+                        {weekActionCompactLabel(action)}
+                      </button>
+                    ))}
+                  </div>
+                  {weekPreview ? (
+                    <div className="training-plan-week-summary-preview status-item">
+                      <strong>{weekPreview.actionLabel}</strong>
+                      <p>{weekPreview.summary}</p>
+                      <span>{weekPreview.beforeHours.toFixed(1)} h / L{weekPreview.beforeLoad} → {weekPreview.afterHours.toFixed(1)} h / L{weekPreview.afterLoad}</span>
+                      <span>{weekPreview.keyProtectionSummary}</span>
+                      <span>{weekPreview.freshnessSummary}</span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       </div>
 
-      <aside className="training-plan-week-summary-column training-plan-workspace-week-rail">
+      {!weekView ? <aside className="training-plan-week-summary-column training-plan-workspace-week-rail">
         <div className="training-plan-week-summary-column-header">
           <span className="training-plan-week-summary-column__eyebrow">{weekView ? 'Current week focus' : 'Month overview'}</span>
           <strong>{weekView ? 'Week rail' : 'Week summaries'}</strong>
           <p>{weekView ? 'Live week only.' : 'One card per week.'}</p>
         </div>
-        {(weekView
-          ? weeks.filter((week) => rowIndexByWeekIndex.get(week.weekIndex) === currentWeekRowIndex)
-          : weeks
-        ).map((week) => {
+        {weeksToSummarize.map((week) => {
           const completedMinutes = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
           const plannedMinutes = week.workouts.reduce((acc, workout) => acc + Number(workout.durationMinutes || 0), 0);
           const completedLoad = (week.completedThisWeek || []).reduce((acc, workout) => acc + Number(workout.targetLoad || 0), 0);
@@ -1151,7 +1213,7 @@ export function TrainingPlanCalendar({
             </div>
           );
         })}
-      </aside>
+      </aside> : null}
     </div>
   );
 }
