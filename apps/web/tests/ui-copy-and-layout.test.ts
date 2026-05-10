@@ -124,7 +124,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /Open race calendar/i);
   assert.match(statefulBuilderSource, /Generate draft/i);
   assert.doesNotMatch(source, /appRoutes\.styleGuide/i);
-  assert.match(source, /Race calendar/i);
+  assert.doesNotMatch(source, /Race calendar/i);
+  assert.match(source, />Events</i);
   assert.match(calendarPageSource, /mode=\"calendar\"/i);
   assert.match(source, /heroTitle = isCalendarMode \? 'Calendar' : 'Plan'/i);
   assert.match(source, /Live week first\. Future weeks stay editable\./i);
@@ -392,8 +393,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /h available/i);
   assert.match(calendarSource, /weekView/i);
   assert.match(calendarSource, /setWeekView/i);
-  assert.match(calendarSource, /Current week view/i);
-  assert.match(calendarSource, /Full month view/i);
+  assert.match(calendarSource, /Month<\/button>/i);
+  assert.match(calendarSource, /Week<\/button>/i);
   assert.match(calendarSource, /calendarRowsToRender/i);
   assert.match(calendarSource, /weekRowsToRender/i);
   assert.match(calendarSource, /const workoutIdentity = workout\.plannerSlotId \|\| workout\.id/i);

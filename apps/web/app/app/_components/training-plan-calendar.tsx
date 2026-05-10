@@ -748,8 +748,8 @@ export function TrainingPlanCalendar({
           <div className="kicker">Month workspace</div>
           <strong>{weekView ? 'Current week focus' : 'Current planning month'}</strong>
           <div className="button-row training-plan-calendar-view-toggle">
-            <button type="button" className={!weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(false)}>Full month view</button>
-            <button type="button" className={weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(true)}>Current week view</button>
+            <button type="button" className={!weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(false)}>Month</button>
+            <button type="button" className={weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(true)}>Week</button>
           </div>
         </div>
       <div className="training-plan-month-grid training-plan-month-grid-compact training-plan-month-grid-premium">

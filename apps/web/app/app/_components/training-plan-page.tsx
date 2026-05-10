@@ -579,7 +579,7 @@ export async function TrainingPlanPage({
                         ) : (
                           <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
                         )}
-                        <a href={appRoutes.planRaces} className="button-secondary button-link">Race calendar</a>
+                        <a href={appRoutes.planRaces} className="button-secondary button-link">Events</a>
                         <form action="/api/planner/month/publish" method="post">
                           <input type="hidden" name="draftId" value={latestDraft.id} />
                           <button type="submit">Publish future draft</button>
