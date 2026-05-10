@@ -583,7 +583,6 @@ export async function TrainingPlanPage({
                       <div className="training-plan-inline-panel__content">
                         <div className="training-plan-calendar-publish-copy">
                           <strong>Publish future draft</strong>
-                          <p>Future weeks only. Live week stays runtime-backed.</p>
                           <p>{publishStateDetail}</p>
                         </div>
                         <span className="chip">Publish state: {publishStateLabel}</span>
@@ -593,7 +592,6 @@ export async function TrainingPlanPage({
                         ) : (
                           <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
                         )}
-                        <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
                         <a href={appRoutes.planRaces} className="button-secondary button-link">Race calendar</a>
                         <form action="/api/planner/month/publish" method="post">
                           <input type="hidden" name="draftId" value={latestDraft.id} />

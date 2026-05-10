@@ -1428,6 +1428,19 @@ label span { display: block; font-size: 13px; color: var(--muted); }
 .training-plan-week-inline-summary {
   border-color: rgba(122,167,255,0.14);
 }
+.training-plan-week-inline-summary-strip {
+  gap: 10px;
+}
+.training-plan-week-inline-summary-strip__meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.training-plan-week-inline-summary-strip__actions {
+  gap: 6px;
+}
+.training-plan-week-inline-summary-strip__actions .button-secondary {
+  padding: 6px 10px;
+  font-size: 11px;
+}
 .session-tone-repeatability { --session-border: rgba(249,115,22,0.4); --session-bg: rgba(249,115,22,0.14); }
 .session-tone-threshold { --session-border: rgba(239,68,68,0.4); --session-bg: rgba(239,68,68,0.14); }
 .session-tone-race { --session-border: rgba(168,85,247,0.4); --session-bg: rgba(168,85,247,0.14); }

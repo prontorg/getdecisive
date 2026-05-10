@@ -746,10 +746,7 @@ export function TrainingPlanCalendar({
         ) : null}
         <div className="training-plan-workspace-calendar-header">
           <div className="kicker">Month workspace</div>
-          <strong>Current planning month</strong>
-          <p className="training-plan-workspace-calendar-copy">
-            {weekView ? 'Only the live week stays in view with its action rail.' : 'Scan the whole month, then tighten a single week when needed.'}
-          </p>
+          <strong>{weekView ? 'Current week focus' : 'Current planning month'}</strong>
           <div className="button-row training-plan-calendar-view-toggle">
             <button type="button" className={!weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(false)}>Full month view</button>
             <button type="button" className={weekView ? 'button-secondary button-link' : 'button-secondary'} onClick={() => setWeekView(true)}>Current week view</button>
@@ -1073,7 +1070,7 @@ export function TrainingPlanCalendar({
             const busyWeekAction = busyWeekActionByWeekId[week.id] || null;
             return (
               <div key={`inline-${week.id}`} className="training-plan-week-inline-summary training-plan-week-summary-card training-plan-week-summary-card-premium">
-                <div className="training-plan-week-summary-card__inner">
+                <div className="training-plan-week-summary-card__inner training-plan-week-inline-summary-strip">
                   <div className="training-plan-week-summary-card__header">
                     <div>
                       <div className="training-plan-week-summary-card__kicker">Live week</div>
@@ -1081,7 +1078,7 @@ export function TrainingPlanCalendar({
                     </div>
                     <span className="training-plan-week-summary-card__badge">{summaryLabel}</span>
                   </div>
-                  <div className="training-plan-week-summary-card__stats">
+                  <div className="training-plan-week-inline-summary-strip__meta training-plan-week-summary-card__stats">
                     <div className="training-plan-week-summary-card__stat">
                       <span className="training-plan-week-summary-card__stat-label">Target</span>
                       <strong>{weekVolumeLabel(week.targetHours, week.targetLoad)}</strong>
@@ -1095,7 +1092,7 @@ export function TrainingPlanCalendar({
                       <strong>{weekVolumeLabel(plannedMinutes / 60, plannedLoad)}</strong>
                     </div>
                   </div>
-                  <div className="training-plan-week-summary-card__actions">
+                  <div className="training-plan-week-inline-summary-strip__actions training-plan-week-summary-card__actions">
                     {WEEK_ACTIONS.map((action) => (
                       <button
                         key={`inline-${week.id}-${action}`}

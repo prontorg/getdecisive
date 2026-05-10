@@ -259,12 +259,17 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarSource, /training-plan-week-summary-card__stat/i);
   assert.match(calendarSource, /training-plan-week-inline-summary-list/i);
   assert.match(calendarSource, /training-plan-week-inline-summary/i);
+  assert.match(calendarSource, /training-plan-week-inline-summary-strip/i);
+  assert.match(calendarSource, /training-plan-week-inline-summary-strip__meta/i);
+  assert.match(calendarSource, /training-plan-week-inline-summary-strip__actions/i);
   assert.match(calendarSource, /training-plan-review-layout-week-inline/i);
   assert.match(calendarSource, /training-plan-week-summary-card__intent/i);
   assert.match(calendarSource, /training-plan-week-summary-card__actions/i);
   assert.match(calendarSource, /WEEK_ACTIONS: WeekAction\[] = \['regenerate', 'reduce_load', 'increase_specificity'\]/i);
   assert.match(calendarSource, /training-plan-week-summary-preview/i);
-  assert.match(calendarSource, /weekView \? 'Current week focus' : 'Month overview'/i);
+  assert.match(calendarSource, /weekView \? 'Current week focus' : 'Current planning month'/i);
+  assert.doesNotMatch(calendarSource, /Only the live week stays in view with its action rail\./i);
+  assert.doesNotMatch(calendarSource, /Scan the whole month, then tighten a single week when needed\./i);
   assert.match(repairPanelSource, /initialDraftRevision/i);
   assert.match(repairPanelSource, /previewMetaByScenario/i);
   assert.match(repairPanelSource, /expectedDraftRevision: previewMeta\.draftRevision/i);
@@ -288,7 +293,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-mini-fact/i);
   assert.match(source, /training-plan-inline-panel|Publish future draft/i);
   assert.match(source, /Publish future draft/i);
-  assert.match(source, /Live week stays runtime-backed/i);
+  assert.doesNotMatch(source, /Live week stays runtime-backed/i);
   assert.match(source, /publishStateLabel/i);
   assert.match(source, /Publish state/i);
   assert.match(source, /Future weeks published locally/i);
