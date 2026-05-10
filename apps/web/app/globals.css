@@ -1051,6 +1051,24 @@ label span { display: block; font-size: 13px; color: var(--muted); }
   font-size: 12px;
   line-height: 1.4;
 }
+.training-plan-focus-event-card__quick-row {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+.training-plan-focus-event-card__quick-form {
+  margin: 0;
+}
+.training-plan-focus-event-card__quick-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.training-plan-focus-event-card__quick-pills button {
+  min-height: 24px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
 .training-plan-inline-event-form {
   display: grid;
   gap: 8px;

@@ -77,6 +77,13 @@ function planEventTypeLabel(type: string) {
   }
 }
 
+function shiftIsoDate(date: string, days: number) {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
+}
+
 export async function TrainingPlanPage({
   mode = 'plan',
   moveConflict,
@@ -340,6 +347,56 @@ export async function TrainingPlanPage({
                     <div key={event.id} className="training-plan-mini-fact training-plan-focus-event-card">
                       <strong>{planEventTypeLabel(event.type)}</strong>
                       <span>{event.title} • {event.date}</span>
+                      <div className="training-plan-focus-event-card__quick-row">
+                        <form action="/api/planner/month/events" method="post" className="training-plan-focus-event-card__quick-form">
+                          <input type="hidden" name="action" value="update" />
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                          <input type="hidden" name="title" value={event.title} />
+                          <input type="hidden" name="date" value={event.date} />
+                          <input type="hidden" name="durationHours" value={event.durationHours ?? ''} />
+                          <input type="hidden" name="notes" value={event.notes || ''} />
+                          <div className="training-plan-focus-event-card__quick-pills">
+                            {(['A_race', 'B_race', 'C_race'] as const).map((type) => (
+                              <button key={type} type="submit" name="type" value={type} className={event.type === type ? 'button-secondary button-link' : 'button-secondary'}>
+                                {type === 'A_race' ? 'A' : type === 'B_race' ? 'B' : 'C'}
+                              </button>
+                            ))}
+                            <input type="hidden" name="priority" value={event.priority} />
+                          </div>
+                        </form>
+                        <form action="/api/planner/month/events" method="post" className="training-plan-focus-event-card__quick-form">
+                          <input type="hidden" name="action" value="update" />
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                          <input type="hidden" name="title" value={event.title} />
+                          <input type="hidden" name="date" value={event.date} />
+                          <input type="hidden" name="type" value={event.type} />
+                          <input type="hidden" name="durationHours" value={event.durationHours ?? ''} />
+                          <input type="hidden" name="notes" value={event.notes || ''} />
+                          <div className="training-plan-focus-event-card__quick-pills">
+                            {(['primary', 'support', 'optional'] as const).map((priority) => (
+                              <button key={priority} type="submit" name="priority" value={priority} className={event.priority === priority ? 'button-secondary button-link' : 'button-secondary'}>
+                                {priority === 'primary' ? 'Key' : priority === 'support' ? 'Support' : 'Optional'}
+                              </button>
+                            ))}
+                          </div>
+                        </form>
+                        <form action="/api/planner/month/events" method="post" className="training-plan-focus-event-card__quick-form">
+                          <input type="hidden" name="action" value="update" />
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="returnTo" value={appRoutes.plan} />
+                          <input type="hidden" name="title" value={event.title} />
+                          <input type="hidden" name="type" value={event.type} />
+                          <input type="hidden" name="priority" value={event.priority} />
+                          <input type="hidden" name="durationHours" value={event.durationHours ?? ''} />
+                          <input type="hidden" name="notes" value={event.notes || ''} />
+                          <div className="training-plan-focus-event-card__quick-pills">
+                            <button type="submit" name="date" value={shiftIsoDate(event.date, -1)} className="button-secondary">−1d</button>
+                            <button type="submit" name="date" value={shiftIsoDate(event.date, 1)} className="button-secondary">+1d</button>
+                          </div>
+                        </form>
+                      </div>
                       <details className="training-plan-inline-panel training-plan-inline-panel-event">
                         <summary title="Edit event">⋯</summary>
                         <div className="training-plan-inline-panel__content">

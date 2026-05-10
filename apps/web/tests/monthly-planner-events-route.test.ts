@@ -16,6 +16,8 @@ test('planner month events route supports list/create/update/remove for form and
   assert.match(source, /removePlanningEvent/i);
   assert.match(source, /action === 'update'/i);
   assert.match(source, /action === 'remove'/i);
+  assert.match(source, /Event%20updated/i);
+  assert.match(source, /Event%20removed/i);
   assert.match(source, /eventId/i);
   assert.match(source, /request\.headers\.get\('content-type'\)/i);
   assert.match(source, /application\/json/i);

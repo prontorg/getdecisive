@@ -90,6 +90,13 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /training-plan-focus-event-card/i);
   assert.match(source, /training-plan-inline-panel-event/i);
   assert.match(source, /training-plan-inline-event-form/i);
+  assert.match(source, /training-plan-focus-event-card__quick-row/i);
+  assert.match(source, /training-plan-focus-event-card__quick-pills/i);
+  assert.match(source, /shiftIsoDate/i);
+  assert.match(source, /name=\"type\" value=\{type\}/i);
+  assert.match(source, /name=\"priority\" value=\{priority\}/i);
+  assert.match(source, /−1d/i);
+  assert.match(source, /\+1d/i);
   assert.match(source, /name=\"action\" value=\"update\"/i);
   assert.match(source, /name=\"action\" value=\"remove\"/i);
   assert.match(source, /Save event/i);
@@ -478,6 +485,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(calendarStyles, /training-plan-inline-menu__action-hint/i);
   assert.match(calendarStyles, /training-plan-inline-panel-event/i);
   assert.match(calendarStyles, /training-plan-focus-event-card/i);
+  assert.match(calendarStyles, /training-plan-focus-event-card__quick-row/i);
+  assert.match(calendarStyles, /training-plan-focus-event-card__quick-pills/i);
   assert.match(calendarStyles, /training-plan-inline-event-form/i);
   assert.doesNotMatch(calendarStyles, /training-plan-inline-menu__selected-action-row/i);
   assert.match(calendarStyles, /training-plan-inline-menu__panel-title/i);
