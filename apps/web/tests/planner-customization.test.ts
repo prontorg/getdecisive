@@ -493,6 +493,171 @@ test('moving a workout onto another workout day should be allowed so multiple pl
   });
 });
 
+test('regenerated weeks preserve planner slot identity for structurally matching workouts even when order changes', async () => {
+  const { toStoredWeekFromGenerated } = await import('../lib/server/monthly-plan-persistence');
+
+  const existingWeek = {
+    id: 'week_2',
+    weekIndex: 2,
+    label: 'Build week',
+    intent: 'Keep exact slot identity stable through reorder.',
+    targetHours: 10,
+    targetLoad: 480,
+    rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+    workouts: [
+      {
+        id: 'w_threshold',
+        plannerSlotId: 'slot_threshold_anchor',
+        date: '2026-04-15',
+        label: 'Threshold support',
+        intervalLabel: '2x15 threshold',
+        familyIntent: 'threshold',
+        category: 'threshold_support' as const,
+        durationMinutes: 80,
+        targetLoad: 95,
+        locked: false,
+        source: 'user_modified' as const,
+        status: 'planned' as const,
+        reconciliationNote: 'keep-this-slot',
+      },
+      {
+        id: 'w_endurance',
+        plannerSlotId: 'slot_endurance_support',
+        date: '2026-04-17',
+        label: 'Long endurance support',
+        intervalLabel: 'steady endurance',
+        familyIntent: 'endurance',
+        category: 'endurance' as const,
+        durationMinutes: 150,
+        targetLoad: 78,
+        locked: true,
+        source: 'generated' as const,
+        status: 'planned' as const,
+      },
+    ],
+  };
+
+  const regenerated = {
+    weekIndex: 2 as const,
+    label: 'Build week refreshed',
+    intent: 'Reordered but structurally same slots.',
+    targetHours: 10.2,
+    targetLoad: 486,
+    rationale: { carriedForward: 'A2', protected: 'B2', mainAim: 'C2' },
+    workouts: [
+      {
+        date: '2026-04-17',
+        label: 'Long endurance support',
+        intervalLabel: 'steady endurance',
+        familyIntent: 'endurance',
+        category: 'endurance' as const,
+        durationMinutes: 155,
+        targetLoad: 80,
+      },
+      {
+        date: '2026-04-15',
+        label: 'Threshold support',
+        intervalLabel: '2x15 threshold',
+        familyIntent: 'threshold',
+        category: 'threshold_support' as const,
+        durationMinutes: 82,
+        targetLoad: 96,
+      },
+    ],
+  };
+
+  const stored = toStoredWeekFromGenerated(regenerated, existingWeek as any);
+
+  assert.equal(stored.workouts[0]?.plannerSlotId, 'slot_endurance_support');
+  assert.equal(stored.workouts[0]?.locked, true);
+  assert.equal(stored.workouts[1]?.plannerSlotId, 'slot_threshold_anchor');
+  assert.equal(stored.workouts[1]?.reconciliationNote, 'keep-this-slot');
+  assert.equal(stored.workouts[1]?.source, 'user_modified');
+});
+
+test('regenerated weeks do not reuse one planner slot across duplicate structural matches', async () => {
+  const { toStoredWeekFromGenerated } = await import('../lib/server/monthly-plan-persistence');
+
+  const existingWeek = {
+    id: 'week_dupes',
+    weekIndex: 3,
+    label: 'Specific week',
+    intent: 'Duplicate slots must stay distinct.',
+    targetHours: 9.5,
+    targetLoad: 450,
+    rationale: { carriedForward: 'A', protected: 'B', mainAim: 'C' },
+    workouts: [
+      {
+        id: 'slot_a',
+        plannerSlotId: 'slot_repeat_a',
+        date: '2026-04-22',
+        label: 'Race-like session',
+        intervalLabel: 'flying 200 + jump set',
+        familyIntent: 'race specific',
+        category: 'race_like' as const,
+        durationMinutes: 70,
+        targetLoad: 84,
+        locked: false,
+        source: 'generated' as const,
+        status: 'planned' as const,
+      },
+      {
+        id: 'slot_b',
+        plannerSlotId: 'slot_repeat_b',
+        date: '2026-04-22',
+        label: 'Race-like session',
+        intervalLabel: 'flying 200 + jump set',
+        familyIntent: 'race specific',
+        category: 'race_like' as const,
+        durationMinutes: 68,
+        targetLoad: 82,
+        locked: true,
+        source: 'user_modified' as const,
+        status: 'planned' as const,
+        reconciliationNote: 'second stack preserved',
+      },
+    ],
+  };
+
+  const regenerated = {
+    weekIndex: 3 as const,
+    label: 'Specific week refreshed',
+    intent: 'Same duplicate stack, regenerated.',
+    targetHours: 9.6,
+    targetLoad: 452,
+    rationale: { carriedForward: 'A2', protected: 'B2', mainAim: 'C2' },
+    workouts: [
+      {
+        date: '2026-04-22',
+        label: 'Race-like session',
+        intervalLabel: 'flying 200 + jump set',
+        familyIntent: 'race specific',
+        category: 'race_like' as const,
+        durationMinutes: 72,
+        targetLoad: 85,
+      },
+      {
+        date: '2026-04-22',
+        label: 'Race-like session',
+        intervalLabel: 'flying 200 + jump set',
+        familyIntent: 'race specific',
+        category: 'race_like' as const,
+        durationMinutes: 69,
+        targetLoad: 83,
+      },
+    ],
+  };
+
+  const stored = toStoredWeekFromGenerated(regenerated, existingWeek as any);
+  const slotIds = stored.workouts.map((workout) => workout.plannerSlotId);
+
+  assert.deepEqual(slotIds.sort(), ['slot_repeat_a', 'slot_repeat_b']);
+  assert.equal(new Set(slotIds).size, 2);
+  const preservedModified = stored.workouts.find((workout) => workout.plannerSlotId === 'slot_repeat_b');
+  assert.equal(preservedModified?.reconciliationNote, 'second stack preserved');
+  assert.equal(preservedModified?.source, 'user_modified');
+});
+
 test('planner race events are stored newest-first and can be filtered by planning window', async () => {
   await withPlannerCustomizationModule(async ({
     savePlanningEvent,

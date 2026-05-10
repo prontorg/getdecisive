@@ -88,23 +88,54 @@ export function toStoredPlannedWorkout(workout: GeneratedWorkout, weekIndex: num
   };
 }
 
-function matchExistingPlannedWorkout(workout: GeneratedWorkout, existing?: MonthlyPlanWorkout[]) {
+function matchExistingPlannedWorkout(
+  workout: GeneratedWorkout,
+  existing: MonthlyPlanWorkout[] | undefined,
+  usedPlannerSlotIds: Set<string>,
+) {
   if (!existing?.length) return undefined;
   const nextFingerprint = plannedWorkoutFingerprint(workout);
-  return existing.find((candidate) => plannedWorkoutFingerprint(candidate as GeneratedWorkout) === nextFingerprint)
-    || existing.find((candidate) => candidate.date === workout.date && candidate.category === workout.category && normalizeText(candidate.familyIntent) === normalizeText(workout.familyIntent))
-    || existing.find((candidate) => candidate.date === workout.date && normalizeText(candidate.label) === normalizeText(workout.label))
-    || existing.find((candidate) => candidate.matchedPlannedWorkoutLabel && normalizeText(candidate.matchedPlannedWorkoutLabel) === normalizeText(workout.label));
+  const candidates = [
+    ...existing.filter((candidate) => plannedWorkoutFingerprint(candidate as GeneratedWorkout) === nextFingerprint),
+    ...existing.filter((candidate) => candidate.date === workout.date && candidate.category === workout.category && normalizeText(candidate.familyIntent) === normalizeText(workout.familyIntent)),
+    ...existing.filter((candidate) => candidate.date === workout.date && normalizeText(candidate.label) === normalizeText(workout.label)),
+    ...existing.filter((candidate) => candidate.matchedPlannedWorkoutLabel && normalizeText(candidate.matchedPlannedWorkoutLabel) === normalizeText(workout.label)),
+  ];
+  return candidates.find((candidate, index) => candidates.findIndex((other) => other.plannerSlotId === candidate.plannerSlotId || other.id === candidate.id) === index && !usedPlannerSlotIds.has(candidate.plannerSlotId || candidate.id));
 }
 
-function matchExistingCompletedWorkout(workout: GeneratedWorkout, existing?: MonthlyPlanWorkout[]) {
+function matchExistingCompletedWorkout(
+  workout: GeneratedWorkout,
+  existing: MonthlyPlanWorkout[] | undefined,
+  usedPlannerSlotIds: Set<string>,
+) {
   if (!existing?.length) return undefined;
   const nextFingerprint = completedWorkoutFingerprint(workout);
-  return existing.find((candidate) => completedWorkoutFingerprint(candidate as GeneratedWorkout) === nextFingerprint)
-    || existing.find((candidate) => candidate.date === workout.date && normalizeText(candidate.label) === normalizeText(workout.label));
+  const candidates = [
+    ...existing.filter((candidate) => completedWorkoutFingerprint(candidate as GeneratedWorkout) === nextFingerprint),
+    ...existing.filter((candidate) => candidate.date === workout.date && normalizeText(candidate.label) === normalizeText(workout.label)),
+  ];
+  return candidates.find((candidate, index) => candidates.findIndex((other) => other.plannerSlotId === candidate.plannerSlotId || other.id === candidate.id) === index && !usedPlannerSlotIds.has(candidate.plannerSlotId || candidate.id));
 }
 
 export function toStoredWeekFromGenerated(generated: GeneratedWeek, existing?: MonthlyPlanWeek): MonthlyPlanWeek {
+  const usedPlannerSlotIds = new Set<string>();
+  const completedThisWeek = (generated.completedThisWeek || existing?.completedThisWeek || []).map((workout, index) => {
+    const existingCompleted = matchExistingCompletedWorkout(workout as GeneratedWorkout, existing?.completedThisWeek, usedPlannerSlotIds);
+    const storedCompleted = existingCompleted
+      ? { ...existingCompleted, ...toStoredCompletedWorkout(workout as GeneratedWorkout, generated.weekIndex, index) }
+      : toStoredCompletedWorkout(workout as GeneratedWorkout, generated.weekIndex, index);
+    usedPlannerSlotIds.add(storedCompleted.plannerSlotId || storedCompleted.id);
+    return storedCompleted;
+  });
+
+  const workouts = generated.workouts.map((workout, index) => {
+    const existingWorkout = matchExistingPlannedWorkout(workout, existing?.workouts, usedPlannerSlotIds);
+    const storedWorkout = toStoredPlannedWorkout(workout, generated.weekIndex, index, existingWorkout);
+    usedPlannerSlotIds.add(storedWorkout.plannerSlotId || storedWorkout.id);
+    return storedWorkout;
+  });
+
   return {
     id: existing?.id || `week_${generated.weekIndex}`,
     weekIndex: generated.weekIndex,
@@ -117,15 +148,7 @@ export function toStoredWeekFromGenerated(generated: GeneratedWeek, existing?: M
     eventHours: generated.eventHours,
     longSessionDay: generated.longSessionDay,
     rationale: generated.rationale,
-    completedThisWeek: (generated.completedThisWeek || existing?.completedThisWeek || []).map((workout, index) => {
-      const existingCompleted = matchExistingCompletedWorkout(workout as GeneratedWorkout, existing?.completedThisWeek);
-      return existingCompleted
-        ? { ...existingCompleted, ...toStoredCompletedWorkout(workout as GeneratedWorkout, generated.weekIndex, index) }
-        : toStoredCompletedWorkout(workout as GeneratedWorkout, generated.weekIndex, index);
-    }),
-    workouts: generated.workouts.map((workout, index) => {
-      const existingWorkout = matchExistingPlannedWorkout(workout, existing?.workouts);
-      return toStoredPlannedWorkout(workout, generated.weekIndex, index, existingWorkout);
-    }),
+    completedThisWeek,
+    workouts,
   };
 }
