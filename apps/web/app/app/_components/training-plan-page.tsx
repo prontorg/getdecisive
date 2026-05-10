@@ -45,18 +45,6 @@ function fmtHours(value: number) {
   return `${value.toFixed(1)} h`;
 }
 
-function compareIntentLabel(category: string) {
-  switch (category) {
-    case 'threshold_support': return 'Threshold intent';
-    case 'repeatability': return 'Repeatability intent';
-    case 'race_like': return 'Race-specific intent';
-    case 'endurance': return 'Endurance intent';
-    case 'recovery': return 'Recovery intent';
-    case 'rest': return 'Rest intent';
-    default: return category;
-  }
-}
-
 function formatRange(dateA: string, dateB: string) {
   const start = new Date(`${dateA}T00:00:00Z`);
   const end = new Date(`${dateB}T00:00:00Z`);
@@ -447,11 +435,6 @@ export async function TrainingPlanPage({
                             reconciliationEvents={truthSummary?.recentEvents || []}
                           />
                   <div className="training-plan-top-strip__actions mt-18">
-                    {!isCalendarMode ? (
-                      <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
-                    ) : (
-                      <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
-                    )}
                     <span className="chip">Built from: {latestDraft.assumptions?.selectedRecommendationTitle || latestInput?.selectedRecommendation?.title || latestInput?.objective || 'latest planner inputs'} • {fmtHours(latestInput?.mustFollow.maxWeeklyHours || 10.5)} • {latestInput?.preferences.restDay || 'Saturday'} rest</span>
                     <details className="training-plan-inline-panel">
                       <summary title="More month actions">⋯</summary>
@@ -463,6 +446,11 @@ export async function TrainingPlanPage({
                         </div>
                         <span className="chip">Publish state: {publishStateLabel}</span>
                         <span className="chip">Sync: {publishSyncLabel}</span>
+                        {!isCalendarMode ? (
+                          <a href={appRoutes.calendar} className="button-secondary button-link">Calendar</a>
+                        ) : (
+                          <a href={appRoutes.plan} className="button-secondary button-link">Builder</a>
+                        )}
                         <a href={appRoutes.dashboard} className="button-secondary button-link">Dashboard</a>
                         <a href={appRoutes.planRaces} className="button-secondary button-link">Race calendar</a>
                         <form action="/api/planner/month/publish" method="post">
@@ -481,30 +469,20 @@ export async function TrainingPlanPage({
                   <details className="training-plan-compare-panel">
                     <summary>Month details</summary>
                     <div className="training-plan-comparison-grid training-plan-comparison-grid-compact">
-                  <div className="status-item">
-                    <strong>{comparePayload.recentWindow.label}</strong>
-                    <p>{fmtHours(comparePayload.recentWindow.totalHours)} • Load {comparePayload.recentWindow.totalLoad} • {comparePayload.recentWindow.totalSessions} sessions</p>
-                  </div>
-                  <div className="status-item">
-                    <strong>{comparePayload.draftWindow.label}</strong>
-                    <p>{fmtHours(comparePayload.draftWindow.totalHours)} • Load {comparePayload.draftWindow.totalLoad} • {comparePayload.draftWindow.totalSessions} sessions</p>
-                  </div>
-                  <div className="status-item">
-                    <strong>Summary</strong>
-                    <p>{comparePayload.summary}</p>
-                  </div>
-                </div>
-                <div className="training-plan-category-grid">
-                  {comparePayload.categoryComparison.map((item) => (
-                    <div key={item.category} className="status-item training-plan-intent-compare-card">
-                      <strong>{compareIntentLabel(item.category)}</strong>
-                      <p className="training-plan-intent-compare-card__kicker">{item.category}</p>
-                      <p>Recent: {item.recentSessions} sessions / {fmtHours(item.recentHours)}</p>
-                      <p>Planned: {item.plannedSessions} sessions / {fmtHours(item.plannedHours)}</p>
+                      <div className="status-item">
+                        <strong>{comparePayload.recentWindow.label}</strong>
+                        <p>{fmtHours(comparePayload.recentWindow.totalHours)} • Load {comparePayload.recentWindow.totalLoad} • {comparePayload.recentWindow.totalSessions} sessions</p>
+                      </div>
+                      <div className="status-item">
+                        <strong>{comparePayload.draftWindow.label}</strong>
+                        <p>{fmtHours(comparePayload.draftWindow.totalHours)} • Load {comparePayload.draftWindow.totalLoad} • {comparePayload.draftWindow.totalSessions} sessions</p>
+                      </div>
+                      <div className="status-item">
+                        <strong>Summary</strong>
+                        <p>{comparePayload.summary}</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </details>
+                  </details>
               </div>
             </>
           ) : (

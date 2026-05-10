@@ -170,6 +170,8 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(source, /Today check/i);
   assert.match(source, /Month details/i);
   assert.match(source, /Draft in a nutshell/i);
+  assert.doesNotMatch(source, /training-plan-category-grid/i);
+  assert.doesNotMatch(source, /training-plan-intent-compare-card/i);
   assert.doesNotMatch(statefulBuilderSource, /<span>Recommended<\/span>/i);
   assert.doesNotMatch(statefulBuilderSource, /<strong>Why<\/strong>/i);
   assert.doesNotMatch(statefulBuilderSource, /<strong>Evidence<\/strong>/i);
@@ -303,9 +305,9 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(calendarSource, /<span className=\"training-plan-session-card__tag training-plan-session-card__tag-family\"/i);
   assert.doesNotMatch(calendarSource, /<span className=\"training-plan-session-card__tag\">\{shortCategoryLabel\(workout\.category\)\}<\/span>/i);
   assert.match(source, /recentWindow/i);
-  assert.match(source, /compareIntentLabel/i);
-  assert.match(source, /training-plan-intent-compare-card/i);
-  assert.match(source, /Race-specific intent|Repeatability intent|Threshold intent/i);
+  assert.doesNotMatch(source, /compareIntentLabel/i);
+  assert.doesNotMatch(source, /training-plan-intent-compare-card/i);
+  assert.doesNotMatch(source, /Race-specific intent|Repeatability intent|Threshold intent/i);
   assert.doesNotMatch(source, /training-plan-review-meta/i);
   assert.doesNotMatch(source, /Live week on top, editable month underneath\./i);
   const plannerDataSource = await readFile(join(webRoot, 'lib/server/planner-data.ts'), 'utf8');
@@ -714,7 +716,7 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.doesNotMatch(source, /Refresh draft from latest live data/i);
   assert.match(source, /recentWindow/i);
   assert.match(source, /draftWindow/i);
-  assert.match(source, /categoryComparison/i);
+  assert.doesNotMatch(source, /categoryComparison/i);
   assert.match(source, /comparePayload\.summary/i);
   assert.doesNotMatch(source, /Delta sessions:/i);
   assert.match(source, /Publish future draft/i);
