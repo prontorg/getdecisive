@@ -68,7 +68,8 @@ export async function POST(request: Request) {
   const workoutId = String(pick('workoutId') || '');
   const plannerSlotId = String(pick('plannerSlotId') || '');
   const action = String(pick('action') || '') as WorkoutAction;
-  if (!draftId || (!workoutId && !plannerSlotId) || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, workoutId, plannerSlotId, action });
+  const expectedDraftRevision = Number(pick('expectedDraftRevision') || 0);
+  if (!draftId || (!workoutId && !plannerSlotId) || !action) return routeErrorResponse(ROUTE, 400, 'Missing identifiers', { userId, draftId, workoutId, plannerSlotId, action, expectedDraftRevision });
   if (legacyUnsupportedActions.has(action)) {
     return routeErrorResponse(ROUTE, 410, 'Legacy planner action no longer supported', { userId, draftId, workoutId, action });
   }
@@ -77,8 +78,19 @@ export async function POST(request: Request) {
     const draft = await getLatestMonthlyPlanDraft(userId);
     const workoutIdentity = plannerSlotId || workoutId;
     const workout = draft?.weeks.flatMap((week) => week.workouts).find((item) => item.id === workoutIdentity || item.plannerSlotId === workoutIdentity);
-    if (!draft || draft.id !== draftId || !workout) return routeErrorResponse(ROUTE, 404, 'Draft or workout not found', { userId, draftId, workoutId, plannerSlotId, action });
-    if (workout.locked) return routeErrorResponse(ROUTE, 409, 'Workout is locked', { userId, draftId, workoutId, action });
+    if (!draft || draft.id !== draftId || !workout) return routeErrorResponse(ROUTE, 404, 'Draft or workout not found', { userId, draftId, workoutId, plannerSlotId, action, expectedDraftRevision });
+    if (isJson && (!expectedDraftRevision || expectedDraftRevision !== (draft.revision || 0))) {
+      return routeErrorResponse(ROUTE, 409, 'Workout mutation is stale. Refresh the planner before applying another change.', {
+        userId,
+        draftId,
+        workoutId,
+        plannerSlotId,
+        action,
+        expectedDraftRevision,
+        currentDraftRevision: draft.revision || 0,
+      });
+    }
+    if (workout.locked) return routeErrorResponse(ROUTE, 409, 'Workout is locked', { userId, draftId, workoutId, action, expectedDraftRevision, currentDraftRevision: draft.revision || 0 });
 
     let nextDraft = null;
     let reconciliationEvent:
@@ -199,7 +211,7 @@ export async function POST(request: Request) {
       return routeErrorResponse(ROUTE, 400, 'Unsupported action', { userId, draftId, workoutId, action });
     }
 
-    logRouteEvent(ROUTE, 'info', 'Workout mutation applied', { userId, draftId, workoutId, action, isJson });
+    logRouteEvent(ROUTE, 'info', 'Workout mutation applied', { userId, draftId, workoutId, action, isJson, draftRevision: nextDraft?.revision || draft.revision || 0 });
     if (reconciliationEvent) {
       await appendMonthlyPlanReconciliationEvent(userId, {
         draftId,
@@ -230,9 +242,9 @@ export async function POST(request: Request) {
       return NextResponse.redirect(redirectUrl);
     }
     if (action === 'move_day') {
-      return NextResponse.json({ success: true, notice: `Workout moved to ${String(pick('moveDate') || '')}`, draft: nextDraft });
+      return NextResponse.json({ success: true, notice: `Workout moved to ${String(pick('moveDate') || '')}`, draft: nextDraft, draftRevision: nextDraft?.revision || draft.revision || 0 });
     }
-    return NextResponse.json(nextDraft);
+    return NextResponse.json({ ...nextDraft, draftRevision: nextDraft?.revision || draft.revision || 0 });
   } catch (error) {
     const message = captureRouteError(ROUTE, error, { userId, draftId, workoutId, action, isJson });
     return routeErrorResponse(ROUTE, 500, message, { userId, draftId, workoutId, action, isJson });

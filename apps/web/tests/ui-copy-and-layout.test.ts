@@ -239,10 +239,14 @@ test('training plan page uses the latest decisive monthly-planner framing and la
   assert.match(repairPanelSource, /previewToken\.endsWith\(':initial'\)/i);
   assert.match(source, /initialDraftRevision=\{latestDraft\.revision \|\| 0\}/i);
   assert.match(calendarSource, /draftRevision: number/i);
+  assert.match(calendarSource, /const \[currentDraftRevision, setCurrentDraftRevision\] = useState\(draftRevision\)/i);
+  assert.match(calendarSource, /expectedDraftRevision: currentDraftRevision/i);
+  assert.match(calendarSource, /setCurrentDraftRevision\(payload\.draftRevision\)/i);
   assert.match(calendarSource, /weekPreviewMetaByWeekId/i);
   assert.match(calendarSource, /expectedDraftRevision: previewMeta\.draftRevision/i);
   assert.match(calendarSource, /previewToken: previewMeta\.previewToken/i);
   assert.match(calendarSource, /Week preview is stale\. Refresh the preview before applying\.|Refresh preview first/i);
+  assert.match(calendarSource, /Workout mutation is stale\. Refresh the planner before applying another change\./i);
   assert.match(source, /draftRevision=\{latestDraft\.revision \|\| 0\}/i);
   assert.match(source, /button-secondary button-link button-secondary-premium/i);
   assert.doesNotMatch(source, /Use freshness/i);

@@ -111,6 +111,8 @@ type Week = {
   workouts: Workout[];
 };
 
+const staleWorkoutMutationNotice = 'Workout mutation is stale. Refresh the planner before applying another change.';
+
 function weekSummaryLabel(week: Week) {
   return week.weekTypeLabel || week.intent?.replace(/\.$/, '') || 'Repeatable week';
 }
@@ -419,6 +421,7 @@ export function TrainingPlanCalendar({
   reconciliationEvents?: ReconciliationAuditEvent[];
 }) {
   const [weeks, setWeeks] = useState<Week[]>(initialWeeks);
+  const [currentDraftRevision, setCurrentDraftRevision] = useState(draftRevision);
   const reconciliationEventByWorkoutId = useMemo(() => {
     const entries = reconciliationEvents
       .filter((event) => event.workoutId || event.matchedPlannedWorkoutId || event.workoutPlannerSlotId || event.matchedPlannedWorkoutSlotId)
@@ -450,6 +453,10 @@ export function TrainingPlanCalendar({
   useEffect(() => {
     setWeeks(initialWeeks);
   }, [initialWeeks]);
+
+  useEffect(() => {
+    setCurrentDraftRevision(draftRevision);
+  }, [draftRevision]);
 
   const calendarDays = useMemo(() => {
     const dates = new Set<string>();
@@ -588,20 +595,21 @@ export function TrainingPlanCalendar({
       const response = await fetch('/api/planner/month/workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftId, workoutId, plannerSlotId: workout.plannerSlotId, action, ...extra }),
+        body: JSON.stringify({ draftId, workoutId, plannerSlotId: workout.plannerSlotId, action, expectedDraftRevision: currentDraftRevision, ...extra }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         setMoveFeedback({
           workoutId,
           requestedDate: workout.date,
-          reason: payload?.error || `${action} failed. Try again.`,
+          reason: payload?.error || (response.status === 409 ? staleWorkoutMutationNotice : `${action} failed. Try again.`),
           suggestedDate: null,
         });
         return;
       }
       const nextNotice = actionSuccessNotice(action, workout);
       if (payload?.weeks) setWeeks(payload.weeks as Week[]);
+      if (typeof payload?.draftRevision === 'number') setCurrentDraftRevision(payload.draftRevision);
       setSuccessNotice(nextNotice);
     } finally {
       setBusyDate(null);
@@ -616,7 +624,7 @@ export function TrainingPlanCalendar({
       const response = await fetch('/api/planner/month/workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftId, workoutId, plannerSlotId: workoutsById.get(workoutId)?.plannerSlotId, action: 'move_day', moveDate }),
+        body: JSON.stringify({ draftId, workoutId, plannerSlotId: workoutsById.get(workoutId)?.plannerSlotId, action: 'move_day', moveDate, expectedDraftRevision: currentDraftRevision }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -632,13 +640,14 @@ export function TrainingPlanCalendar({
         setMoveFeedback({
           workoutId,
           requestedDate: moveDate,
-          reason: payload?.error || 'Move failed. Try again.',
+          reason: payload?.error || (response.status === 409 ? staleWorkoutMutationNotice : 'Move failed. Try again.'),
           suggestedDate: null,
         });
         return;
       }
       setMoveFeedback(null);
       if (payload?.draft?.weeks) setWeeks(payload.draft.weeks as Week[]);
+      if (typeof payload?.draftRevision === 'number') setCurrentDraftRevision(payload.draftRevision);
       setSuccessNotice({
         title: 'Move applied',
         detail: payload?.notice || `Workout moved to ${moveDate}`,
@@ -666,6 +675,7 @@ export function TrainingPlanCalendar({
       const previewPayload = payload as WeekPreviewEnvelope;
       setWeekPreviewByWeekId((current) => ({ ...current, [weekId]: previewPayload.preview }));
       setWeekPreviewMetaByWeekId((current) => ({ ...current, [weekId]: { draftRevision: previewPayload.draftRevision, previewToken: previewPayload.previewToken } }));
+      setCurrentDraftRevision(previewPayload.draftRevision);
     } finally {
       setBusyWeekActionByWeekId((current) => ({ ...current, [weekId]: null }));
     }
@@ -691,6 +701,7 @@ export function TrainingPlanCalendar({
         return;
       }
       if (payload?.weeks) setWeeks(payload.weeks as Week[]);
+      if (typeof payload?.draftRevision === 'number') setCurrentDraftRevision(payload.draftRevision);
       setWeekPreviewByWeekId((current) => ({ ...current, [weekId]: null }));
       setWeekPreviewMetaByWeekId((current) => ({ ...current, [weekId]: null }));
       setSuccessNotice({ title: 'Week updated', detail: `${weekActionButtonLabel(action)} applied.` });

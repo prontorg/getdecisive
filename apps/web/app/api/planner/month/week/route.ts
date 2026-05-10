@@ -285,7 +285,7 @@ export async function POST(request: Request) {
     if (parsed instanceof FormData) {
       return redirectWithNotice(ROUTE, request, appRoutes.plan, { userId, draftId, weekId, action });
     }
-    return NextResponse.json(nextDraft);
+    return NextResponse.json({ ...nextDraft, draftRevision: nextDraft?.revision || draft.revision || 0 });
   } catch (error) {
     const message = captureRouteError(ROUTE, error, { userId, draftId, weekId, action, isJson });
     return routeErrorResponse(ROUTE, 500, message, { userId, draftId, weekId, action, isJson });
